@@ -179,30 +179,31 @@
   .qty-control button { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; }
   .qty-control .qty-val { font-family: 'JetBrains Mono', monospace; font-size: 13px; min-width: 16px; text-align: center; }
   .cart-footer { border-top: 1px solid var(--line); padding: 20px 24px; }
-  .cart-subtotal { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 14px; }
-  .cart-subtotal .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
   .checkout-btn { width: 100%; background: var(--ink); color: var(--bg); border: none; padding: 14px; border-radius: var(--radius); font-weight: 600; font-size: 13.5px; }
   .checkout-btn:disabled { background: var(--line); color: var(--ink-soft); }
 
-  #checkout { padding: 64px 28px; border-top: 1px solid var(--line); display: none; max-width: 1180px; margin: 0 auto; }
+  #checkout { padding: 24px 20px 40px; border-top: 1px solid var(--line); display: none; max-width: 560px; margin: 0 auto; }
   #checkout.open { display: block; }
-  .checkout-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; }
-  @media (max-width: 800px) { .checkout-grid { grid-template-columns: 1fr; } }
-  .co-title { font-size: 24px; margin-bottom: 28px; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-  .form-row.single { grid-template-columns: 1fr; }
-  label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 7px; }
-  input, textarea, select { width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 11px 12px; font-family: 'Inter', sans-serif; font-size: 14px; color: var(--ink); outline: none; }
-  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
-  .delivery-options { display: flex; gap: 10px; margin-bottom: 20px; }
-  .delivery-opt { flex: 1; border: 1px solid var(--line); border-radius: 5px; padding: 12px; cursor: pointer; font-size: 13px; font-weight: 500; }
-  .delivery-opt.selected { border-color: var(--accent); background: var(--accent-soft); }
-  .delivery-opt .sub { font-size: 11px; color: var(--ink-soft); font-weight: 400; margin-top: 2px; }
-  .order-summary { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
-  .os-item { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-  .os-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; padding-top: 14px; }
-  .place-order-btn { width: 100%; background: var(--ink); color: var(--bg); border: none; padding: 14px; border-radius: var(--radius); font-weight: 600; font-size: 13.5px; margin-top: 16px; }
-  .payment-note { font-size: 11px; color: var(--ink-soft); margin-top: 12px; line-height: 1.5; border-top: 1px dashed var(--line); padding-top: 12px; }
+  .confirm-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .confirm-header h2 { font-size: 19px; font-weight: 700; }
+  .confirm-back-btn { background: #F2F3F4; border: none; width: 34px; height: 34px; border-radius: 8px; font-size: 20px; line-height: 1; color: var(--ink); }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 7px; margin-top: 16px; }
+  label:first-of-type { margin-top: 0; }
+  input, textarea, select { width: 100%; background: #F2F3F4; border: 1px solid transparent; border-radius: 8px; padding: 12px 14px; font-family: 'Inter', sans-serif; font-size: 14px; color: var(--ink); outline: none; }
+  input:focus, textarea:focus, select:focus { border-color: var(--brand-blue); background: var(--panel); }
+  .order-stats { border: 1px solid var(--line); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+  .stat-row { display: flex; justify-content: space-between; padding: 13px 16px; font-size: 13.5px; color: var(--ink-soft); border-bottom: 1px solid var(--line); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .stat-val { font-weight: 700; color: var(--ink); }
+  #lbl-order-list { font-size: 15px; font-weight: 700; margin-top: 22px; margin-bottom: 12px; }
+  .order-list-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .order-list-item .oli-name { font-size: 14px; font-weight: 700; }
+  .order-list-item .oli-zh { font-size: 12.5px; color: var(--ink-soft); margin-top: 1px; }
+  .order-list-item .oli-code { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  .order-list-item .oli-qty { font-size: 13px; color: var(--ink); margin-top: 4px; font-weight: 600; }
+  .confirm-actions { display: flex; gap: 12px; margin-top: 24px; }
+  .confirm-back-btn-2 { flex: 0 0 90px; background: #F2F3F4; border: none; padding: 14px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--ink); }
+  .submit-order-btn { flex: 1; background: var(--brand-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 14px; }
 
   #order-confirm { display: none; text-align: center; padding: 60px 28px; max-width: 1180px; margin: 0 auto; }
   #order-confirm.open { display: block; }
@@ -299,38 +300,33 @@
   <div class="cart-header"><h3 id="lbl-your-cart">Your Cart</h3><button class="close-btn" id="cart-close">✕</button></div>
   <div class="cart-items" id="cart-items"></div>
   <div class="cart-footer">
-    <div class="cart-subtotal"><span id="lbl-subtotal">Subtotal</span><span class="val" id="cart-subtotal">RM0.00</span></div>
     <button class="checkout-btn" id="checkout-btn">Proceed to checkout</button>
   </div>
 </div>
 
 <section id="checkout">
-  <h2 class="co-title" id="lbl-checkout-title">Checkout</h2>
-  <div class="checkout-grid">
-    <div>
-      <div class="form-row">
-        <div><label for="full-name" id="lbl-full-name">Full name</label><input type="text" id="full-name" required></div>
-        <div><label for="phone" id="lbl-phone">Phone number</label><input type="tel" id="phone" required></div>
-      </div>
-      <div class="form-row single"><div><label for="email" id="lbl-email">Email</label><input type="email" id="email" required></div></div>
-      <label id="lbl-delivery-method">Delivery method</label>
-      <div class="delivery-options">
-        <div class="delivery-opt selected" data-method="delivery"><span id="lbl-delivery">Delivery</span><div class="sub" id="lbl-delivery-sub">RM8 flat, 1–2 days</div></div>
-        <div class="delivery-opt" data-method="pickup"><span id="lbl-pickup">Self pickup</span><div class="sub" id="lbl-pickup-sub">Free, same day</div></div>
-      </div>
-      <div id="address-field">
-        <label for="address" id="lbl-address">Delivery address</label>
-        <textarea id="address" rows="3"></textarea>
-      </div>
-    </div>
-    <div class="order-summary">
-      <h3 style="font-size:14px; margin-bottom:14px;" id="lbl-order-summary">Order Summary</h3>
-      <div id="summary-items"></div>
-      <div class="os-item"><span id="lbl-summary-delivery">Delivery</span><span class="mono" id="summary-delivery">RM8.00</span></div>
-      <div class="os-total"><span id="lbl-total">Total</span><span class="mono" id="summary-total">RM0.00</span></div>
-      <button class="place-order-btn" id="place-order-btn">Place order</button>
-      <div class="payment-note" id="lbl-payment-note">This demo checkout doesn't process real payments. To accept payment here, connect a gateway like Billplz, ToyyibPay, or Stripe.</div>
-    </div>
+  <div class="confirm-header">
+    <button class="confirm-back-btn" id="confirm-back-btn">‹</button>
+    <h2 id="lbl-checkout-title">Confirm Order</h2>
+  </div>
+
+  <label for="company-name" id="lbl-company-name">Company Name</label>
+  <input type="text" id="company-name" required>
+
+  <label for="phone" id="lbl-phone">Phone Number</label>
+  <input type="tel" id="phone" placeholder="012-3456789" required>
+
+  <div class="order-stats">
+    <div class="stat-row"><span id="lbl-total-types">Total Fish Types</span><span class="stat-val" id="stat-types">0</span></div>
+    <div class="stat-row"><span id="lbl-total-qty">Total Quantity</span><span class="stat-val" id="stat-qty">0</span></div>
+  </div>
+
+  <h3 id="lbl-order-list">Order List</h3>
+  <div id="order-list-items"></div>
+
+  <div class="confirm-actions">
+    <button class="confirm-back-btn-2" id="confirm-back-btn-2">Back</button>
+    <button class="submit-order-btn" id="submit-order-btn">Submit Order</button>
   </div>
 </section>
 
@@ -353,13 +349,11 @@
       curated: 'Curated selection', featured: 'Featured', fullCatalog: 'Full catalog',
       size: 'Size', price: 'Price', quantity: 'Quantity', from: 'From', bulkPricing: 'Bulk pricing: ',
       yourCart: 'Your Cart', cartEmpty: 'Your cart is empty.', cartEmptySub: 'Add some fish to get started.',
-      subtotal: 'Subtotal', proceedCheckout: 'Proceed to checkout', checkoutTitle: 'Checkout',
-      fullName: 'Full name', phoneNumber: 'Phone number', email: 'Email',
-      deliveryMethod: 'Delivery method', delivery: 'Delivery', deliverySub: 'RM8 flat, 1–2 days',
-      pickup: 'Self pickup', pickupSub: 'Free, same day', deliveryAddress: 'Delivery address',
-      orderSummary: 'Order Summary', total: 'Total', placeOrder: 'Place order',
-      paymentNote: "This demo checkout doesn't process real payments. To accept payment here, connect a gateway like Billplz, ToyyibPay, or Stripe.",
-      orderReceived: 'Order received', orderReceivedSub: "We'll confirm availability and delivery time by phone or email shortly.",
+      subtotal: 'Subtotal', proceedCheckout: 'Proceed to checkout', checkoutTitle: 'Confirm Order',
+      companyName: 'Company Name', phoneNumber: 'Phone Number',
+      totalFishTypes: 'Total Fish Types', totalQuantity: 'Total Quantity', orderList: 'Order List',
+      back: 'Back', submitOrder: 'Submit Order',
+      orderReceived: 'Order received', orderReceivedSub: "We'll confirm availability and delivery time by phone shortly.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
       addToCart: 'Add to cart', allFish: 'All Fish'
@@ -369,13 +363,11 @@
       curated: '精选推荐', featured: '精选鱼', fullCatalog: '全部商品',
       size: '尺寸', price: '价格', quantity: '数量', from: '低至', bulkPricing: '批发价：',
       yourCart: '我的购物车', cartEmpty: '购物车是空的。', cartEmptySub: '快去挑选几条鱼吧。',
-      subtotal: '小计', proceedCheckout: '前往结账', checkoutTitle: '结账',
-      fullName: '姓名', phoneNumber: '电话号码', email: '电邮',
-      deliveryMethod: '配送方式', delivery: '快递', deliverySub: '统一运费RM8，1-2天送达',
-      pickup: '自取', pickupSub: '免费，当天可取', deliveryAddress: '收货地址',
-      orderSummary: '订单摘要', total: '总计', placeOrder: '提交订单',
-      paymentNote: '此结账演示暂不支持实际付款。如需在线收款，可接入 Billplz、ToyyibPay 或 Stripe 等支付网关。',
-      orderReceived: '订单已收到', orderReceivedSub: '我们会尽快通过电话或电邮确认库存和送货时间。',
+      subtotal: '小计', proceedCheckout: '前往结账', checkoutTitle: '确认订单',
+      companyName: '公司名称', phoneNumber: '电话号码',
+      totalFishTypes: '鱼类种数', totalQuantity: '总数量', orderList: '订单清单',
+      back: '返回', submitOrder: '提交订单',
+      orderReceived: '订单已收到', orderReceivedSub: '我们会尽快通过电话确认库存和送货时间。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
       addToCart: '加入购物车', allFish: '全部鱼类'
@@ -393,23 +385,15 @@
     document.getElementById('lbl-quantity').textContent = t('quantity');
     document.getElementById('detail-add-btn').textContent = t('addToCart');
     document.getElementById('lbl-your-cart').textContent = t('yourCart');
-    document.getElementById('lbl-subtotal').textContent = t('subtotal');
     document.getElementById('checkout-btn').textContent = t('proceedCheckout');
     document.getElementById('lbl-checkout-title').textContent = t('checkoutTitle');
-    document.getElementById('lbl-full-name').textContent = t('fullName');
+    document.getElementById('lbl-company-name').textContent = t('companyName');
     document.getElementById('lbl-phone').textContent = t('phoneNumber');
-    document.getElementById('lbl-email').textContent = t('email');
-    document.getElementById('lbl-delivery-method').textContent = t('deliveryMethod');
-    document.getElementById('lbl-delivery').textContent = t('delivery');
-    document.getElementById('lbl-delivery-sub').textContent = t('deliverySub');
-    document.getElementById('lbl-pickup').textContent = t('pickup');
-    document.getElementById('lbl-pickup-sub').textContent = t('pickupSub');
-    document.getElementById('lbl-address').textContent = t('deliveryAddress');
-    document.getElementById('lbl-order-summary').textContent = t('orderSummary');
-    document.getElementById('lbl-summary-delivery').textContent = t('delivery');
-    document.getElementById('lbl-total').textContent = t('total');
-    document.getElementById('place-order-btn').textContent = t('placeOrder');
-    document.getElementById('lbl-payment-note').textContent = t('paymentNote');
+    document.getElementById('lbl-total-types').textContent = t('totalFishTypes');
+    document.getElementById('lbl-total-qty').textContent = t('totalQuantity');
+    document.getElementById('lbl-order-list').textContent = t('orderList');
+    document.getElementById('confirm-back-btn-2').textContent = t('back');
+    document.getElementById('submit-order-btn').textContent = t('submitOrder');
     document.getElementById('lbl-order-received').textContent = t('orderReceived');
     document.getElementById('lbl-order-received-sub').textContent = t('orderReceivedSub');
     document.getElementById('lang-toggle-btn').textContent = lang === 'en' ? '中文' : 'EN';
@@ -757,11 +741,9 @@
   }
   const cartItemsEl = document.getElementById('cart-items');
   const cartCountEl = document.getElementById('cart-count');
-  const cartSubtotalEl = document.getElementById('cart-subtotal');
   const checkoutBtn = document.getElementById('checkout-btn');
   function renderCart() {
     cartCountEl.textContent = cart.reduce((s, c) => s + c.qty, 0);
-    cartSubtotalEl.textContent = 'RM' + cartTotal().toFixed(2);
     checkoutBtn.disabled = cart.length === 0;
     if (cart.length === 0) { cartItemsEl.innerHTML = `<div class="cart-empty">${t('cartEmpty')}<br>${t('cartEmptySub')}</div>`; return; }
     cartItemsEl.innerHTML = cart.map(c => {
@@ -922,47 +904,52 @@
     closeDetail();
   });
 
-  // ---------- CHECKOUT ----------
+  // ---------- CONFIRM ORDER ----------
   const checkoutSection = document.getElementById('checkout');
   const orderConfirm = document.getElementById('order-confirm');
-  const summaryItems = document.getElementById('summary-items');
-  const summaryDelivery = document.getElementById('summary-delivery');
-  const summaryTotal = document.getElementById('summary-total');
-  const addressField = document.getElementById('address-field');
-  let deliveryMethod = 'delivery';
-  const DELIVERY_FEE = 8.00;
-  document.querySelectorAll('.delivery-opt').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('.delivery-opt').forEach(o => o.classList.remove('selected'));
-      opt.classList.add('selected');
-      deliveryMethod = opt.dataset.method;
-      addressField.style.display = deliveryMethod === 'delivery' ? 'block' : 'none';
-      renderSummary();
-    });
-  });
-  function renderSummary() {
-    summaryItems.innerHTML = cart.map(c => {
+
+  function renderOrderReview() {
+    const totalTypes = cart.length;
+    const totalQty = cart.reduce((s, c) => s + c.qty, 0);
+    document.getElementById('stat-types').textContent = totalTypes;
+    document.getElementById('stat-qty').textContent = totalQty;
+
+    const listEl = document.getElementById('order-list-items');
+    listEl.innerHTML = cart.map(c => {
       const p = products.find(p => p.id === c.id);
       if (!p) return '';
-      const unitPrice = getUnitPrice(p, c.qty);
-      return `<div class="os-item"><span>${p.name} × ${c.qty}</span><span class="mono">RM${(unitPrice * c.qty).toFixed(2)}</span></div>`;
+      const primaryName = lang === 'zh' && p.zh ? p.zh : p.name;
+      const secondaryName = lang === 'zh' && p.zh ? p.name : p.zh;
+      return `<div class="order-list-item">
+          <div class="oli-name">${primaryName}</div>
+          ${secondaryName ? `<div class="oli-zh">${secondaryName}</div>` : ''}
+          <div class="oli-code mono">${p.id}</div>
+          <div class="oli-qty">${t('quantity')}: ${c.qty}</div>
+        </div>`;
     }).join('');
-    const fee = deliveryMethod === 'delivery' ? DELIVERY_FEE : 0;
-    summaryDelivery.textContent = 'RM' + fee.toFixed(2);
-    summaryTotal.textContent = 'RM' + (cartTotal() + fee).toFixed(2);
   }
-  checkoutBtn.addEventListener('click', () => {
-    if (cart.length === 0) return;
-    closeCart(); renderSummary();
+
+  function openCheckout() {
+    renderOrderReview();
     checkoutSection.classList.add('open');
     checkoutSection.scrollIntoView({ behavior: 'smooth' });
+  }
+  function closeCheckout() {
+    checkoutSection.classList.remove('open');
+  }
+
+  checkoutBtn.addEventListener('click', () => {
+    if (cart.length === 0) return;
+    closeCart();
+    openCheckout();
   });
-  document.getElementById('place-order-btn').addEventListener('click', () => {
-    const name = document.getElementById('full-name').value.trim();
+  document.getElementById('confirm-back-btn').addEventListener('click', closeCheckout);
+  document.getElementById('confirm-back-btn-2').addEventListener('click', closeCheckout);
+
+  document.getElementById('submit-order-btn').addEventListener('click', () => {
+    const company = document.getElementById('company-name').value.trim();
     const phone = document.getElementById('phone').value.trim();
-    const email = document.getElementById('email').value.trim();
-    if (!name || !phone || !email) { alert('Please fill in your name, phone, and email.'); return; }
-    if (deliveryMethod === 'delivery' && !document.getElementById('address').value.trim()) { alert('Please enter a delivery address.'); return; }
+    if (!company || !phone) { alert('Please fill in your company name and phone number.'); return; }
     const orderId = 'JF' + Math.floor(100000 + Math.random() * 900000);
     document.getElementById('order-id').textContent = 'Order ID: ' + orderId;
     checkoutSection.classList.remove('open');
