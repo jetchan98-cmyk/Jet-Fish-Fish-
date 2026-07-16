@@ -182,8 +182,13 @@
   .checkout-btn { width: 100%; background: var(--ink); color: var(--bg); border: none; padding: 14px; border-radius: var(--radius); font-weight: 600; font-size: 13.5px; }
   .checkout-btn:disabled { background: var(--line); color: var(--ink-soft); }
 
-  #checkout { padding: 24px 20px 40px; border-top: 1px solid var(--line); display: none; max-width: 560px; margin: 0 auto; }
-  #checkout.open { display: block; }
+  #checkout {
+    position: fixed; top: 0; right: 0; height: 100%; width: 100%; max-width: 560px;
+    z-index: 150; background: var(--bg); overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.28s ease;
+    padding: 24px 20px 40px; margin: 0; box-shadow: -8px 0 30px rgba(0,0,0,0.12);
+  }
+  #checkout.open { transform: translateX(0); }
   .confirm-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
   .confirm-header h2 { font-size: 19px; font-weight: 700; }
   .confirm-back-btn { background: #F2F3F4; border: none; width: 34px; height: 34px; border-radius: 8px; font-size: 20px; line-height: 1; color: var(--ink); }
@@ -205,12 +210,19 @@
   .confirm-back-btn-2 { flex: 0 0 90px; background: #F2F3F4; border: none; padding: 14px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--ink); }
   .submit-order-btn { flex: 1; background: var(--brand-blue); color: white; border: none; padding: 14px; border-radius: 10px; font-weight: 700; font-size: 14px; }
 
-  #order-confirm { display: none; text-align: center; padding: 60px 28px; max-width: 1180px; margin: 0 auto; }
-  #order-confirm.open { display: block; }
+  #order-confirm {
+    position: fixed; top: 0; right: 0; height: 100%; width: 100%; max-width: 560px;
+    z-index: 150; background: var(--bg); overflow-y: auto;
+    transform: translateX(100%); transition: transform 0.28s ease;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 40px 28px; box-shadow: -8px 0 30px rgba(0,0,0,0.12);
+  }
+  #order-confirm.open { transform: translateX(0); }
   #order-confirm .check { font-size: 36px; color: var(--accent); margin-bottom: 14px; }
   #order-confirm h2 { font-size: 22px; margin-bottom: 10px; }
-  #order-confirm p { color: var(--ink-soft); max-width: 400px; margin: 0 auto; }
+  #order-confirm p { color: var(--ink-soft); max-width: 340px; margin: 0 auto; }
   #order-confirm .order-id { font-family: 'JetBrains Mono', monospace; margin-top: 14px; font-size: 13px; }
+  .confirm-done-btn { margin-top: 24px; background: var(--brand-blue); color: white; border: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; }
 
   footer { padding: 36px 28px; border-top: 1px solid var(--line); max-width: 1180px; margin: 0 auto; }
   .footer-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 12px; color: var(--ink-soft); }
@@ -314,7 +326,7 @@
   <input type="text" id="company-name" required>
 
   <label for="phone" id="lbl-phone">Phone Number</label>
-  <input type="tel" id="phone" placeholder="012-3456789" required>
+  <input type="tel" id="phone" placeholder="012-3456789" inputmode="numeric" maxlength="12" required>
 
   <div class="order-stats">
     <div class="stat-row"><span id="lbl-total-types">Total Fish Types</span><span class="stat-val" id="stat-types">0</span></div>
@@ -335,6 +347,7 @@
   <h2 id="lbl-order-received">Order received</h2>
   <p id="lbl-order-received-sub">We'll confirm availability and delivery time by phone or email shortly.</p>
   <div class="order-id" id="order-id"></div>
+  <button class="confirm-done-btn" id="confirm-done-btn">Done</button>
 </section>
 
 <footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 012-7735057</div></div></footer>
@@ -352,7 +365,7 @@
       subtotal: 'Subtotal', proceedCheckout: 'Proceed to checkout', checkoutTitle: 'Confirm Order',
       companyName: 'Company Name', phoneNumber: 'Phone Number',
       totalFishTypes: 'Total Fish Types', totalQuantity: 'Total Quantity', orderList: 'Order List',
-      back: 'Back', submitOrder: 'Submit Order',
+      back: 'Back', submitOrder: 'Submit Order', done: 'Done',
       orderReceived: 'Order received', orderReceivedSub: "We'll confirm availability and delivery time by phone shortly.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
@@ -366,7 +379,7 @@
       subtotal: '小计', proceedCheckout: '前往结账', checkoutTitle: '确认订单',
       companyName: '公司名称', phoneNumber: '电话号码',
       totalFishTypes: '鱼类种数', totalQuantity: '总数量', orderList: '订单清单',
-      back: '返回', submitOrder: '提交订单',
+      back: '返回', submitOrder: '提交订单', done: '完成',
       orderReceived: '订单已收到', orderReceivedSub: '我们会尽快通过电话确认库存和送货时间。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
@@ -394,6 +407,7 @@
     document.getElementById('lbl-order-list').textContent = t('orderList');
     document.getElementById('confirm-back-btn-2').textContent = t('back');
     document.getElementById('submit-order-btn').textContent = t('submitOrder');
+    document.getElementById('confirm-done-btn').textContent = t('done');
     document.getElementById('lbl-order-received').textContent = t('orderReceived');
     document.getElementById('lbl-order-received-sub').textContent = t('orderReceivedSub');
     document.getElementById('lang-toggle-btn').textContent = lang === 'en' ? '中文' : 'EN';
@@ -932,7 +946,6 @@
   function openCheckout() {
     renderOrderReview();
     checkoutSection.classList.add('open');
-    checkoutSection.scrollIntoView({ behavior: 'smooth' });
   }
   function closeCheckout() {
     checkoutSection.classList.remove('open');
@@ -946,16 +959,33 @@
   document.getElementById('confirm-back-btn').addEventListener('click', closeCheckout);
   document.getElementById('confirm-back-btn-2').addEventListener('click', closeCheckout);
 
+  // Auto-format phone as 01X-XXXXXXX / 011-XXXXXXXX — digits only, dash inserted after 3rd digit
+  const phoneInput = document.getElementById('phone');
+  phoneInput.addEventListener('input', () => {
+    let digits = phoneInput.value.replace(/[^0-9]/g, '').slice(0, 11);
+    if (digits.length > 3) {
+      phoneInput.value = digits.slice(0, 3) + '-' + digits.slice(3);
+    } else {
+      phoneInput.value = digits;
+    }
+  });
+
   document.getElementById('submit-order-btn').addEventListener('click', () => {
     const company = document.getElementById('company-name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     if (!company || !phone) { alert('Please fill in your company name and phone number.'); return; }
+    if (!/^01\d-\d{7,8}$/.test(phone)) {
+      alert('Please enter a valid phone number in the format 01X-XXXXXXX or 011-XXXXXXXX.');
+      return;
+    }
     const orderId = 'JF' + Math.floor(100000 + Math.random() * 900000);
     document.getElementById('order-id').textContent = 'Order ID: ' + orderId;
     checkoutSection.classList.remove('open');
     orderConfirm.classList.add('open');
-    orderConfirm.scrollIntoView({ behavior: 'smooth' });
     cart = []; renderCart();
+  });
+  document.getElementById('confirm-done-btn').addEventListener('click', () => {
+    orderConfirm.classList.remove('open');
   });
 
   // ---------- LANGUAGE TOGGLE ----------
