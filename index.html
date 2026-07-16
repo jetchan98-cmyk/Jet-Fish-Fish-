@@ -366,7 +366,7 @@
       companyName: 'Company Name', phoneNumber: 'Phone Number',
       totalFishTypes: 'Total Fish Types', totalQuantity: 'Total Quantity', orderList: 'Order List',
       back: 'Back', submitOrder: 'Submit Order', done: 'Done',
-      orderReceived: 'Order received', orderReceivedSub: "We'll confirm availability and delivery time by phone shortly.",
+      orderReceived: 'Order received', orderReceivedSub: "A WhatsApp message with your order has opened — just hit send to confirm with us.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
       addToCart: 'Add to cart', allFish: 'All Fish'
@@ -380,7 +380,7 @@
       companyName: '公司名称', phoneNumber: '电话号码',
       totalFishTypes: '鱼类种数', totalQuantity: '总数量', orderList: '订单清单',
       back: '返回', submitOrder: '提交订单', done: '完成',
-      orderReceived: '订单已收到', orderReceivedSub: '我们会尽快通过电话确认库存和送货时间。',
+      orderReceived: '订单已收到', orderReceivedSub: '已为您打开 WhatsApp 消息，只需点击发送即可确认订单。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
       addToCart: '加入购物车', allFish: '全部鱼类'
@@ -970,6 +970,8 @@
     }
   });
 
+  const WHATSAPP_NUMBER = '60109881389'; // 010-9881389 with Malaysia country code, no leading 0
+
   document.getElementById('submit-order-btn').addEventListener('click', () => {
     const company = document.getElementById('company-name').value.trim();
     const phone = document.getElementById('phone').value.trim();
@@ -979,6 +981,25 @@
       return;
     }
     const orderId = 'JF' + Math.floor(100000 + Math.random() * 900000);
+
+    // Build the WhatsApp message with full order details
+    const totalTypes = cart.length;
+    const totalQty = cart.reduce((s, c) => s + c.qty, 0);
+    let msg = `New Order — Jet Fish Shop\n`;
+    msg += `Order ID: ${orderId}\n`;
+    msg += `Company: ${company}\n`;
+    msg += `Phone: ${phone}\n\n`;
+    msg += `Order List:\n`;
+    cart.forEach((c, i) => {
+      const p = products.find(p => p.id === c.id);
+      if (!p) return;
+      msg += `${i + 1}. ${p.name}${p.zh ? ' ' + p.zh : ''} (${p.id}) — Qty: ${c.qty}\n`;
+    });
+    msg += `\nTotal Fish Types: ${totalTypes}\nTotal Quantity: ${totalQty}`;
+
+    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+
     document.getElementById('order-id').textContent = 'Order ID: ' + orderId;
     checkoutSection.classList.remove('open');
     orderConfirm.classList.add('open');
