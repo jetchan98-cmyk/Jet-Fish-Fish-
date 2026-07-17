@@ -165,6 +165,12 @@
       <div class="toolbar">
         <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
         <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
+        <select class="cat-filter" id="stock-sort">
+          <option value="name-asc">Name A–Z</option>
+          <option value="name-desc">Name Z–A</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="price-asc">Price: Low to High</option>
+        </select>
       </div>
       <div class="stock-table" id="stock-table">
         <div class="loading-msg">Loading stock…</div>
@@ -199,6 +205,9 @@
         <div class="form-grid">
           <div><label>Bulk Qty 2</label><input type="number" id="add-bulk2-qty" placeholder="optional"></div>
           <div><label>Bulk Price 2</label><input type="number" step="0.10" id="add-bulk2-price" placeholder="optional"></div>
+        </div>
+        <div class="form-grid single">
+          <div><label>Photo (optional)</label><input type="file" id="add-photo" accept="image/*"></div>
         </div>
         <button class="btn-primary" id="add-fish-btn" style="width:100%; padding:12px; margin-top:6px;">Add Fish</button>
         <div class="bulk-result" id="add-result"></div>
@@ -338,9 +347,15 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   function renderStockTable() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
     const catFilter = document.getElementById('stock-cat-filter').value;
-    let list = fishList;
+    const sortMode = document.getElementById('stock-sort').value;
+    let list = fishList.slice();
     if (catFilter) list = list.filter(f => f.category === catFilter);
     if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q));
+
+    if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sortMode === 'name-desc') list.sort((a, b) => b.name.localeCompare(a.name));
+    else if (sortMode === 'price-desc') list.sort((a, b) => b.price - a.price);
+    else if (sortMode === 'price-asc') list.sort((a, b) => a.price - b.price);
 
     const table = document.getElementById('stock-table');
     if (!list.length) { table.innerHTML = `<div class="empty-msg">No fish match.</div>`; return; }
@@ -448,6 +463,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
 
   document.getElementById('stock-search').addEventListener('input', renderStockTable);
   document.getElementById('stock-cat-filter').addEventListener('change', renderStockTable);
+  document.getElementById('stock-sort').addEventListener('change', renderStockTable);
 
   // ---------- ADD FISH ----------
   document.getElementById('add-fish-btn').addEventListener('click', async () => {
@@ -462,6 +478,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     const bulk1Price = document.getElementById('add-bulk1-price').value ? parseFloat(document.getElementById('add-bulk1-price').value) : null;
     const bulk2Qty = document.getElementById('add-bulk2-qty').value ? parseInt(document.getElementById('add-bulk2-qty').value) : null;
     const bulk2Price = document.getElementById('add-bulk2-price').value ? parseFloat(document.getElementById('add-bulk2-price').value) : null;
+    const photoFile = document.getElementById('add-photo').files[0];
 
     const resultEl = document.getElementById('add-result');
     if (!code || !category || !name || isNaN(price)) {
@@ -469,16 +486,31 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       return;
     }
 
+    const addBtn = document.getElementById('add-fish-btn');
+    addBtn.disabled = true; addBtn.textContent = 'Adding…';
+
+    let imageUrl = null;
+    if (photoFile) {
+      try {
+        imageUrl = await uploadPhotoForCode(photoFile, code);
+      } catch (err) {
+        console.error(err);
+        resultEl.innerHTML = `<span class="err">Photo upload failed, but you can still add the fish and upload the photo later in the Photos tab.</span>`;
+      }
+    }
+
     const res = await fetch(`${SUPABASE_URL}/rest/v1/fish`, {
       method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify([{ code, category, name, zh, size, price, featured, available: true,
+      body: JSON.stringify([{ code, category, name, zh, size, price, featured, available: true, image_url: imageUrl,
         bulk1_qty: bulk1Qty, bulk1_price: bulk1Price, bulk2_qty: bulk2Qty, bulk2_price: bulk2Price }])
     });
+    addBtn.disabled = false; addBtn.textContent = 'Add Fish';
     if (res.ok) {
       resultEl.innerHTML = `<span class="ok">Added "${name}" — now live on your site.</span>`;
       ['add-code','add-name','add-zh','add-size','add-price','add-bulk1-qty','add-bulk1-price','add-bulk2-qty','add-bulk2-price'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('add-category').value = '';
       document.getElementById('add-featured').value = 'no';
+      document.getElementById('add-photo').value = '';
       await loadFish(); populateCatFilter();
     } else {
       resultEl.innerHTML = `<span class="err">Could not add fish — check that the Code isn't already used.</span>`;
@@ -559,6 +591,19 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   });
   photoInput.addEventListener('change', () => handlePhotoFiles(photoInput.files));
 
+  // Uploads a single photo file to storage and returns its public URL (or null on failure)
+  async function uploadPhotoForCode(file, code) {
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
+    const storagePath = `${code}-${Date.now()}${ext}`;
+    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    if (!uploadRes.ok) throw new Error(await uploadRes.text());
+    return `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
+  }
+
   async function handlePhotoFiles(fileList) {
     const files = Array.from(fileList);
     const logEl = document.getElementById('photo-log');
@@ -578,15 +623,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         continue;
       }
 
-      const storagePath = `${match.code}-${Date.now()}${file.name.slice(file.name.lastIndexOf('.'))}`;
       try {
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type },
-          body: file
-        });
-        if (!uploadRes.ok) throw new Error(await uploadRes.text());
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
+        const publicUrl = await uploadPhotoForCode(file, match.code);
         await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(match.code)}`, {
           method: 'PATCH', headers, body: JSON.stringify({ image_url: publicUrl })
         });
@@ -624,7 +662,11 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             </div>
           </div>
           <div class="order-items">
-            ${o.items.map(it => `<div class="order-item-row"><span>${it.name}${it.zh ? ' ' + it.zh : ''} <span class="mono" style="color:var(--ink-soft);">(${it.code})</span></span><span>Qty: ${it.qty}</span></div>`).join('')}
+            ${o.items.map(it => `<div class="order-item-row">
+                <span>${it.name}${it.zh ? ' ' + it.zh : ''} <span class="mono" style="color:var(--ink-soft);">(${it.code})</span></span>
+                <span>Qty: ${it.qty} ${it.unit_price !== undefined ? `× RM${parseFloat(it.unit_price).toFixed(2)} = <b>RM${parseFloat(it.line_total).toFixed(2)}</b>` : ''}</span>
+              </div>`).join('')}
+            ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
           </div>
           <div class="order-actions">
             <button class="icon-btn toggle-status-btn" data-id="${o.id}" data-status="${o.status}">${o.status === 'done' ? 'Mark as New' : 'Mark as Done'}</button>
@@ -653,7 +695,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     const padding = 32;
     const lineHeight = 26;
     const width = 480;
-    const height = padding * 2 + 180 + order.items.length * lineHeight;
+    const height = padding * 2 + 210 + order.items.length * lineHeight;
 
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
@@ -679,10 +721,13 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     order.items.forEach(it => {
       const label = `${it.name}${it.zh ? ' ' + it.zh : ''} (${it.code})`;
       ctx.font = '600 13px Arial';
-      ctx.fillText(label.length > 42 ? label.slice(0, 40) + '…' : label, padding, y);
+      ctx.fillText(label.length > 34 ? label.slice(0, 32) + '…' : label, padding, y);
       ctx.font = '700 13px Arial';
       ctx.textAlign = 'right';
-      ctx.fillText('Qty: ' + it.qty, width - padding, y);
+      const qtyPriceText = it.unit_price !== undefined
+        ? `${it.qty} × RM${parseFloat(it.unit_price).toFixed(2)} = RM${parseFloat(it.line_total).toFixed(2)}`
+        : 'Qty: ' + it.qty;
+      ctx.fillText(qtyPriceText, width - padding, y);
       ctx.textAlign = 'left';
       y += lineHeight;
     });
@@ -692,7 +737,11 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     y += 26;
     ctx.font = '700 13px Arial';
     ctx.fillText(`Total Fish Types: ${order.total_types}`, padding, y); y += 20;
-    ctx.fillText(`Total Quantity: ${order.total_qty}`, padding, y);
+    ctx.fillText(`Total Quantity: ${order.total_qty}`, padding, y); y += 20;
+    if (order.order_total !== null && order.order_total !== undefined) {
+      ctx.font = '700 16px Arial';
+      ctx.fillText(`Order Total: RM${parseFloat(order.order_total).toFixed(2)}`, padding, y);
+    }
 
     const link = document.createElement('a');
     link.download = `${order.order_ref}.png`;
