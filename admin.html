@@ -663,8 +663,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           </div>
           <div class="order-items">
             ${o.items.map(it => `<div class="order-item-row">
-                <span>${it.name}${it.zh ? ' ' + it.zh : ''} <span class="mono" style="color:var(--ink-soft);">(${it.code})</span></span>
-                <span>Qty: ${it.qty} ${it.unit_price !== undefined ? `× RM${parseFloat(it.unit_price).toFixed(2)} = <b>RM${parseFloat(it.line_total).toFixed(2)}</b>` : ''}</span>
+                <span><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name} <span style="color:var(--ink-soft);">×${it.qty}</span></span>
+                <span>${it.unit_price !== undefined ? `RM${parseFloat(it.unit_price).toFixed(2)} = <b>RM${parseFloat(it.line_total).toFixed(2)}</b>` : '—'}</span>
               </div>`).join('')}
             ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
           </div>
@@ -719,13 +719,13 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
 
     ctx.font = '700 13px Arial'; ctx.fillStyle = '#14181A';
     order.items.forEach(it => {
-      const label = `${it.name}${it.zh ? ' ' + it.zh : ''} (${it.code})`;
+      const label = `${it.code} — ${it.name}`;
       ctx.font = '600 13px Arial';
       ctx.fillText(label.length > 34 ? label.slice(0, 32) + '…' : label, padding, y);
       ctx.font = '700 13px Arial';
       ctx.textAlign = 'right';
       const qtyPriceText = it.unit_price !== undefined
-        ? `${it.qty} × RM${parseFloat(it.unit_price).toFixed(2)} = RM${parseFloat(it.line_total).toFixed(2)}`
+        ? `×${it.qty} = RM${parseFloat(it.line_total).toFixed(2)}`
         : 'Qty: ' + it.qty;
       ctx.fillText(qtyPriceText, width - padding, y);
       ctx.textAlign = 'left';
