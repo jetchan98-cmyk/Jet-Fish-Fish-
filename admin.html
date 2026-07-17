@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jet Fish — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #FAFAFA; --panel: #FFFFFF; --ink: #14181A; --ink-soft: #6B7280;
+    --line: #E5E7EB; --accent: #0F6E63; --accent-soft: #E4F2EF; --brand-blue: #1D6FE0; --radius: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  button { font-family: inherit; cursor: pointer; }
+  input, textarea, select { font-family: 'Inter', sans-serif; }
+
+  /* ---------- LOGIN GATE ---------- */
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .login-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 32px; width: 100%; max-width: 340px; text-align: center; }
+  .login-box h1 { font-size: 19px; margin-bottom: 6px; }
+  .login-box p { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+  .login-box input {
+    width: 100%; text-align: center; font-size: 18px; letter-spacing: 6px; padding: 12px; border: 1px solid var(--line);
+    border-radius: 8px; margin-bottom: 14px; outline: none;
+  }
+  .login-box input:focus { border-color: var(--brand-blue); }
+  .login-box button { width: 100%; background: var(--ink); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; }
+  .login-error { color: #B91C1C; font-size: 12.5px; margin-top: 10px; display: none; }
+
+  /* ---------- APP SHELL ---------- */
+  #app { display: none; min-height: 100vh; }
+  #app.show { display: block; }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 16px 20px; position: sticky; top: 0; z-index: 20; }
+  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .brand { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .brand .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab-btn { border: 1px solid var(--line); background: var(--panel); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+  .tab-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 20px; }
+  .panel-sub { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .search-input { flex: 1; min-width: 180px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); }
+  .search-input:focus { border-color: var(--brand-blue); }
+  select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; background: var(--panel); outline: none; }
+
+  /* ---------- STOCK TABLE ---------- */
+  .stock-table { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .stock-row { display: grid; grid-template-columns: 1fr 90px 90px 70px 90px; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .stock-row:last-child { border-bottom: none; }
+  .stock-row.header-row { background: #F7F8F8; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+  .sr-name { font-size: 13.5px; font-weight: 600; }
+  .sr-meta { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
+  .sr-price { font-size: 13px; font-weight: 600; text-align: right; }
+  .toggle-switch { position: relative; width: 40px; height: 23px; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; inset: 0; background: var(--line); border-radius: 20px; cursor: pointer; transition: 0.2s; }
+  .toggle-slider::before { content: ''; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); }
+  .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 10px; font-size: 11.5px; font-weight: 500; color: var(--ink-soft); }
+  .icon-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+
+  /* ---------- EDIT ROW ---------- */
+  .edit-row-form { padding: 16px; border-bottom: 1px solid var(--line); background: #F7F8F8; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-grid.single { grid-template-columns: 1fr; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  input[type=text], input[type=number], input[type=tel], textarea, select.field {
+    width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; font-size: 13.5px; outline: none; background: var(--panel);
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--brand-blue); }
+  .row-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .btn-primary { background: var(--brand-blue); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; }
+  .btn-secondary { background: var(--line); color: var(--ink); border: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; }
+  .btn-danger { background: none; color: #B91C1C; border: 1px solid #F3C7C7; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-left: auto; }
+
+  /* ---------- ADD FISH FORM ---------- */
+  .form-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; max-width: 620px; }
+
+  /* ---------- BULK IMPORT ---------- */
+  .bulk-textarea { width: 100%; min-height: 220px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; outline: none; resize: vertical; }
+  .bulk-textarea:focus { border-color: var(--brand-blue); }
+  .bulk-hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
+  .bulk-result { margin-top: 16px; font-size: 13.5px; }
+  .bulk-result .ok { color: var(--accent); font-weight: 600; }
+  .bulk-result .err { color: #B91C1C; }
+
+  /* ---------- PHOTOS ---------- */
+  .drop-zone {
+    border: 2px dashed var(--line); border-radius: 10px; padding: 40px 20px; text-align: center; color: var(--ink-soft);
+    background: var(--panel); cursor: pointer;
+  }
+  .drop-zone.dragover { border-color: var(--brand-blue); background: var(--accent-soft); }
+  .photo-log { margin-top: 16px; }
+  .photo-log-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .photo-log-row .status.ok { color: var(--accent); font-weight: 600; }
+  .photo-log-row .status.err { color: #B91C1C; font-weight: 600; }
+
+  /* ---------- ORDERS ---------- */
+  .order-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+  .order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .order-ref { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
+  .order-company { font-size: 15px; font-weight: 700; margin-top: 4px; }
+  .order-phone { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+  .order-date { font-size: 11.5px; color: var(--ink-soft); }
+  .order-status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; }
+  .order-status-badge.new { background: #FDF3E3; color: #92620A; }
+  .order-status-badge.done { background: var(--accent-soft); color: var(--accent); }
+  .order-items { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .order-item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+  .order-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
+
+  .loading-msg { text-align: center; padding: 40px 0; color: var(--ink-soft); font-size: 13.5px; }
+  .save-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 100; }
+  .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Jet Fish Admin</h1>
+    <p>Enter your PIN to manage stock and orders.</p>
+    <input type="password" id="pin-input" maxlength="6" placeholder="••••">
+    <button id="login-btn">Enter</button>
+    <div class="login-error" id="login-error">Incorrect PIN.</div>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="header-inner">
+      <div class="brand"><span class="dot"></span>Jet Fish Admin</div>
+      <div class="tabs">
+        <button class="tab-btn active" data-panel="stock">Stock</button>
+        <button class="tab-btn" data-panel="add">Add Fish</button>
+        <button class="tab-btn" data-panel="bulk">Bulk Import</button>
+        <button class="tab-btn" data-panel="photos">Photos</button>
+        <button class="tab-btn" data-panel="orders">Orders</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- STOCK PANEL -->
+    <section class="panel active" id="panel-stock">
+      <div class="panel-head">
+        <div><h2>Stock</h2><div class="panel-sub">Toggle availability, edit prices, or remove fish. Changes go live instantly.</div></div>
+      </div>
+      <div class="toolbar">
+        <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
+        <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
+      </div>
+      <div class="stock-table" id="stock-table">
+        <div class="loading-msg">Loading stock…</div>
+      </div>
+    </section>
+
+    <!-- ADD FISH PANEL -->
+    <section class="panel" id="panel-add">
+      <div class="panel-head">
+        <div><h2>Add New Fish</h2><div class="panel-sub">Adds a single fish to your live stock.</div></div>
+      </div>
+      <div class="form-card">
+        <div class="form-grid">
+          <div><label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700"></div>
+          <div><label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel"></div>
+        </div>
+        <div class="form-grid">
+          <div><label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel"></div>
+          <div><label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳"></div>
+        </div>
+        <div class="form-grid three">
+          <div><label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm"></div>
+          <div><label>Price (RM)</label><input type="number" step="0.10" id="add-price" placeholder="3.00"></div>
+          <div><label>Featured?</label>
+            <select class="field" id="add-featured"><option value="no">No</option><option value="yes">Yes</option></select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div><label>Bulk Qty 1</label><input type="number" id="add-bulk1-qty" placeholder="e.g. 40"></div>
+          <div><label>Bulk Price 1</label><input type="number" step="0.10" id="add-bulk1-price" placeholder="e.g. 2.50"></div>
+        </div>
+        <div class="form-grid">
+          <div><label>Bulk Qty 2</label><input type="number" id="add-bulk2-qty" placeholder="optional"></div>
+          <div><label>Bulk Price 2</label><input type="number" step="0.10" id="add-bulk2-price" placeholder="optional"></div>
+        </div>
+        <button class="btn-primary" id="add-fish-btn" style="width:100%; padding:12px; margin-top:6px;">Add Fish</button>
+        <div class="bulk-result" id="add-result"></div>
+      </div>
+    </section>
+
+    <!-- BULK IMPORT PANEL -->
+    <section class="panel" id="panel-bulk">
+      <div class="panel-head">
+        <div><h2>Bulk Import</h2><div class="panel-sub">Paste your fish list straight from Excel/Google Sheets.</div></div>
+      </div>
+      <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
+Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
+      <div class="bulk-hint">
+        Paste rows copied directly from your spreadsheet (tab-separated), in this column order: <b>Group, Code, Fish, Size, Price, ImageFile</b> (ImageFile column is optional — leave blank if you'll upload photos separately in the Photos tab).<br>
+        The "Fish" column can include the Chinese name together, like "Black Angel 黑鲳" — it'll split automatically.<br>
+        Price format: <span class="mono">1xRM3 / 50xRM2.50</span> for bulk pricing, or just <span class="mono">1xRM6</span> for a single price.<br>
+        Existing fish with the same Code will be updated; new codes will be added. New fish are added as <b>not available</b> until you toggle them on in the Stock tab.
+      </div>
+      <button class="btn-primary" id="bulk-import-btn" style="margin-top:14px; padding:12px 24px;">Import</button>
+      <div class="bulk-result" id="bulk-result"></div>
+    </section>
+
+    <!-- PHOTOS PANEL -->
+    <section class="panel" id="panel-photos">
+      <div class="panel-head">
+        <div><h2>Photos</h2><div class="panel-sub">Upload fish photos in bulk — they'll auto-match to the right fish.</div></div>
+      </div>
+      <div class="bulk-hint" style="margin-bottom:16px;">
+        <b>How to name your photos:</b> name each photo file exactly as the fish's <b>Code</b> — e.g. a photo of AGL-0628 should be named <span class="mono">AGL-0628.jpg</span> (or .png/.webp). Do this in whatever folder you keep your photos on your computer before uploading. Matching isn't case-sensitive.
+      </div>
+      <div class="drop-zone" id="drop-zone">
+        <div style="font-size:14px; font-weight:600; margin-bottom:4px;">Drag photos here, or click to select</div>
+        <div style="font-size:12.5px;">You can select many at once</div>
+        <input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
+      </div>
+      <div class="photo-log" id="photo-log"></div>
+    </section>
+
+    <!-- ORDERS PANEL -->
+    <section class="panel" id="panel-orders">
+      <div class="panel-head">
+        <div><h2>Orders</h2><div class="panel-sub">Every order submitted on your site shows up here.</div></div>
+        <button class="icon-btn" id="refresh-orders-btn">↻ Refresh</button>
+      </div>
+      <div id="orders-list"><div class="loading-msg">Loading orders…</div></div>
+    </section>
+  </main>
+</div>
+
+<div class="save-toast" id="save-toast">Saved</div>
+
+<script>
+  const ADMIN_PIN = "1234"; // change this to your own PIN
+  const SUPABASE_URL = "https://ehgruwkyizekkvjmbszs.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoZ3J1d2t5aXpla2t2am1ic3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTE0MzYsImV4cCI6MjA5OTc4NzQzNn0.6Dt3vBlWoHE_39RfqM8bWjI9Al38lvObp18_jqunvyY";
+  const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+
+  let fishList = [];
+
+  function showToast(msg) {
+    const toast = document.getElementById('save-toast');
+    toast.textContent = msg || 'Saved';
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  // ---------- LOGIN ----------
+  document.getElementById('login-btn').addEventListener('click', attemptLogin);
+  document.getElementById('pin-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+  function attemptLogin() {
+    const pin = document.getElementById('pin-input').value;
+    if (pin === ADMIN_PIN) {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').classList.add('show');
+      init();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+    }
+  }
+
+  // ---------- TABS ----------
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
+      if (btn.dataset.panel === 'orders') loadOrders();
+    });
+  });
+
+  // ---------- SHARED PARSERS (reused from the shop site) ----------
+  function splitFishName(raw) {
+    const s = (raw || '').trim();
+    const match = s.match(/^([\s\S]*?)([\u3400-\u9FFF\uF900-\uFAFF]+.*)$/);
+    if (match) return { name: match[1].trim(), zh: match[2].trim() };
+    return { name: s, zh: '' };
+  }
+  function parsePriceField(raw) {
+    const s = (raw === null || raw === undefined) ? '' : raw.toString().trim();
+    const tiers = [];
+    const fullRegex = /(\d+(?:\.\d+)?)\s*x\s*RM\s*([\d.]+)/gi;
+    let m;
+    while ((m = fullRegex.exec(s)) !== null) tiers.push({ qty: parseFloat(m[1]), price: parseFloat(m[2]) });
+    if (!tiers.length) {
+      const pm = s.match(/RM\s*([\d.]+)/i);
+      if (pm) tiers.push({ qty: 1, price: parseFloat(pm[1]) });
+    }
+    if (!tiers.length) {
+      const num = parseFloat(s);
+      if (!isNaN(num) && s !== '') tiers.push({ qty: 1, price: num });
+    }
+    tiers.sort((a, b) => a.qty - b.qty);
+    const result = { price: 0 };
+    if (tiers.length) {
+      result.price = tiers[0].price;
+      if (tiers[1]) { result.bulk1Qty = tiers[1].qty; result.bulk1Price = tiers[1].price; }
+      if (tiers[2]) { result.bulk2Qty = tiers[2].qty; result.bulk2Price = tiers[2].price; }
+    }
+    return result;
+  }
+
+  // ---------- STOCK ----------
+  async function loadFish() {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*&order=category,name`, { headers });
+    fishList = await res.json();
+  }
+
+  function populateCatFilter() {
+    const sel = document.getElementById('stock-cat-filter');
+    const cats = [...new Set(fishList.map(f => f.category))].sort();
+    sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  let editingCode = null;
+  function renderStockTable() {
+    const q = document.getElementById('stock-search').value.trim().toLowerCase();
+    const catFilter = document.getElementById('stock-cat-filter').value;
+    let list = fishList;
+    if (catFilter) list = list.filter(f => f.category === catFilter);
+    if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q));
+
+    const table = document.getElementById('stock-table');
+    if (!list.length) { table.innerHTML = `<div class="empty-msg">No fish match.</div>`; return; }
+
+    table.innerHTML = `<div class="stock-row header-row"><span>Fish</span><span>Price</span><span>Bulk</span><span>Feat.</span><span>Available</span></div>` +
+      list.map(f => {
+        if (editingCode === f.code) return editRowHtml(f);
+        const bulkText = f.bulk1_qty ? `${f.bulk1_qty}+` : '—';
+        return `
+        <div class="stock-row" data-code="${f.code}">
+          <div>
+            <div class="sr-name">${f.name}${f.zh ? ' <span style="color:var(--ink-soft); font-weight:400;">' + f.zh + '</span>' : ''}</div>
+            <div class="sr-meta mono">${f.code} · ${f.category}${f.size ? ' · ' + f.size : ''}</div>
+          </div>
+          <div class="sr-price">RM${parseFloat(f.price).toFixed(2)}</div>
+          <div style="font-size:12px; color:var(--ink-soft); text-align:center;">${bulkText}</div>
+          <label class="toggle-switch" title="Featured"><input type="checkbox" class="feat-toggle" data-code="${f.code}" ${f.featured ? 'checked' : ''}><span class="toggle-slider"></span></label>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <label class="toggle-switch" title="Available"><input type="checkbox" class="avail-toggle" data-code="${f.code}" ${f.available ? 'checked' : ''}><span class="toggle-slider"></span></label>
+            <button class="icon-btn edit-btn" data-code="${f.code}">Edit</button>
+          </div>
+        </div>`;
+      }).join('');
+
+    table.querySelectorAll('.avail-toggle').forEach(cb => cb.addEventListener('change', () => updateFishField(cb.dataset.code, 'available', cb.checked)));
+    table.querySelectorAll('.feat-toggle').forEach(cb => cb.addEventListener('change', () => updateFishField(cb.dataset.code, 'featured', cb.checked)));
+    table.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => { editingCode = btn.dataset.code; renderStockTable(); }));
+  }
+
+  function editRowHtml(f) {
+    return `
+      <div class="edit-row-form" data-code="${f.code}">
+        <div class="form-grid">
+          <div><label>Code</label><input type="text" value="${f.code}" disabled style="opacity:0.6;"></div>
+          <div><label>Category</label><input type="text" class="ef-category" value="${f.category}"></div>
+        </div>
+        <div class="form-grid">
+          <div><label>Name (English)</label><input type="text" class="ef-name" value="${f.name}"></div>
+          <div><label>Name (Chinese)</label><input type="text" class="ef-zh" value="${f.zh || ''}"></div>
+        </div>
+        <div class="form-grid three">
+          <div><label>Size</label><input type="text" class="ef-size" value="${f.size || ''}"></div>
+          <div><label>Price (RM)</label><input type="number" step="0.10" class="ef-price" value="${f.price}"></div>
+          <div><label>Featured?</label><select class="field ef-featured"><option value="no" ${!f.featured ? 'selected' : ''}>No</option><option value="yes" ${f.featured ? 'selected' : ''}>Yes</option></select></div>
+        </div>
+        <div class="form-grid">
+          <div><label>Bulk Qty 1</label><input type="number" class="ef-bulk1-qty" value="${f.bulk1_qty || ''}"></div>
+          <div><label>Bulk Price 1</label><input type="number" step="0.10" class="ef-bulk1-price" value="${f.bulk1_price || ''}"></div>
+        </div>
+        <div class="form-grid">
+          <div><label>Bulk Qty 2</label><input type="number" class="ef-bulk2-qty" value="${f.bulk2_qty || ''}"></div>
+          <div><label>Bulk Price 2</label><input type="number" step="0.10" class="ef-bulk2-price" value="${f.bulk2_price || ''}"></div>
+        </div>
+        <div class="row-actions">
+          <button class="btn-primary save-edit-btn">Save</button>
+          <button class="btn-secondary cancel-edit-btn">Cancel</button>
+          <button class="btn-danger delete-fish-btn">Delete</button>
+        </div>
+      </div>`;
+  }
+
+  document.getElementById('stock-table').addEventListener('click', async (e) => {
+    const form = e.target.closest('.edit-row-form');
+    if (!form) return;
+    const code = form.dataset.code;
+
+    if (e.target.classList.contains('cancel-edit-btn')) { editingCode = null; renderStockTable(); }
+
+    if (e.target.classList.contains('save-edit-btn')) {
+      const body = {
+        name: form.querySelector('.ef-name').value.trim(),
+        zh: form.querySelector('.ef-zh').value.trim(),
+        category: form.querySelector('.ef-category').value.trim(),
+        size: form.querySelector('.ef-size').value.trim(),
+        price: parseFloat(form.querySelector('.ef-price').value) || 0,
+        featured: form.querySelector('.ef-featured').value === 'yes',
+        bulk1_qty: form.querySelector('.ef-bulk1-qty').value ? parseInt(form.querySelector('.ef-bulk1-qty').value) : null,
+        bulk1_price: form.querySelector('.ef-bulk1-price').value ? parseFloat(form.querySelector('.ef-bulk1-price').value) : null,
+        bulk2_qty: form.querySelector('.ef-bulk2-qty').value ? parseInt(form.querySelector('.ef-bulk2-qty').value) : null,
+        bulk2_price: form.querySelector('.ef-bulk2-price').value ? parseFloat(form.querySelector('.ef-bulk2-price').value) : null
+      };
+      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
+      editingCode = null;
+      await loadFish(); populateCatFilter(); renderStockTable();
+      showToast('Saved');
+    }
+
+    if (e.target.classList.contains('delete-fish-btn')) {
+      if (!confirm('Delete this fish permanently? This cannot be undone.')) return;
+      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'DELETE', headers });
+      editingCode = null;
+      await loadFish(); populateCatFilter(); renderStockTable();
+      showToast('Deleted');
+    }
+  });
+
+  async function updateFishField(code, field, value) {
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ [field]: value })
+    });
+    const f = fishList.find(f => f.code === code);
+    if (f) f[field] = value;
+    showToast('Saved — live on site now');
+  }
+
+  document.getElementById('stock-search').addEventListener('input', renderStockTable);
+  document.getElementById('stock-cat-filter').addEventListener('change', renderStockTable);
+
+  // ---------- ADD FISH ----------
+  document.getElementById('add-fish-btn').addEventListener('click', async () => {
+    const code = document.getElementById('add-code').value.trim();
+    const category = document.getElementById('add-category').value.trim();
+    const name = document.getElementById('add-name').value.trim();
+    const zh = document.getElementById('add-zh').value.trim();
+    const size = document.getElementById('add-size').value.trim();
+    const price = parseFloat(document.getElementById('add-price').value);
+    const featured = document.getElementById('add-featured').value === 'yes';
+    const bulk1Qty = document.getElementById('add-bulk1-qty').value ? parseInt(document.getElementById('add-bulk1-qty').value) : null;
+    const bulk1Price = document.getElementById('add-bulk1-price').value ? parseFloat(document.getElementById('add-bulk1-price').value) : null;
+    const bulk2Qty = document.getElementById('add-bulk2-qty').value ? parseInt(document.getElementById('add-bulk2-qty').value) : null;
+    const bulk2Price = document.getElementById('add-bulk2-price').value ? parseFloat(document.getElementById('add-bulk2-price').value) : null;
+
+    const resultEl = document.getElementById('add-result');
+    if (!code || !category || !name || isNaN(price)) {
+      resultEl.innerHTML = `<span class="err">Please fill in code, category, name, and price.</span>`;
+      return;
+    }
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/fish`, {
+      method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify([{ code, category, name, zh, size, price, featured, available: true,
+        bulk1_qty: bulk1Qty, bulk1_price: bulk1Price, bulk2_qty: bulk2Qty, bulk2_price: bulk2Price }])
+    });
+    if (res.ok) {
+      resultEl.innerHTML = `<span class="ok">Added "${name}" — now live on your site.</span>`;
+      ['add-code','add-name','add-zh','add-size','add-price','add-bulk1-qty','add-bulk1-price','add-bulk2-qty','add-bulk2-price'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('add-category').value = '';
+      document.getElementById('add-featured').value = 'no';
+      await loadFish(); populateCatFilter();
+    } else {
+      resultEl.innerHTML = `<span class="err">Could not add fish — check that the Code isn't already used.</span>`;
+    }
+  });
+
+  // ---------- BULK IMPORT ----------
+  function parseBulkText(text) {
+    const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim() !== '');
+    if (!lines.length) return [];
+    // Detect and skip a header row if the first line looks like column names
+    let startIdx = 0;
+    if (/group/i.test(lines[0]) && /code/i.test(lines[0])) startIdx = 1;
+
+    const rows = [];
+    for (let i = startIdx; i < lines.length; i++) {
+      const cols = lines[i].split('\t');
+      if (cols.length < 3) continue;
+      const [group, code, fish, size, price, imageFile] = cols;
+      if (!code || !fish) continue;
+      const { name, zh } = splitFishName(fish);
+      const priceInfo = parsePriceField(price);
+      const row = {
+        code: code.trim(), category: (group || '').trim(), name, zh,
+        size: (size || '').trim(), price: priceInfo.price,
+        bulk1_qty: priceInfo.bulk1Qty ?? null, bulk1_price: priceInfo.bulk1Price ?? null,
+        bulk2_qty: priceInfo.bulk2Qty ?? null, bulk2_price: priceInfo.bulk2Price ?? null
+      };
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  document.getElementById('bulk-import-btn').addEventListener('click', async () => {
+    const text = document.getElementById('bulk-textarea').value;
+    const resultEl = document.getElementById('bulk-result');
+    const rows = parseBulkText(text);
+    if (!rows.length) { resultEl.innerHTML = `<span class="err">No valid rows found. Make sure you pasted tab-separated columns.</span>`; return; }
+
+    resultEl.innerHTML = `Importing ${rows.length} fish…`;
+
+    const existingByCode = {};
+    fishList.forEach(f => { existingByCode[f.code] = f; });
+    const finalPayload = rows.map(r => {
+      const existing = existingByCode[r.code];
+      return {
+        ...r,
+        available: existing ? existing.available : false,
+        featured: existing ? existing.featured : false
+      };
+    });
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?on_conflict=code`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(finalPayload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      resultEl.innerHTML = `<span class="ok">Imported ${rows.length} fish successfully.</span> New fish are set to "not available" until you toggle them on in the Stock tab.`;
+      document.getElementById('bulk-textarea').value = '';
+      await loadFish(); populateCatFilter(); renderStockTable();
+    } catch (err) {
+      console.error(err);
+      resultEl.innerHTML = `<span class="err">Import failed. Check your data format and try again.</span>`;
+    }
+  });
+
+  // ---------- PHOTOS ----------
+  const dropZone = document.getElementById('drop-zone');
+  const photoInput = document.getElementById('photo-input');
+  dropZone.addEventListener('click', () => photoInput.click());
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    handlePhotoFiles(e.dataTransfer.files);
+  });
+  photoInput.addEventListener('change', () => handlePhotoFiles(photoInput.files));
+
+  async function handlePhotoFiles(fileList) {
+    const files = Array.from(fileList);
+    const logEl = document.getElementById('photo-log');
+    logEl.innerHTML = '';
+
+    for (const file of files) {
+      const row = document.createElement('div');
+      row.className = 'photo-log-row';
+      row.innerHTML = `<span>${file.name}</span><span class="status">Uploading…</span>`;
+      logEl.appendChild(row);
+
+      const baseName = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
+      const match = fishList.find(f => f.code.toUpperCase() === baseName);
+      if (!match) {
+        row.querySelector('.status').className = 'status err';
+        row.querySelector('.status').textContent = 'No matching fish code';
+        continue;
+      }
+
+      const storagePath = `${match.code}-${Date.now()}${file.name.slice(file.name.lastIndexOf('.'))}`;
+      try {
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type },
+          body: file
+        });
+        if (!uploadRes.ok) throw new Error(await uploadRes.text());
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
+        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(match.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ image_url: publicUrl })
+        });
+        match.image_url = publicUrl;
+        row.querySelector('.status').className = 'status ok';
+        row.querySelector('.status').textContent = `Matched → ${match.code}`;
+      } catch (err) {
+        console.error(err);
+        row.querySelector('.status').className = 'status err';
+        row.querySelector('.status').textContent = 'Upload failed';
+      }
+    }
+  }
+
+  // ---------- ORDERS ----------
+  async function loadOrders() {
+    const listEl = document.getElementById('orders-list');
+    listEl.innerHTML = `<div class="loading-msg">Loading orders…</div>`;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, { headers });
+      const orders = await res.json();
+      if (!orders.length) { listEl.innerHTML = `<div class="empty-msg">No orders yet.</div>`; return; }
+
+      listEl.innerHTML = orders.map(o => `
+        <div class="order-card" data-id="${o.id}">
+          <div class="order-card-head">
+            <div>
+              <div class="order-ref">${o.order_ref}</div>
+              <div class="order-company">${o.company}</div>
+              <div class="order-phone">${o.phone}</div>
+            </div>
+            <div style="text-align:right;">
+              <span class="order-status-badge ${o.status === 'done' ? 'done' : 'new'}">${o.status}</span>
+              <div class="order-date">${new Date(o.created_at).toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="order-items">
+            ${o.items.map(it => `<div class="order-item-row"><span>${it.name}${it.zh ? ' ' + it.zh : ''} <span class="mono" style="color:var(--ink-soft);">(${it.code})</span></span><span>Qty: ${it.qty}</span></div>`).join('')}
+          </div>
+          <div class="order-actions">
+            <button class="icon-btn toggle-status-btn" data-id="${o.id}" data-status="${o.status}">${o.status === 'done' ? 'Mark as New' : 'Mark as Done'}</button>
+            <button class="icon-btn download-receipt-btn">Download Receipt Image</button>
+          </div>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.toggle-status-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const newStatus = btn.dataset.status === 'done' ? 'new' : 'done';
+          await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${btn.dataset.id}`, { method: 'PATCH', headers, body: JSON.stringify({ status: newStatus }) });
+          loadOrders();
+        });
+      });
+      listEl.querySelectorAll('.download-receipt-btn').forEach((btn, i) => {
+        btn.addEventListener('click', () => downloadReceiptImage(orders[i]));
+      });
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = `<div class="empty-msg">Could not load orders.</div>`;
+    }
+  }
+
+  function downloadReceiptImage(order) {
+    const padding = 32;
+    const lineHeight = 26;
+    const width = 480;
+    const height = padding * 2 + 180 + order.items.length * lineHeight;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#14181A';
+    ctx.font = '700 20px Arial'; ctx.fillText('Jet Fish — Order Receipt', padding, padding + 10);
+    ctx.font = '400 13px Arial'; ctx.fillStyle = '#6B7280';
+    ctx.fillText(order.order_ref, padding, padding + 34);
+
+    let y = padding + 70;
+    ctx.fillStyle = '#14181A'; ctx.font = '700 14px Arial';
+    ctx.fillText('Company: ' + order.company, padding, y); y += 22;
+    ctx.fillText('Phone: ' + order.phone, padding, y); y += 22;
+    ctx.fillStyle = '#6B7280'; ctx.font = '400 12px Arial';
+    ctx.fillText(new Date(order.created_at).toLocaleString(), padding, y); y += 30;
+
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+    y += 24;
+
+    ctx.font = '700 13px Arial'; ctx.fillStyle = '#14181A';
+    order.items.forEach(it => {
+      const label = `${it.name}${it.zh ? ' ' + it.zh : ''} (${it.code})`;
+      ctx.font = '600 13px Arial';
+      ctx.fillText(label.length > 42 ? label.slice(0, 40) + '…' : label, padding, y);
+      ctx.font = '700 13px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText('Qty: ' + it.qty, width - padding, y);
+      ctx.textAlign = 'left';
+      y += lineHeight;
+    });
+
+    y += 6;
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+    y += 26;
+    ctx.font = '700 13px Arial';
+    ctx.fillText(`Total Fish Types: ${order.total_types}`, padding, y); y += 20;
+    ctx.fillText(`Total Quantity: ${order.total_qty}`, padding, y);
+
+    const link = document.createElement('a');
+    link.download = `${order.order_ref}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
+
+  // ---------- INIT ----------
+  async function init() {
+    await loadFish();
+    populateCatFilter();
+    renderStockTable();
+  }
+</script>
+
+</body>
+</html>

@@ -366,7 +366,7 @@
       companyName: 'Company Name', phoneNumber: 'Phone Number',
       totalFishTypes: 'Total Fish Types', totalQuantity: 'Total Quantity', orderList: 'Order List',
       back: 'Back', submitOrder: 'Submit Order', done: 'Done',
-      orderReceived: 'Order received', orderReceivedSub: "A WhatsApp message with your order has opened — just hit send to confirm with us.",
+      orderReceived: 'Order received', orderReceivedSub: "We've got your order and will contact you shortly to confirm.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
       addToCart: 'Add to cart', allFish: 'All Fish'
@@ -380,7 +380,7 @@
       companyName: '公司名称', phoneNumber: '电话号码',
       totalFishTypes: '鱼类种数', totalQuantity: '总数量', orderList: '订单清单',
       back: '返回', submitOrder: '提交订单', done: '完成',
-      orderReceived: '订单已收到', orderReceivedSub: '已为您打开 WhatsApp 消息，只需点击发送即可确认订单。',
+      orderReceived: '订单已收到', orderReceivedSub: '我们已收到您的订单，将尽快与您联系确认。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
       addToCart: '加入购物车', allFish: '全部鱼类'
@@ -498,113 +498,51 @@
   let activeCategory = 'All Fish';
   let cart = [];
 
-  // ---------- LIVE STOCK FROM GOOGLE SHEET ----------
-  // Paste your published Google Sheet CSV link between the quotes below.
-  // File > Share > Publish to web > choose the "Stock" sheet > format CSV.
-  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSkgrn8aT9P8Ov8_YDuHoe7mfylfLFPvIKsbzF1IxFiuckPB340Y6LX09xIFNf_6iCeihmtBLZL_rwI/pub?gid=944333899&single=true&output=csv";
+  // ---------- LIVE STOCK FROM SUPABASE ----------
+  const SUPABASE_URL = "https://ehgruwkyizekkvjmbszs.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoZ3J1d2t5aXpla2t2am1ic3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTE0MzYsImV4cCI6MjA5OTc4NzQzNn0.6Dt3vBlWoHE_39RfqM8bWjI9Al38lvObp18_jqunvyY";
 
-  // Where your fish photos are hosted (e.g. a folder in the same GitHub repo, or an image host).
-  // The site will look for IMAGE_BASE_URL + the ImageFile value from your sheet (e.g. AGL-0022.webp).
-  const IMAGE_BASE_URL = "images/";
-
-  function parseCSV(text) {
-    const rows = [];
-    let row = [], field = '', inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i], next = text[i + 1];
-      if (inQuotes) {
-        if (ch === '"' && next === '"') { field += '"'; i++; }
-        else if (ch === '"') { inQuotes = false; }
-        else { field += ch; }
-      } else {
-        if (ch === '"') inQuotes = true;
-        else if (ch === ',') { row.push(field); field = ''; }
-        else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-        else if (ch === '\r') { /* skip */ }
-        else field += ch;
-      }
-    }
-    if (field.length || row.length) { row.push(field); rows.push(row); }
-    return rows.filter(r => r.some(c => c.trim() !== ''));
-  }
-
-  function yesNo(val) { return (val || '').toString().trim().toLowerCase() === 'yes'; }
-
-  // Splits a "Fish" cell like "Black Angel 黑鯛" into English name + Chinese name
-  function splitFishName(raw) {
-    const s = (raw || '').trim();
-    const match = s.match(/^([\s\S]*?)([\u3400-\u9FFF\uF900-\uFAFF]+.*)$/);
-    if (match) return { name: match[1].trim(), zh: match[2].trim() };
-    return { name: s, zh: '' };
-  }
-
-  // Parses "1xRM3 / 50xRM2.50" into { price: 3, bulk1Qty: 50, bulk1Price: 2.50 }
-  function parsePriceField(raw) {
-    const s = (raw === null || raw === undefined) ? '' : raw.toString().trim();
-    const tiers = [];
-    const fullRegex = /(\d+(?:\.\d+)?)\s*x\s*RM\s*([\d.]+)/gi;
-    let m;
-    while ((m = fullRegex.exec(s)) !== null) {
-      tiers.push({ qty: parseFloat(m[1]), price: parseFloat(m[2]) });
-    }
-    if (!tiers.length) {
-      // Fallback: plain "RM8", "Rm2.60", "RM8 (Offer)" with no qty prefix — treat as qty 1
-      const plainRegex = /RM\s*([\d.]+)/i;
-      const pm = s.match(plainRegex);
-      if (pm) tiers.push({ qty: 1, price: parseFloat(pm[1]) });
-    }
-    if (!tiers.length) {
-      // Fallback: a bare number typed directly with no "RM" text at all (e.g. 168, 60)
-      const num = parseFloat(s);
-      if (!isNaN(num) && s !== '') tiers.push({ qty: 1, price: num });
-    }
-    tiers.sort((a, b) => a.qty - b.qty);
-    const result = { price: 0 };
-    if (tiers.length) {
-      result.price = tiers[0].price;
-      if (tiers[1]) { result.bulk1Qty = tiers[1].qty; result.bulk1Price = tiers[1].price; }
-      if (tiers[2]) { result.bulk2Qty = tiers[2].qty; result.bulk2Price = tiers[2].price; }
-    }
-    return result;
-  }
+  const supabaseHeaders = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json'
+  };
 
   async function loadCatalog() {
-    if (!SHEET_CSV_URL) { products = defaultProducts; return; }
     try {
-      const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*`, {
+        headers: supabaseHeaders,
+        cache: 'no-store'
+      });
       if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-      const text = await res.text();
-      const rows = parseCSV(text);
-      const headers = rows[0].map(h => h.trim().toLowerCase());
-      const idx = (name) => headers.indexOf(name);
+      const rows = await res.json();
 
-      products = rows.slice(1).map(r => {
-        const fishRaw = r[idx('fish')]?.trim() || '';
-        const { name, zh } = splitFishName(fishRaw);
-        const priceInfo = parsePriceField(r[idx('price')]);
-        const availIdx = idx('available');
-        const featIdx = idx('featured');
+      products = rows.map(r => {
         const p = {
-          id: r[idx('code')]?.trim(),
-          name, zh,
-          category: r[idx('group')]?.trim(),
-          size: r[idx('size')]?.trim(),
-          price: priceInfo.price,
-          image: r[idx('imagefile')]?.trim(),
-          available: availIdx === -1 ? true : yesNo(r[availIdx]),
-          feat: featIdx === -1 ? false : yesNo(r[featIdx])
+          id: r.code,
+          name: r.name,
+          zh: r.zh || '',
+          category: r.category,
+          size: r.size || '',
+          price: parseFloat(r.price) || 0,
+          image: r.image_url || '',
+          available: !!r.available,
+          feat: !!r.featured
         };
-        if (priceInfo.bulk1Qty !== undefined) { p.bulk1Qty = priceInfo.bulk1Qty; p.bulk1Price = priceInfo.bulk1Price; }
-        if (priceInfo.bulk2Qty !== undefined) { p.bulk2Qty = priceInfo.bulk2Qty; p.bulk2Price = priceInfo.bulk2Price; }
+        if (r.bulk1_qty !== null && r.bulk1_qty !== undefined) { p.bulk1Qty = r.bulk1_qty; p.bulk1Price = parseFloat(r.bulk1_price); }
+        if (r.bulk2_qty !== null && r.bulk2_qty !== undefined) { p.bulk2Qty = r.bulk2_qty; p.bulk2Price = parseFloat(r.bulk2_price); }
         return p;
       }).filter(p => p.id && p.name);
 
       if (!products.length) products = defaultProducts;
     } catch (e) {
-      console.error('Could not load sheet, showing sample data instead:', e);
+      console.error('Could not load from Supabase, showing sample data instead:', e);
       products = defaultProducts;
     }
   }
+
+  // Fish photos are stored directly in Supabase Storage; image_url from the database is the full public link.
+  const IMAGE_BASE_URL = "";
 
   function getCategories() { return [...new Set(products.map(p => p.category))]; }
 
@@ -970,9 +908,7 @@
     }
   });
 
-  const WHATSAPP_NUMBER = '60109881389'; // 010-9881389 with Malaysia country code, no leading 0
-
-  document.getElementById('submit-order-btn').addEventListener('click', () => {
+  document.getElementById('submit-order-btn').addEventListener('click', async () => {
     const company = document.getElementById('company-name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     if (!company || !phone) { alert('Please fill in your company name and phone number.'); return; }
@@ -981,25 +917,37 @@
       return;
     }
     const orderId = 'JF' + Math.floor(100000 + Math.random() * 900000);
-
-    // Build the WhatsApp message with full order details
     const totalTypes = cart.length;
     const totalQty = cart.reduce((s, c) => s + c.qty, 0);
-    let msg = `New Order — Jet Fish Shop\n`;
-    msg += `Order ID: ${orderId}\n`;
-    msg += `Company: ${company}\n`;
-    msg += `Phone: ${phone}\n\n`;
-    msg += `Order List:\n`;
-    cart.forEach((c, i) => {
+    const items = cart.map(c => {
       const p = products.find(p => p.id === c.id);
-      if (!p) return;
-      msg += `${i + 1}. ${p.name}${p.zh ? ' ' + p.zh : ''} (${p.id}) — Qty: ${c.qty}\n`;
-    });
-    msg += `\nTotal Fish Types: ${totalTypes}\nTotal Quantity: ${totalQty}`;
+      return p ? { code: p.id, name: p.name, zh: p.zh || '', qty: c.qty } : null;
+    }).filter(Boolean);
 
-    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
-    window.open(waUrl, '_blank');
+    const submitBtn = document.getElementById('submit-order-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '...';
 
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders`, {
+        method: 'POST',
+        headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          order_ref: orderId, company, phone, items,
+          total_types: totalTypes, total_qty: totalQty, status: 'new'
+        })
+      });
+      if (!res.ok) throw new Error('Insert failed: ' + res.status);
+    } catch (e) {
+      console.error('Could not save order to database:', e);
+      alert('Something went wrong submitting your order. Please try again or contact us directly.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = t('submitOrder');
+      return;
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = t('submitOrder');
     document.getElementById('order-id').textContent = 'Order ID: ' + orderId;
     checkoutSection.classList.remove('open');
     orderConfirm.classList.add('open');
