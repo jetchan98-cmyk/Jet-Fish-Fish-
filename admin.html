@@ -431,6 +431,15 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           <div><label>Bulk Qty 2</label><input type="number" class="ef-bulk2-qty" value="${f.bulk2_qty || ''}"></div>
           <div><label>Bulk Price 2</label><input type="number" step="0.10" class="ef-bulk2-price" value="${f.bulk2_price || ''}"></div>
         </div>
+        <div class="form-grid single">
+          <div>
+            <label>Photo</label>
+            <div style="display:flex; align-items:center; gap:12px;">
+              ${f.image_url ? `<img src="${f.image_url}" style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--line);">` : `<div style="width:44px; height:44px; border-radius:6px; background:#F2F3F4; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-soft);">None</div>`}
+              <input type="file" class="ef-photo" accept="image/*" style="flex:1;">
+            </div>
+          </div>
+        </div>
         <div class="row-actions">
           <button class="btn-primary save-edit-btn">Save</button>
           <button class="btn-secondary cancel-edit-btn">Cancel</button>
@@ -447,6 +456,9 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     if (e.target.classList.contains('cancel-edit-btn')) { editingCode = null; renderStockTable(); }
 
     if (e.target.classList.contains('save-edit-btn')) {
+      const saveBtn = e.target;
+      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+
       const body = {
         name: form.querySelector('.ef-name').value.trim(),
         zh: form.querySelector('.ef-zh').value.trim(),
@@ -459,6 +471,18 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         bulk2_qty: form.querySelector('.ef-bulk2-qty').value ? parseInt(form.querySelector('.ef-bulk2-qty').value) : null,
         bulk2_price: form.querySelector('.ef-bulk2-price').value ? parseFloat(form.querySelector('.ef-bulk2-price').value) : null
       };
+
+      const photoInput = form.querySelector('.ef-photo');
+      const photoFile = photoInput && photoInput.files[0];
+      if (photoFile) {
+        try {
+          body.image_url = await uploadPhotoForCode(photoFile, code);
+        } catch (err) {
+          console.error(err);
+          alert('Photo upload failed, but the rest of the changes will still be saved.');
+        }
+      }
+
       await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
       editingCode = null;
       await loadFish(); populateCatFilter(); renderStockTable();
