@@ -41,6 +41,16 @@
   .panel { display: none; }
   .panel.active { display: block; }
 
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .qa-btn { padding: 13px; border-radius: 10px; font-weight: 700; font-size: 13.5px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  .qa-green { background: var(--accent); border-color: var(--accent); color: white; }
+  .qa-blue { background: var(--accent-soft); border-color: #BEE0D9; color: var(--accent); }
+  .qa-outline { background: var(--panel); color: var(--brand-blue); border-color: #C7DBFA; }
+  .drop-zone { border: 2px dashed var(--line); border-radius: 10px; padding: 30px 16px; text-align: center; color: var(--ink-soft); background: var(--bg); cursor: pointer; }
+  .drop-zone.dragover { border-color: var(--brand-blue); background: var(--accent-soft); }
+  .photo-log-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .photo-log-row .status.ok { color: var(--accent); font-weight: 600; }
+  .photo-log-row .status.err { color: var(--red); font-weight: 600; }
   .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .toolbar > * { flex: 1 1 auto; }
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
@@ -160,6 +170,8 @@
   .save-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 100; }
   .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -188,6 +200,24 @@
 
       <!-- LIST VIEW -->
       <div id="stock-list-view">
+        <div class="quick-actions">
+          <button class="qa-btn qa-green" id="qa-add-fish">+ Add Fish</button>
+          <button class="qa-btn qa-blue" id="qa-weekly-import">Weekly Import</button>
+          <button class="qa-btn qa-outline" id="qa-bulk-images">Bulk Images</button>
+          <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
+        </div>
+
+        <div class="editor-card" id="bulk-images-panel" style="display:none;">
+          <h3>Bulk Images</h3>
+          <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive.</div>
+          <div class="drop-zone" id="bulk-drop-zone">
+            <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
+            <div style="font-size:12px;">You can select many at once</div>
+            <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
+          </div>
+          <div id="bulk-photo-log" style="margin-top:14px;"></div>
+        </div>
+
         <div class="toolbar">
           <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
           <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
@@ -503,6 +533,122 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     document.getElementById('stock-edit-view').style.display = 'none';
     editingFish = null;
   }
+
+  // ---------- QUICK ACTIONS ----------
+  function goToImportTab(view) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('.tab-btn[data-panel="import"]').classList.add('active');
+    document.getElementById('panel-import').classList.add('active');
+    document.querySelectorAll('.import-toggle button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.import-view').forEach(v => v.classList.remove('active'));
+    document.querySelector(`.import-toggle button[data-import-view="${view}"]`).classList.add('active');
+    document.getElementById('import-' + view).classList.add('active');
+  }
+  document.getElementById('qa-add-fish').addEventListener('click', () => goToImportTab('single'));
+  document.getElementById('qa-weekly-import').addEventListener('click', () => goToImportTab('bulk'));
+
+  document.getElementById('qa-bulk-images').addEventListener('click', () => {
+    const panel = document.getElementById('bulk-images-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  });
+
+  const bulkDropZone = document.getElementById('bulk-drop-zone');
+  const bulkPhotoInput = document.getElementById('bulk-photo-input');
+  bulkDropZone.addEventListener('click', () => bulkPhotoInput.click());
+  bulkDropZone.addEventListener('dragover', (e) => { e.preventDefault(); bulkDropZone.classList.add('dragover'); });
+  bulkDropZone.addEventListener('dragleave', () => bulkDropZone.classList.remove('dragover'));
+  bulkDropZone.addEventListener('drop', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); handleBulkPhotoFiles(e.dataTransfer.files); });
+  bulkPhotoInput.addEventListener('change', () => handleBulkPhotoFiles(bulkPhotoInput.files));
+
+  async function handleBulkPhotoFiles(fileList) {
+    const files = Array.from(fileList);
+    const logEl = document.getElementById('bulk-photo-log');
+    logEl.innerHTML = '';
+    for (const file of files) {
+      const row = document.createElement('div');
+      row.className = 'photo-log-row';
+      row.innerHTML = `<span>${file.name}</span><span class="status">Uploading…</span>`;
+      logEl.appendChild(row);
+
+      const baseName = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
+      const match = fishList.find(f => f.code.toUpperCase() === baseName);
+      if (!match) {
+        row.querySelector('.status').className = 'status err';
+        row.querySelector('.status').textContent = 'No matching fish code';
+        continue;
+      }
+      try {
+        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
+        const storagePath = `${match.code}-${Date.now()}${ext}`;
+        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
+          body: file
+        });
+        if (!uploadRes.ok) throw new Error(await uploadRes.text());
+        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
+        const newImages = [...(match.images || []), publicUrl].slice(0, 5);
+        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(match.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ images: newImages })
+        });
+        match.images = newImages;
+        row.querySelector('.status').className = 'status ok';
+        row.querySelector('.status').textContent = `Matched → ${match.code}`;
+      } catch (err) {
+        console.error(err);
+        row.querySelector('.status').className = 'status err';
+        row.querySelector('.status').textContent = 'Upload failed';
+      }
+    }
+    renderStockList();
+  }
+
+  // ---------- PRICE LIST PDF ----------
+  const CONTACT_PHONE = "010-9881389"; // change this to your own contact number
+  function formatPriceNum(n) {
+    n = parseFloat(n);
+    return Number.isInteger(n) ? n.toString() : n.toFixed(2);
+  }
+  function tiersToPriceString(tiers) {
+    if (!tiers || !tiers.length) return '';
+    const sorted = [...tiers].sort((a, b) => a.qty - b.qty);
+    return sorted.map(t => `${t.qty}xRM${formatPriceNum(t.price)}`).join(' / ');
+  }
+
+  document.getElementById('qa-price-pdf').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const today = new Date().toLocaleDateString('en-GB');
+
+    doc.setFontSize(10);
+    doc.text(`Date: ${today}`, pageWidth / 2, 30, { align: 'center' });
+    doc.text(`Contact: ${CONTACT_PHONE}`, pageWidth / 2, 44, { align: 'center' });
+    doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 58, { align: 'center' });
+
+    const available = fishList.filter(f => f.available).slice().sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      return a.code.localeCompare(b.code);
+    });
+
+    const rows = available.map((f, i) => [
+      i + 1, f.category, f.code,
+      f.zh ? `${f.name} ${f.zh}` : f.name,
+      f.size || '', tiersToPriceString(f.tiers)
+    ]);
+
+    doc.autoTable({
+      startY: 74,
+      head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
+      body: rows,
+      styles: { fontSize: 8, cellPadding: 4 },
+      headStyles: { fillColor: [20, 24, 26] },
+      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 50 }, 2: { cellWidth: 55 }, 4: { cellWidth: 45 } }
+    });
+
+    doc.save(`Jet-Fish-Price-List-${today.replace(/\//g, '-')}.pdf`);
+  });
 
   // ---------- STOCK: EDIT VIEW ----------
   function openEditor(code, focusSection) {
@@ -845,17 +991,20 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
 
   async function downloadReceiptImage(order) {
     if (document.fonts && document.fonts.ready) { try { await document.fonts.load('700 20px Poppins'); await document.fonts.ready; } catch (e) {} }
-    const padding = 28, width = 480;
-    const itemBlockHeight = 118;
+    const padding = 24, width = 640;
+    const cols = 2;
+    const colWidth = (width - padding * 2 - 16) / cols;
+    const cardHeight = 96;
     const headerHeight = 150;
-    const height = headerHeight + 50 + order.items.length * itemBlockHeight + padding;
+    const rows = Math.ceil(order.items.length / cols);
+    const height = headerHeight + rows * (cardHeight + 10) + padding;
 
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
 
-    // ---- Header card ----
+    // ---- Header ----
     ctx.fillStyle = '#14181A';
     ctx.font = '700 22px Poppins, Arial'; ctx.fillText(order.company, padding, padding + 12);
     ctx.font = '400 13px monospace'; ctx.fillStyle = '#6B7280';
@@ -877,25 +1026,51 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     y += 30;
 
     ctx.font = '700 16px Poppins, Arial'; ctx.fillStyle = '#14181A';
-    ctx.fillText('Fish List', padding, y);
+    ctx.fillText(`Fish List (${order.items.length})`, padding, y);
     y += 26;
     ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-    y += 24;
+    const gridTop = y + 18;
 
-    // ---- Each fish ----
-    order.items.forEach(it => {
-      ctx.font = '700 14px Poppins, Arial'; ctx.fillStyle = '#14181A';
-      ctx.fillText(it.name, padding, y); y += 20;
-      if (it.zh) { ctx.font = '500 13px Poppins, Arial'; ctx.fillStyle = '#1D6FE0'; ctx.fillText(it.zh, padding, y); y += 18; }
-      ctx.font = '400 12px monospace'; ctx.fillStyle = '#9AA0A6';
-      ctx.fillText(it.code, padding, y); y += 18;
-      ctx.font = '400 12.5px Poppins, Arial'; ctx.fillStyle = '#6B7280';
-      ctx.fillText('Size: ' + (it.size || '—'), padding, y); y += 18;
+    // ---- 2-column compact cards ----
+    order.items.forEach((it, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const cx = padding + col * (colWidth + 16);
+      const cy = gridTop + row * (cardHeight + 10);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = '#E5E7EB';
+      roundRect(ctx, cx, cy, colWidth, cardHeight, 8);
+      ctx.fill(); ctx.stroke();
+
+      let ty = cy + 18;
       ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A';
-      ctx.fillText('Quantity: ' + it.qty, padding, y); y += 20;
-      ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-      y += 20;
+      const nameText = it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name;
+      ctx.fillText(nameText, cx + 12, ty);
+      ty += 16;
+      if (it.zh) {
+        ctx.font = '500 11.5px Poppins, Arial'; ctx.fillStyle = '#1D6FE0';
+        ctx.fillText(it.zh, cx + 12, ty);
+        ty += 16;
+      }
+      ctx.font = '400 11px monospace'; ctx.fillStyle = '#9AA0A6';
+      ctx.fillText(it.code, cx + 12, ty);
+      ty += 17;
+      ctx.font = '400 11px Poppins, Arial'; ctx.fillStyle = '#6B7280';
+      ctx.fillText('Size: ' + (it.size || '—'), cx + 12, ty);
+      ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
+      ctx.fillText('Qty: ' + it.qty, cx + colWidth - 12, ty); ctx.textAlign = 'left';
     });
+
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
 
     const link = document.createElement('a');
     link.download = `${order.order_ref}.png`;
