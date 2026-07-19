@@ -665,8 +665,13 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             ${o.items.map(it => `<div class="order-item-row">
                 <span><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
                 <span style="text-align:right;">
-                  <div style="color:var(--ink-soft); font-size:12px;">Qty: ${it.qty}</div>
-                  <div>${it.unit_price !== undefined ? `<b>RM${parseFloat(it.line_total).toFixed(2)}</b>` : '—'}</div>
+                  ${it.unit_price !== undefined ? `
+                    <div style="color:var(--ink-soft); font-size:12px;">Qty: ${it.qty} &times; RM${parseFloat(it.unit_price).toFixed(2)}</div>
+                    <div><b>RM${parseFloat(it.line_total).toFixed(2)}</b></div>
+                  ` : `
+                    <div style="color:var(--ink-soft); font-size:12px;">Qty: ${it.qty}</div>
+                    <div style="color:var(--ink-soft);">No price recorded</div>
+                  `}
                 </span>
               </div>`).join('')}
             ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
