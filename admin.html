@@ -171,7 +171,6 @@
   .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -617,37 +616,50 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
 
   document.getElementById('qa-price-pdf').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const today = new Date().toLocaleDateString('en-GB');
-
-    doc.setFontSize(10);
-    doc.text(`Date: ${today}`, pageWidth / 2, 30, { align: 'center' });
-    doc.text(`Contact: ${CONTACT_PHONE}`, pageWidth / 2, 44, { align: 'center' });
-    doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 58, { align: 'center' });
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
     const available = fishList.filter(f => f.available).slice().sort((a, b) => {
       if (a.category !== b.category) return a.category.localeCompare(b.category);
       return a.code.localeCompare(b.code);
     });
 
-    const rows = available.map((f, i) => [
-      i + 1, f.category, f.code,
-      f.zh ? `${f.name} ${f.zh}` : f.name,
-      f.size || '', tiersToPriceString(f.tiers)
-    ]);
+    const rowsHtml = available.map((f, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${f.category}</td>
+        <td>${f.code}</td>
+        <td>${f.name}${f.zh ? ' ' + f.zh : ''}</td>
+        <td>${f.size || ''}</td>
+        <td>${tiersToPriceString(f.tiers)}</td>
+      </tr>`).join('');
 
-    doc.autoTable({
-      startY: 74,
-      head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
-      body: rows,
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [20, 24, 26] },
-      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 50 }, 2: { cellWidth: 55 }, 4: { cellWidth: 45 } }
-    });
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Jet Fish Price List</title>
+      <style>
+        body { font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif; font-size: 11px; color: #14181A; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+        th { background: #14181A; color: white; }
+        tr { page-break-inside: avoid; }
+        .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #555; }
+        @media print { .footer { position: fixed; bottom: 0; left: 0; right: 0; } }
+      </style></head>
+      <body>
+        <table>
+          <thead><tr><th>No.</th><th>Group</th><th>Code</th><th>Fish</th><th>Size</th><th>Price</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="footer">
+          Date: ${today}<br>
+          Jet: ${CONTACT_PHONE}<br>
+          PM for photos &amp; videos / 图片视频请私讯
+        </div>
+        <script>window.onload = () => { window.print(); };</script>
+      </body></html>`;
 
-    doc.save(`Jet-Fish-Price-List-${today.replace(/\//g, '-')}.pdf`);
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(html);
+    printWindow.document.close();
   });
 
   // ---------- STOCK: EDIT VIEW ----------
@@ -970,7 +982,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           </div>
           <div class="order-actions">
             <button class="icon-btn toggle-status-btn" data-id="${o.id}" data-status="${o.status}">${o.status === 'done' ? 'Mark as New' : 'Mark as Done'}</button>
-            <button class="icon-btn download-receipt-btn">Download Receipt Image</button>
+            <button class="icon-btn download-receipt-btn">Download Receipt PDF</button>
           </div>
         </div>
       `).join('');
@@ -989,93 +1001,64 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     }
   }
 
-  async function downloadReceiptImage(order) {
-    if (document.fonts && document.fonts.ready) { try { await document.fonts.load('700 20px Poppins'); await document.fonts.ready; } catch (e) {} }
-    const padding = 24, width = 640;
-    const cols = 2;
-    const colWidth = (width - padding * 2 - 16) / cols;
-    const cardHeight = 96;
-    const headerHeight = 150;
-    const rows = Math.ceil(order.items.length / cols);
-    const height = headerHeight + rows * (cardHeight + 10) + padding;
+  function downloadReceiptImage(order) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    const cols = 4, rows = 5; // 20 boxes per page
+    const gap = 10;
+    const boxW = (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
+    const boxH = (pageHeight - margin - 70 - gap * (rows - 1)) / rows;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = width; canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
+    // Header on first page only
+    doc.setFontSize(14); doc.setFont(undefined, 'bold');
+    doc.text(order.company, margin, margin);
+    doc.setFontSize(10); doc.setFont(undefined, 'normal');
+    doc.text(order.phone, margin, margin + 16);
+    doc.text(new Date(order.created_at).toLocaleString(), pageWidth - margin, margin, { align: 'right' });
 
-    // ---- Header ----
-    ctx.fillStyle = '#14181A';
-    ctx.font = '700 22px Poppins, Arial'; ctx.fillText(order.company, padding, padding + 12);
-    ctx.font = '400 13px monospace'; ctx.fillStyle = '#6B7280';
-    ctx.fillText(order.phone, padding, padding + 38);
+    let startY = margin + 40;
+    const perPage = cols * rows;
 
-    let y = padding + 68;
-    ctx.font = '600 12px Poppins, Arial'; ctx.fillStyle = '#6B7280';
-    ctx.fillText('Submitted', padding, y);
-    ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
-    ctx.fillText(new Date(order.created_at).toLocaleString(), width - padding, y); ctx.textAlign = 'left';
-    y += 28;
-    ctx.font = '600 12px Poppins, Arial'; ctx.fillStyle = '#6B7280';
-    ctx.fillText('Status', padding, y);
-    ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#1D6FE0'; ctx.textAlign = 'right';
-    ctx.fillText(order.status === 'done' ? 'DONE' : 'NEW', width - padding, y); ctx.textAlign = 'left';
-    y += 34;
-
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-    y += 30;
-
-    ctx.font = '700 16px Poppins, Arial'; ctx.fillStyle = '#14181A';
-    ctx.fillText(`Fish List (${order.items.length})`, padding, y);
-    y += 26;
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-    const gridTop = y + 18;
-
-    // ---- 2-column compact cards ----
     order.items.forEach((it, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const cx = padding + col * (colWidth + 16);
-      const cy = gridTop + row * (cardHeight + 10);
-
-      ctx.fillStyle = '#FFFFFF';
-      ctx.strokeStyle = '#E5E7EB';
-      roundRect(ctx, cx, cy, colWidth, cardHeight, 8);
-      ctx.fill(); ctx.stroke();
-
-      let ty = cy + 18;
-      ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A';
-      const nameText = it.name.length > 20 ? it.name.slice(0, 18) + '…' : it.name;
-      ctx.fillText(nameText, cx + 12, ty);
-      ty += 16;
-      if (it.zh) {
-        ctx.font = '500 11.5px Poppins, Arial'; ctx.fillStyle = '#1D6FE0';
-        ctx.fillText(it.zh, cx + 12, ty);
-        ty += 16;
+      const posOnPage = i % perPage;
+      if (i > 0 && posOnPage === 0) {
+        doc.addPage();
+        startY = margin;
       }
-      ctx.font = '400 11px monospace'; ctx.fillStyle = '#9AA0A6';
-      ctx.fillText(it.code, cx + 12, ty);
-      ty += 17;
-      ctx.font = '400 11px Poppins, Arial'; ctx.fillStyle = '#6B7280';
-      ctx.fillText('Size: ' + (it.size || '—'), cx + 12, ty);
-      ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
-      ctx.fillText('Qty: ' + it.qty, cx + colWidth - 12, ty); ctx.textAlign = 'left';
+      const col = posOnPage % cols;
+      const row = Math.floor(posOnPage / cols);
+      const bx = margin + col * (boxW + gap);
+      const by = startY + row * (boxH + gap);
+
+      doc.setDrawColor(220);
+      doc.roundedRect(bx, by, boxW, boxH, 3, 3);
+
+      doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(140);
+      doc.text(it.code, bx + 8, by + 15);
+
+      doc.setFontSize(10.5); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
+      const nameLines = doc.splitTextToSize(it.name, boxW - 16);
+      doc.text(nameLines.slice(0, 2), bx + 8, by + 30);
+
+      doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(110);
+      doc.text('Size: ' + (it.size || '—'), bx + 8, by + boxH - 20);
+
+      doc.setFontSize(10.5); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
+      doc.text('Qty: ' + it.qty, bx + 8, by + boxH - 7);
     });
 
-    function roundRect(ctx, x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
+    // Page numbers
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(9); doc.setTextColor(150);
+      doc.text(`${p} / ${totalPages}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
     }
 
-    const link = document.createElement('a');
-    link.download = `${order.order_ref}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    doc.save(`${order.order_ref}.pdf`);
   }
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);

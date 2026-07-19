@@ -729,7 +729,7 @@
   const cartCountEl = document.getElementById('cart-count');
   const checkoutBtn = document.getElementById('checkout-btn');
   function renderCart() {
-    cartCountEl.textContent = cart.reduce((s, c) => s + c.qty, 0);
+    cartCountEl.textContent = cart.length;
     checkoutBtn.disabled = cart.length === 0;
     if (cart.length === 0) { cartItemsEl.innerHTML = `<div class="cart-empty">${t('cartEmpty')}<br>${t('cartEmptySub')}</div>`; return; }
     cartItemsEl.innerHTML = cart.map(c => {
