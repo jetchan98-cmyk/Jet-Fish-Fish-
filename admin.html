@@ -168,6 +168,7 @@
         <select class="cat-filter" id="stock-sort">
           <option value="name-asc">Name A–Z</option>
           <option value="name-desc">Name Z–A</option>
+          <option value="code-asc">Code A–Z</option>
           <option value="price-desc">Price: High to Low</option>
           <option value="price-asc">Price: Low to High</option>
         </select>
@@ -354,6 +355,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
 
     if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list.sort((a, b) => b.name.localeCompare(a.name));
+    else if (sortMode === 'code-asc') list.sort((a, b) => a.code.localeCompare(b.code));
     else if (sortMode === 'price-desc') list.sort((a, b) => b.price - a.price);
     else if (sortMode === 'price-asc') list.sort((a, b) => a.price - b.price);
 
@@ -437,6 +439,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             <div style="display:flex; align-items:center; gap:12px;">
               ${f.image_url ? `<img src="${f.image_url}" style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--line);">` : `<div style="width:44px; height:44px; border-radius:6px; background:#F2F3F4; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-soft);">None</div>`}
               <input type="file" class="ef-photo" accept="image/*" style="flex:1;">
+              ${f.image_url ? `<button type="button" class="btn-secondary remove-photo-btn" style="flex-shrink:0;">Remove Image</button>` : ''}
             </div>
           </div>
         </div>
@@ -487,6 +490,15 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       editingCode = null;
       await loadFish(); populateCatFilter(); renderStockTable();
       showToast('Saved');
+    }
+
+    if (e.target.classList.contains('remove-photo-btn')) {
+      if (!confirm('Remove this fish\'s photo?')) return;
+      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'PATCH', headers, body: JSON.stringify({ image_url: null }) });
+      const f = fishList.find(f => f.code === code);
+      if (f) f.image_url = null;
+      renderStockTable();
+      showToast('Photo removed');
     }
 
     if (e.target.classList.contains('delete-fish-btn')) {

@@ -65,6 +65,7 @@
 
   .section { padding: 48px 28px 8px; max-width: 1180px; margin: 0 auto; }
   .section-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 24px; gap: 16px; }
+  .cat-filter { border: 1px solid var(--line); background: var(--panel); padding: 9px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; color: var(--ink); flex-shrink: 0; }
   .section-head .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
   .section-head h2 { font-size: 22px; }
 
@@ -271,6 +272,11 @@
   <section class="section" id="all-fish-section">
     <div class="section-head">
       <div><div class="eyebrow" id="grid-eyebrow">Full catalog</div><h2 id="grid-title">All Fish</h2></div>
+      <select class="cat-filter" id="grid-sort">
+        <option value="default">Sort</option>
+        <option value="price-desc">Price: High to Low</option>
+        <option value="name-asc">Name A–Z</option>
+      </select>
     </div>
     <div class="product-grid" id="product-grid"><div class="loading-msg">Loading current stock…</div></div>
   </section>
@@ -648,6 +654,9 @@
     let list = products.filter(p => p.available);
     if (activeCategory !== 'All Fish') list = list.filter(p => p.category === activeCategory);
     if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
+    const sortMode = document.getElementById('grid-sort').value;
+    if (sortMode === 'price-desc') list = list.slice().sort((a, b) => b.price - a.price);
+    else if (sortMode === 'name-asc') list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
     if (list.length) {
       grid.innerHTML = list.map(productCard).join('');
@@ -665,6 +674,7 @@
     });
   }
   searchInput.addEventListener('input', renderGrid);
+  document.getElementById('grid-sort').addEventListener('change', renderGrid);
 
 
   // ---------- CART ----------
