@@ -169,6 +169,7 @@
           <option value="name-asc">Name A–Z</option>
           <option value="name-desc">Name Z–A</option>
           <option value="code-asc">Code A–Z</option>
+          <option value="code-desc">Code Z–A</option>
           <option value="price-desc">Price: High to Low</option>
           <option value="price-asc">Price: Low to High</option>
         </select>
@@ -356,6 +357,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list.sort((a, b) => b.name.localeCompare(a.name));
     else if (sortMode === 'code-asc') list.sort((a, b) => a.code.localeCompare(b.code));
+    else if (sortMode === 'code-desc') list.sort((a, b) => b.code.localeCompare(a.code));
     else if (sortMode === 'price-desc') list.sort((a, b) => b.price - a.price);
     else if (sortMode === 'price-asc') list.sort((a, b) => a.price - b.price);
 
