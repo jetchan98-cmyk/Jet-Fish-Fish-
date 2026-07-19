@@ -976,7 +976,7 @@
       const p = products.find(p => p.id === c.id);
       if (!p) return null;
       const unitPrice = getUnitPrice(p, c.qty);
-      return { code: p.id, name: p.name, zh: p.zh || '', qty: c.qty, unit_price: unitPrice, line_total: +(unitPrice * c.qty).toFixed(2) };
+      return { code: p.id, name: p.name, zh: p.zh || '', size: p.size || '', qty: c.qty, unit_price: unitPrice, line_total: +(unitPrice * c.qty).toFixed(2) };
     }).filter(Boolean);
     const orderTotal = +items.reduce((s, it) => s + it.line_total, 0).toFixed(2);
 

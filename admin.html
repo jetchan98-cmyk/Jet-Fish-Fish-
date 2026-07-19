@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jet Fish — Admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #FAFAFA; --panel: #FFFFFF; --ink: #14181A; --ink-soft: #6B7280;
@@ -13,11 +13,11 @@
     --orange: #C2410C; --orange-soft: #FEF0E6; --red: #B91C1C; --red-soft: #FDECEC; --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
-  h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Poppins', sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3 { font-family: 'Poppins', sans-serif; font-weight: 600; }
   .mono { font-family: 'JetBrains Mono', monospace; }
   button { font-family: inherit; cursor: pointer; }
-  input, textarea, select { font-family: 'Inter', sans-serif; }
+  input, textarea, select { font-family: 'Poppins', sans-serif; }
 
   /* ---------- LOGIN GATE ---------- */
   #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
@@ -176,9 +176,9 @@
 <div id="app">
   <header>
     <div class="tabs">
-      <button class="tab-btn" data-panel="orders">Orders</button>
       <button class="tab-btn active" data-panel="stock">Stock Control</button>
       <button class="tab-btn" data-panel="import">Product Import</button>
+      <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
   </header>
 
@@ -801,7 +801,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         <div class="order-card">
           <div class="order-card-head">
             <div>
-              <div class="order-ref">${o.order_ref}</div>
               <div class="order-company">${o.company}</div>
               <div class="order-phone">${o.phone}</div>
             </div>
@@ -844,42 +843,60 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     }
   }
 
-  function downloadReceiptImage(order) {
-    const padding = 32, lineHeight = 26, width = 480;
-    const height = padding * 2 + 210 + order.items.length * lineHeight;
+  async function downloadReceiptImage(order) {
+    if (document.fonts && document.fonts.ready) { try { await document.fonts.load('700 20px Poppins'); await document.fonts.ready; } catch (e) {} }
+    const padding = 28, width = 480;
+    const itemBlockHeight = 118;
+    const headerHeight = 150;
+    const height = headerHeight + 50 + order.items.length * itemBlockHeight + padding;
+
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
+
+    // ---- Header card ----
     ctx.fillStyle = '#14181A';
-    ctx.font = '700 20px Arial'; ctx.fillText('Jet Fish — Order Receipt', padding, padding + 10);
-    ctx.font = '400 13px Arial'; ctx.fillStyle = '#6B7280';
-    ctx.fillText(order.order_ref, padding, padding + 34);
-    let y = padding + 70;
-    ctx.fillStyle = '#14181A'; ctx.font = '700 14px Arial';
-    ctx.fillText('Company: ' + order.company, padding, y); y += 22;
-    ctx.fillText('Phone: ' + order.phone, padding, y); y += 22;
-    ctx.fillStyle = '#6B7280'; ctx.font = '400 12px Arial';
-    ctx.fillText(new Date(order.created_at).toLocaleString(), padding, y); y += 30;
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke(); y += 24;
+    ctx.font = '700 22px Poppins, Arial'; ctx.fillText(order.company, padding, padding + 12);
+    ctx.font = '400 13px monospace'; ctx.fillStyle = '#6B7280';
+    ctx.fillText(order.phone, padding, padding + 38);
+
+    let y = padding + 68;
+    ctx.font = '600 12px Poppins, Arial'; ctx.fillStyle = '#6B7280';
+    ctx.fillText('Submitted', padding, y);
+    ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
+    ctx.fillText(new Date(order.created_at).toLocaleString(), width - padding, y); ctx.textAlign = 'left';
+    y += 28;
+    ctx.font = '600 12px Poppins, Arial'; ctx.fillStyle = '#6B7280';
+    ctx.fillText('Status', padding, y);
+    ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#1D6FE0'; ctx.textAlign = 'right';
+    ctx.fillText(order.status === 'done' ? 'DONE' : 'NEW', width - padding, y); ctx.textAlign = 'left';
+    y += 34;
+
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+    y += 30;
+
+    ctx.font = '700 16px Poppins, Arial'; ctx.fillStyle = '#14181A';
+    ctx.fillText('Fish List', padding, y);
+    y += 26;
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+    y += 24;
+
+    // ---- Each fish ----
     order.items.forEach(it => {
-      const label = `${it.code} — ${it.name}`;
-      ctx.font = '600 13px Arial'; ctx.fillStyle = '#14181A';
-      ctx.fillText(label.length > 34 ? label.slice(0, 32) + '…' : label, padding, y);
-      ctx.font = '700 13px Arial'; ctx.textAlign = 'right';
-      const qtyPriceText = it.unit_price !== undefined ? `×${it.qty} = RM${parseFloat(it.line_total).toFixed(2)}` : 'Qty: ' + it.qty;
-      ctx.fillText(qtyPriceText, width - padding, y); ctx.textAlign = 'left';
-      y += lineHeight;
+      ctx.font = '700 14px Poppins, Arial'; ctx.fillStyle = '#14181A';
+      ctx.fillText(it.name, padding, y); y += 20;
+      if (it.zh) { ctx.font = '500 13px Poppins, Arial'; ctx.fillStyle = '#1D6FE0'; ctx.fillText(it.zh, padding, y); y += 18; }
+      ctx.font = '400 12px monospace'; ctx.fillStyle = '#9AA0A6';
+      ctx.fillText(it.code, padding, y); y += 18;
+      ctx.font = '400 12.5px Poppins, Arial'; ctx.fillStyle = '#6B7280';
+      ctx.fillText('Size: ' + (it.size || '—'), padding, y); y += 18;
+      ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A';
+      ctx.fillText('Quantity: ' + it.qty, padding, y); y += 20;
+      ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
+      y += 20;
     });
-    y += 6;
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke(); y += 26;
-    ctx.font = '700 13px Arial';
-    ctx.fillText(`Total Fish Types: ${order.total_types}`, padding, y); y += 20;
-    ctx.fillText(`Total Quantity: ${order.total_qty}`, padding, y); y += 20;
-    if (order.order_total !== null && order.order_total !== undefined) {
-      ctx.font = '700 16px Arial';
-      ctx.fillText(`Order Total: RM${parseFloat(order.order_total).toFixed(2)}`, padding, y);
-    }
+
     const link = document.createElement('a');
     link.download = `${order.order_ref}.png`;
     link.href = canvas.toDataURL('image/png');
