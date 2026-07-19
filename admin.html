@@ -51,6 +51,9 @@
   .photo-log-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
   .photo-log-row .status.ok { color: var(--accent); font-weight: 600; }
   .photo-log-row .status.err { color: var(--red); font-weight: 600; }
+  .avail-filter-toggle { display: flex; gap: 6px; margin-bottom: 12px; background: #F2F3F4; padding: 4px; border-radius: 10px; }
+  .avail-filter-btn { flex: 1; border: none; background: none; padding: 9px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--ink-soft); }
+  .avail-filter-btn.active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
   .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .toolbar > * { flex: 1 1 auto; }
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
@@ -187,7 +190,7 @@
 <div id="app">
   <header>
     <div class="tabs">
-      <button class="tab-btn active" data-panel="stock">Stock Control</button>
+      <button class="tab-btn active" data-panel="stock">Stocks</button>
       <button class="tab-btn" data-panel="import">Product Import</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
@@ -215,6 +218,12 @@
             <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
           </div>
           <div id="bulk-photo-log" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="avail-filter-toggle">
+          <button class="avail-filter-btn active" data-avail="all">All</button>
+          <button class="avail-filter-btn" data-avail="on">ON</button>
+          <button class="avail-filter-btn" data-avail="off">OFF</button>
         </div>
 
         <div class="toolbar">
@@ -287,7 +296,7 @@
         </div>
 
         <button class="save-btn" id="save-product-btn">Save Product</button>
-        <button class="back-btn" id="back-to-stock-btn">Back to Stock Control</button>
+        <button class="back-btn" id="back-to-stock-btn">Back to Stocks</button>
 
         <div class="editor-card">
           <div class="img-count-row">
@@ -334,7 +343,7 @@
 Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
         <div class="bulk-hint">
           Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
-          Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stock Control.
+          Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stocks.
         </div>
         <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
         <div class="result-msg" id="bulk-result"></div>
@@ -458,11 +467,14 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
   }
 
+  let availFilter = 'all';
   function renderStockList() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
     const catFilter = document.getElementById('stock-cat-filter').value;
     const sortMode = document.getElementById('stock-sort').value;
     let list = fishList.slice();
+    if (availFilter === 'on') list = list.filter(f => f.available);
+    else if (availFilter === 'off') list = list.filter(f => !f.available);
     if (catFilter) list = list.filter(f => f.category === catFilter);
     if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q));
 
@@ -526,6 +538,14 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   document.getElementById('stock-search').addEventListener('input', renderStockList);
   document.getElementById('stock-cat-filter').addEventListener('change', renderStockList);
   document.getElementById('stock-sort').addEventListener('change', renderStockList);
+  document.querySelectorAll('.avail-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.avail-filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      availFilter = btn.dataset.avail;
+      renderStockList();
+    });
+  });
 
   function showListView() {
     document.getElementById('stock-list-view').style.display = 'block';
@@ -616,8 +636,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
 
   document.getElementById('qa-price-pdf').addEventListener('click', () => {
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
-
     const available = fishList.filter(f => f.available).slice().sort((a, b) => {
       if (a.category !== b.category) return a.category.localeCompare(b.category);
       return a.code.localeCompare(b.code);
@@ -637,23 +655,18 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Jet Fish Price List</title>
       <style>
         body { font-family: 'Noto Sans SC', 'Microsoft YaHei', 'PingFang SC', Arial, sans-serif; font-size: 11px; color: #14181A; padding: 20px; }
+        .top-header { text-align: center; font-weight: 700; font-size: 14px; margin-bottom: 14px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
         th { background: #14181A; color: white; }
         tr { page-break-inside: avoid; }
-        .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #555; }
-        @media print { .footer { position: fixed; bottom: 0; left: 0; right: 0; } }
       </style></head>
       <body>
+        <div class="top-header">Jet Fish Shop &nbsp;·&nbsp; ${CONTACT_PHONE}</div>
         <table>
           <thead><tr><th>No.</th><th>Group</th><th>Code</th><th>Fish</th><th>Size</th><th>Price</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
-        <div class="footer">
-          Date: ${today}<br>
-          Jet: ${CONTACT_PHONE}<br>
-          PM for photos &amp; videos / 图片视频请私讯
-        </div>
         <script>window.onload = () => { window.print(); };<\/script>
       </body></html>`;
 
@@ -982,7 +995,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           </div>
           <div class="order-actions">
             <button class="icon-btn toggle-status-btn" data-id="${o.id}" data-status="${o.status}">${o.status === 'done' ? 'Mark as New' : 'Mark as Done'}</button>
-            <button class="icon-btn download-receipt-btn">Download Receipt PDF</button>
+            <button class="icon-btn download-receipt-btn">Download Receipt Image</button>
           </div>
         </div>
       `).join('');
@@ -1002,63 +1015,70 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
 
   function downloadReceiptImage(order) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 40;
-    const cols = 4, rows = 5; // 20 boxes per page
-    const gap = 10;
-    const boxW = (pageWidth - margin * 2 - gap * (cols - 1)) / cols;
-    const boxH = (pageHeight - margin - 70 - gap * (rows - 1)) / rows;
+    const padding = 24, width = 640;
+    const cols = 4;
+    const boxW = (width - padding * 2 - (cols - 1) * 10) / cols;
+    const boxH = 90;
+    const headerHeight = 60;
+    const rows = Math.ceil(order.items.length / cols);
+    const height = headerHeight + rows * (boxH + 10) + padding;
 
-    // Header on first page only
-    doc.setFontSize(14); doc.setFont(undefined, 'bold');
-    doc.text(order.company, margin, margin);
-    doc.setFontSize(10); doc.setFont(undefined, 'normal');
-    doc.text(order.phone, margin, margin + 16);
-    doc.text(new Date(order.created_at).toLocaleString(), pageWidth - margin, margin, { align: 'right' });
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
 
-    let startY = margin + 40;
-    const perPage = cols * rows;
+    // ---- Header ----
+    ctx.fillStyle = '#14181A';
+    ctx.font = '700 18px Poppins, Arial'; ctx.fillText(order.company, padding, padding + 6);
+    ctx.font = '400 12px monospace'; ctx.fillStyle = '#6B7280';
+    ctx.fillText(order.phone, padding, padding + 26);
+    ctx.font = '400 11px Poppins, Arial'; ctx.textAlign = 'right';
+    ctx.fillText(new Date(order.created_at).toLocaleString(), width - padding, padding + 6);
+    ctx.textAlign = 'left';
 
+    const gridTop = headerHeight;
+
+    // ---- Simple boxes: Code, Name, Size, Qty ----
     order.items.forEach((it, i) => {
-      const posOnPage = i % perPage;
-      if (i > 0 && posOnPage === 0) {
-        doc.addPage();
-        startY = margin;
-      }
-      const col = posOnPage % cols;
-      const row = Math.floor(posOnPage / cols);
-      const bx = margin + col * (boxW + gap);
-      const by = startY + row * (boxH + gap);
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const bx = padding + col * (boxW + 10);
+      const by = gridTop + row * (boxH + 10);
 
-      doc.setDrawColor(220);
-      doc.roundedRect(bx, by, boxW, boxH, 3, 3);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.strokeStyle = '#E5E7EB';
+      roundRect(ctx, bx, by, boxW, boxH, 8);
+      ctx.fill(); ctx.stroke();
 
-      doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(140);
-      doc.text(it.code, bx + 8, by + 15);
+      ctx.font = '400 10px monospace'; ctx.fillStyle = '#9AA0A6';
+      ctx.fillText(it.code, bx + 10, by + 18);
 
-      doc.setFontSize(10.5); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
-      const nameLines = doc.splitTextToSize(it.name, boxW - 16);
-      doc.text(nameLines.slice(0, 2), bx + 8, by + 30);
+      ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#14181A';
+      const nameText = it.name.length > 18 ? it.name.slice(0, 16) + '…' : it.name;
+      ctx.fillText(nameText, bx + 10, by + 36);
 
-      doc.setFontSize(9); doc.setFont(undefined, 'normal'); doc.setTextColor(110);
-      doc.text('Size: ' + (it.size || '—'), bx + 8, by + boxH - 20);
+      ctx.font = '400 10.5px Poppins, Arial'; ctx.fillStyle = '#6B7280';
+      ctx.fillText('Size: ' + (it.size || '—'), bx + 10, by + 56);
 
-      doc.setFontSize(10.5); doc.setFont(undefined, 'bold'); doc.setTextColor(20);
-      doc.text('Qty: ' + it.qty, bx + 8, by + boxH - 7);
+      ctx.font = '700 12px Poppins, Arial'; ctx.fillStyle = '#14181A';
+      ctx.fillText('Qty: ' + it.qty, bx + 10, by + 76);
     });
 
-    // Page numbers
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= totalPages; p++) {
-      doc.setPage(p);
-      doc.setFontSize(9); doc.setTextColor(150);
-      doc.text(`${p} / ${totalPages}`, pageWidth / 2, pageHeight - 20, { align: 'center' });
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
     }
 
-    doc.save(`${order.order_ref}.pdf`);
+    const link = document.createElement('a');
+    link.download = `${order.order_ref}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
   }
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
