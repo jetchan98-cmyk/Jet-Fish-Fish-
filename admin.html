@@ -59,6 +59,45 @@
   /* ---------- STOCK TABLE ---------- */
   .stock-table { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
   .stock-row { display: grid; grid-template-columns: 1fr 90px 90px 70px 90px; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .item-price-grid { display: grid; grid-template-columns: 40px 80px 80px; gap: 4px; text-align: right; }
+  .item-price-grid span { text-align: right; }
+  .item-price-grid.no-price { grid-template-columns: 40px 1fr; }
+
+  .sr-bulk { font-size: 12px; color: var(--ink-soft); text-align: center; }
+  .sr-avail-edit { display: flex; align-items: center; gap: 10px; }
+  .toggle-wrap { display: flex; align-items: center; }
+  .mobile-label { display: none; }
+
+  /* ---------- MOBILE RESPONSIVE ---------- */
+  @media (max-width: 700px) {
+    .header-inner { gap: 10px; }
+    .brand { font-size: 15px; }
+    .tabs { gap: 4px; }
+    .tab-btn { padding: 7px 10px; font-size: 12px; }
+    main { padding: 20px 14px 60px; }
+
+    .toolbar > * { flex: 1 1 100%; }
+
+    .stock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 14px; }
+    .stock-row.header-row { display: none; }
+    .stock-row > div:first-child { flex-basis: 100%; margin-bottom: 2px; }
+    .mobile-label { display: inline; font-size: 11px; color: var(--ink-soft); margin-right: 6px; }
+    .sr-price::before { content: 'Price: '; color: var(--ink-soft); font-weight: 400; }
+    .sr-bulk::before { content: 'Bulk: '; color: var(--ink-soft); }
+    .sr-avail-edit { flex-wrap: wrap; }
+
+    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+
+    .item-price-grid { grid-template-columns: 30px 60px 60px; gap: 3px; font-size: 11.5px; }
+    .item-price-grid.no-price { grid-template-columns: 30px 1fr; }
+    .order-item-row { flex-wrap: wrap; gap: 6px; }
+    .order-item-row .oi-name { flex: 1 1 100%; }
+
+    .order-card { padding: 14px 16px; }
+    .order-actions { flex-wrap: wrap; }
+    .order-actions button { flex: 1 1 auto; }
+  }
+
   .stock-row:last-child { border-bottom: none; }
   .stock-row.header-row { background: #F7F8F8; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
   .sr-name { font-size: 13.5px; font-weight: 600; }
@@ -375,9 +414,10 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             <div class="sr-meta mono">${f.code} · ${f.category}${f.size ? ' · ' + f.size : ''}</div>
           </div>
           <div class="sr-price">RM${parseFloat(f.price).toFixed(2)}</div>
-          <div style="font-size:12px; color:var(--ink-soft); text-align:center;">${bulkText}</div>
-          <label class="toggle-switch" title="Featured"><input type="checkbox" class="feat-toggle" data-code="${f.code}" ${f.featured ? 'checked' : ''}><span class="toggle-slider"></span></label>
-          <div style="display:flex; align-items:center; gap:10px;">
+          <div class="sr-bulk">${bulkText}</div>
+          <div class="toggle-wrap"><span class="mobile-label">Feat</span><label class="toggle-switch" title="Featured"><input type="checkbox" class="feat-toggle" data-code="${f.code}" ${f.featured ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
+          <div class="sr-avail-edit">
+            <span class="mobile-label">Avail</span>
             <label class="toggle-switch" title="Available"><input type="checkbox" class="avail-toggle" data-code="${f.code}" ${f.available ? 'checked' : ''}><span class="toggle-slider"></span></label>
             <button class="icon-btn edit-btn" data-code="${f.code}">Edit</button>
           </div>
@@ -724,21 +764,21 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           <div class="order-items">
             <div class="order-item-row" style="font-size:11px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
               <span>Fish</span>
-              <div style="display:grid; grid-template-columns:50px 90px 90px; gap:4px;">
-                <span style="text-align:right;">Qty</span><span style="text-align:right;">Price</span><span style="text-align:right;">Total</span>
+              <div class="item-price-grid">
+                <span>Qty</span><span>Price</span><span>Total</span>
               </div>
             </div>
             ${o.items.map(it => `<div class="order-item-row">
-                <span><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
+                <span class="oi-name"><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
                 ${it.unit_price !== undefined
-                  ? `<div class="mono" style="display:grid; grid-template-columns:50px 90px 90px; gap:4px; color:var(--ink);">
-                      <span style="text-align:right;">${it.qty}</span>
-                      <span style="text-align:right; color:var(--ink-soft);">RM${parseFloat(it.unit_price).toFixed(2)}</span>
-                      <span style="text-align:right;">RM${parseFloat(it.line_total).toFixed(2)}</span>
+                  ? `<div class="mono item-price-grid" style="color:var(--ink);">
+                      <span>${it.qty}</span>
+                      <span style="color:var(--ink-soft);">RM${parseFloat(it.unit_price).toFixed(2)}</span>
+                      <span>RM${parseFloat(it.line_total).toFixed(2)}</span>
                     </div>`
-                  : `<div class="mono" style="display:grid; grid-template-columns:50px 1fr; gap:4px; color:var(--ink-soft);">
-                      <span style="text-align:right;">${it.qty}</span>
-                      <span style="text-align:right;">No price recorded</span>
+                  : `<div class="mono item-price-grid no-price" style="color:var(--ink-soft);">
+                      <span>${it.qty}</span>
+                      <span style="grid-column: span 2;">No price recorded</span>
                     </div>`}
               </div>`).join('')}
             ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
