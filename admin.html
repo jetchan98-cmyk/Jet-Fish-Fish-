@@ -380,8 +380,30 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         </div>`;
       }).join('');
 
-    table.querySelectorAll('.avail-toggle').forEach(cb => cb.addEventListener('change', () => updateFishField(cb.dataset.code, 'available', cb.checked)));
-    table.querySelectorAll('.feat-toggle').forEach(cb => cb.addEventListener('change', () => updateFishField(cb.dataset.code, 'featured', cb.checked)));
+    table.querySelectorAll('.avail-toggle').forEach(cb => cb.addEventListener('change', () => {
+      updateFishField(cb.dataset.code, 'available', cb.checked);
+      if (!cb.checked) {
+        // Turning off Available also turns off Featured — an unavailable fish shouldn't be featured
+        const row = cb.closest('.stock-row');
+        const featCb = row ? row.querySelector('.feat-toggle') : null;
+        if (featCb && featCb.checked) {
+          featCb.checked = false;
+          updateFishField(cb.dataset.code, 'featured', false);
+        }
+      }
+    }));
+    table.querySelectorAll('.feat-toggle').forEach(cb => cb.addEventListener('change', () => {
+      updateFishField(cb.dataset.code, 'featured', cb.checked);
+      if (cb.checked) {
+        // Turning on Featured also turns on Available — a featured fish must be available
+        const row = cb.closest('.stock-row');
+        const availCb = row ? row.querySelector('.avail-toggle') : null;
+        if (availCb && !availCb.checked) {
+          availCb.checked = true;
+          updateFishField(cb.dataset.code, 'available', true);
+        }
+      }
+    }));
     table.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => { editingCode = btn.dataset.code; renderStockTable(); }));
   }
 
@@ -662,16 +684,16 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             </div>
           </div>
           <div class="order-items">
+            <div class="order-item-row" style="font-size:11px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
+              <span>Fish</span><span>Qty</span>
+            </div>
             ${o.items.map(it => `<div class="order-item-row">
                 <span><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
                 <span style="text-align:right;">
-                  ${it.unit_price !== undefined ? `
-                    <div style="color:var(--ink-soft); font-size:12px;">Qty: ${it.qty} &times; RM${parseFloat(it.unit_price).toFixed(2)}</div>
-                    <div><b>RM${parseFloat(it.line_total).toFixed(2)}</b></div>
-                  ` : `
-                    <div style="color:var(--ink-soft); font-size:12px;">Qty: ${it.qty}</div>
-                    <div style="color:var(--ink-soft);">No price recorded</div>
-                  `}
+                  <div style="font-weight:700;">${it.qty}</div>
+                  ${it.unit_price !== undefined
+                    ? `<div style="color:var(--ink-soft); font-size:12px;">RM${parseFloat(it.unit_price).toFixed(2)} ea = <b>RM${parseFloat(it.line_total).toFixed(2)}</b></div>`
+                    : `<div style="color:var(--ink-soft); font-size:12px;">No price recorded</div>`}
                 </span>
               </div>`).join('')}
             ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
