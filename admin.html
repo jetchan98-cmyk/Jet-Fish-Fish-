@@ -9,7 +9,8 @@
 <style>
   :root {
     --bg: #FAFAFA; --panel: #FFFFFF; --ink: #14181A; --ink-soft: #6B7280;
-    --line: #E5E7EB; --accent: #0F6E63; --accent-soft: #E4F2EF; --brand-blue: #1D6FE0; --radius: 8px;
+    --line: #E5E7EB; --accent: #0F6E63; --accent-soft: #E4F2EF; --brand-blue: #1D6FE0;
+    --orange: #C2410C; --orange-soft: #FEF0E6; --red: #B91C1C; --red-soft: #FDECEC; --radius: 10px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
@@ -19,153 +20,144 @@
   input, textarea, select { font-family: 'Inter', sans-serif; }
 
   /* ---------- LOGIN GATE ---------- */
-  #login-screen {
-    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
-  }
+  #login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .login-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 32px; width: 100%; max-width: 340px; text-align: center; }
   .login-box h1 { font-size: 19px; margin-bottom: 6px; }
   .login-box p { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
-  .login-box input {
-    width: 100%; text-align: center; font-size: 18px; letter-spacing: 6px; padding: 12px; border: 1px solid var(--line);
-    border-radius: 8px; margin-bottom: 14px; outline: none;
-  }
+  .login-box input { width: 100%; text-align: center; font-size: 18px; letter-spacing: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; outline: none; }
   .login-box input:focus { border-color: var(--brand-blue); }
   .login-box button { width: 100%; background: var(--ink); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; }
-  .login-error { color: #B91C1C; font-size: 12.5px; margin-top: 10px; display: none; }
+  .login-error { color: var(--red); font-size: 12.5px; margin-top: 10px; display: none; }
 
   /* ---------- APP SHELL ---------- */
   #app { display: none; min-height: 100vh; }
   #app.show { display: block; }
-  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 16px 20px; position: sticky; top: 0; z-index: 20; }
-  .header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  .brand { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .brand .dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; }
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tab-btn { border: 1px solid var(--line); background: var(--panel); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; color: var(--ink-soft); }
+  header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 16px; position: sticky; top: 0; z-index: 20; }
+  .tabs { display: flex; gap: 6px; max-width: 700px; margin: 0 auto; }
+  .tab-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 9px 8px; border-radius: 20px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); text-align: center; }
   .tab-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
 
-  main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
+  main { max-width: 700px; margin: 0 auto; padding: 20px 16px 80px; }
   .panel { display: none; }
   .panel.active { display: block; }
-  .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
-  .panel-head h2 { font-size: 20px; }
-  .panel-sub { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
 
-  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-  .search-input { flex: 1; min-width: 180px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar > * { flex: 1 1 auto; }
+  .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
   .search-input:focus { border-color: var(--brand-blue); }
-  select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; background: var(--panel); outline: none; }
+  select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px; background: var(--panel); outline: none; }
 
-  /* ---------- STOCK TABLE ---------- */
-  .stock-table { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-  .stock-row { display: grid; grid-template-columns: 1fr 90px 90px 70px 90px; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
-  .item-price-grid { display: grid; grid-template-columns: 40px 80px 80px; gap: 4px; text-align: right; }
-  .item-price-grid span { text-align: right; }
-  .item-price-grid.no-price { grid-template-columns: 40px 1fr; }
+  /* ---------- STOCK CARD LIST ---------- */
+  .fish-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .fc-top { display: flex; gap: 12px; }
+  .fc-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #F2F3F4; }
+  .fc-thumb-placeholder { width: 56px; height: 56px; border-radius: 10px; background: #F2F3F4; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .fc-info { flex: 1; min-width: 0; }
+  .fc-name { font-size: 15px; font-weight: 700; }
+  .fc-zh { font-size: 12.5px; color: var(--ink-soft); }
+  .fc-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .fc-status-pill { flex-shrink: 0; border: none; padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: 700; }
+  .fc-status-pill.on { background: var(--accent-soft); color: var(--accent); }
+  .fc-status-pill.off { background: #F2F3F4; color: var(--ink-soft); }
+  .fc-status-sub { font-size: 11.5px; margin-top: 8px; }
+  .fc-status-sub.on { color: var(--accent); }
+  .fc-status-sub.off { color: var(--ink-soft); }
+  .fc-price-line { font-size: 12.5px; color: var(--ink); margin-top: 6px; }
+  .fc-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .fc-tag { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 12px; }
+  .fc-tag.offer-set { background: var(--orange-soft); color: var(--orange); }
+  .fc-tag.offer-notset { background: #F2F3F4; color: var(--ink-soft); }
+  .fc-tag.missing-img { background: var(--red-soft); color: var(--red); }
+  .fc-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .fc-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; }
+  .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
+  .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
+  .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
+  .loading-msg { text-align: center; padding: 40px 0; color: var(--ink-soft); font-size: 13.5px; }
 
-  .sr-bulk { font-size: 12px; color: var(--ink-soft); text-align: center; }
-  .sr-avail-edit { display: flex; align-items: center; gap: 10px; }
-  .toggle-wrap { display: flex; align-items: center; }
-  .mobile-label { display: none; }
-
-  /* ---------- MOBILE RESPONSIVE ---------- */
-  @media (max-width: 700px) {
-    .header-inner { gap: 10px; }
-    .brand { font-size: 15px; }
-    .tabs { gap: 4px; }
-    .tab-btn { padding: 7px 10px; font-size: 12px; }
-    main { padding: 20px 14px 60px; }
-
-    .toolbar > * { flex: 1 1 100%; }
-
-    .stock-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 14px; }
-    .stock-row.header-row { display: none; }
-    .stock-row > div:first-child { flex-basis: 100%; margin-bottom: 2px; }
-    .mobile-label { display: inline; font-size: 11px; color: var(--ink-soft); margin-right: 6px; }
-    .sr-price::before { content: 'Price: '; color: var(--ink-soft); font-weight: 400; }
-    .sr-bulk::before { content: 'Bulk: '; color: var(--ink-soft); }
-    .sr-avail-edit { flex-wrap: wrap; }
-
-    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
-
-    .item-price-grid { grid-template-columns: 30px 60px 60px; gap: 3px; font-size: 11.5px; }
-    .item-price-grid.no-price { grid-template-columns: 30px 1fr; }
-    .order-item-row { flex-wrap: wrap; gap: 6px; }
-    .order-item-row .oi-name { flex: 1 1 100%; }
-
-    .order-card { padding: 14px 16px; }
-    .order-actions { flex-wrap: wrap; }
-    .order-actions button { flex: 1 1 auto; }
-  }
-
-  .stock-row:last-child { border-bottom: none; }
-  .stock-row.header-row { background: #F7F8F8; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
-  .sr-name { font-size: 13.5px; font-weight: 600; }
-  .sr-meta { font-size: 11px; color: var(--ink-soft); margin-top: 1px; }
-  .sr-price { font-size: 13px; font-weight: 600; text-align: right; }
-  .toggle-switch { position: relative; width: 40px; height: 23px; }
-  .toggle-switch input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider { position: absolute; inset: 0; background: var(--line); border-radius: 20px; cursor: pointer; transition: 0.2s; }
-  .toggle-slider::before { content: ''; position: absolute; width: 17px; height: 17px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
-  .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
-  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(17px); }
-  .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 10px; font-size: 11.5px; font-weight: 500; color: var(--ink-soft); }
-  .icon-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
-
-  /* ---------- EDIT ROW ---------- */
-  .edit-row-form { padding: 16px; border-bottom: 1px solid var(--line); background: #F7F8F8; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .form-grid.single { grid-template-columns: 1fr; }
-  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-  label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  /* ---------- PRODUCT EDITOR ---------- */
+  .editor-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .editor-card h3 { font-size: 16px; margin-bottom: 4px; }
+  .editor-card .sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
+  label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
   input[type=text], input[type=number], input[type=tel], textarea, select.field {
-    width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px; font-size: 13.5px; outline: none; background: var(--panel);
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-size: 14.5px; outline: none; background: var(--panel); margin-bottom: 14px;
   }
+  input:disabled { background: #F2F3F4; color: var(--ink-soft); }
   input:focus, textarea:focus, select:focus { border-color: var(--brand-blue); }
-  .row-actions { display: flex; gap: 8px; margin-top: 6px; }
-  .btn-primary { background: var(--brand-blue); color: white; border: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; }
-  .btn-secondary { background: var(--line); color: var(--ink); border: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; }
-  .btn-danger { background: none; color: #B91C1C; border: 1px solid #F3C7C7; padding: 9px 18px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-left: auto; }
 
-  /* ---------- ADD FISH FORM ---------- */
-  .form-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 22px; max-width: 620px; }
+  .tier-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .tier-box input { margin-bottom: 10px; }
+  .remove-tier-btn { background: var(--red-soft); color: var(--red); border: none; padding: 9px 16px; border-radius: 7px; font-weight: 600; font-size: 13px; width: 100%; }
+  .add-tier-btn { width: 100%; border: 1px solid var(--line); background: var(--panel); color: var(--brand-blue); padding: 11px; border-radius: 8px; font-weight: 600; font-size: 13.5px; margin-bottom: 16px; }
+  .price-range-box { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+  .price-range-box .label { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 8px; }
+  .price-range-box .row { font-size: 13.5px; padding: 3px 0; }
 
-  /* ---------- BULK IMPORT ---------- */
-  .bulk-textarea { width: 100%; min-height: 220px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; outline: none; resize: vertical; }
-  .bulk-textarea:focus { border-color: var(--brand-blue); }
-  .bulk-hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
-  .bulk-result { margin-top: 16px; font-size: 13.5px; }
-  .bulk-result .ok { color: var(--accent); font-weight: 600; }
-  .bulk-result .err { color: #B91C1C; }
+  .offer-add-btn { width: 100%; background: var(--orange-soft); color: var(--orange); border: none; padding: 12px; border-radius: 8px; font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+  .offer-not-set { border: 1.5px dashed var(--line); border-radius: 8px; padding: 16px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+  .offer-active-row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
 
-  /* ---------- PHOTOS ---------- */
-  .drop-zone {
-    border: 2px dashed var(--line); border-radius: 10px; padding: 40px 20px; text-align: center; color: var(--ink-soft);
-    background: var(--panel); cursor: pointer;
-  }
-  .drop-zone.dragover { border-color: var(--brand-blue); background: var(--accent-soft); }
-  .photo-log { margin-top: 16px; }
-  .photo-log-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
-  .photo-log-row .status.ok { color: var(--accent); font-weight: 600; }
-  .photo-log-row .status.err { color: #B91C1C; font-weight: 600; }
+  .status-row { border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+  .status-row .title { font-size: 14.5px; font-weight: 700; }
+  .status-row .sub { font-size: 12px; margin: 2px 0 10px; }
+  .status-row .sub.on { color: var(--accent); }
+  .status-row .sub.off { color: var(--ink-soft); }
+  .status-check-row { display: flex; justify-content: space-between; align-items: center; }
+  .status-check-row .label-text { font-size: 14px; font-weight: 600; color: var(--ink); text-transform: none; letter-spacing: 0; }
+  .big-checkbox { width: 24px; height: 24px; accent-color: var(--brand-blue); }
+
+  .save-btn { width: 100%; background: var(--brand-blue); color: white; border: none; padding: 15px; border-radius: 10px; font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+  .back-btn { width: 100%; background: var(--panel); color: var(--ink); border: 1px solid var(--line); padding: 15px; border-radius: 10px; font-weight: 600; font-size: 14.5px; margin-bottom: 20px; }
+
+  .img-count-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .img-count-badge { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: #F2F3F4; padding: 4px 10px; border-radius: 10px; }
+  .img-required-tag { font-size: 11px; font-weight: 700; background: var(--orange-soft); color: var(--orange); padding: 4px 10px; border-radius: 10px; }
+  .img-required-msg { background: var(--orange-soft); color: var(--orange); font-size: 13px; font-weight: 600; padding: 12px 14px; border-radius: 8px; margin-bottom: 12px; }
+  .img-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .img-thumb-wrap { position: relative; aspect-ratio: 1; }
+  .img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+  .img-remove-btn { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: white; border: 2px solid var(--panel); font-size: 12px; display: flex; align-items: center; justify-content: center; }
+  .upload-img-btn { width: 100%; background: var(--brand-blue); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 700; font-size: 14px; }
+  .upload-hint { font-size: 11.5px; color: var(--ink-soft); margin-top: 8px; }
+
+  .danger-zone { border: 1px solid #F3C7C7; background: var(--red-soft); border-radius: var(--radius); padding: 18px; }
+  .danger-zone h3 { color: var(--red); font-size: 15px; }
+  .danger-zone p { font-size: 12.5px; color: #8A3A3A; margin: 6px 0 14px; }
+  .delete-btn { width: 100%; background: var(--red); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 700; font-size: 14px; }
+
+  /* ---------- ADD FISH / BULK IMPORT (Product Import tab) ---------- */
+  .import-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .import-toggle button { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
+  .import-toggle button.active { background: var(--ink); border-color: var(--ink); color: white; }
+  .import-view { display: none; }
+  .import-view.active { display: block; }
+  .bulk-textarea { width: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; margin-bottom: 10px; }
+  .bulk-hint { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
+  .result-msg { margin-top: 12px; font-size: 13.5px; }
+  .result-msg .ok { color: var(--accent); font-weight: 600; }
+  .result-msg .err { color: var(--red); }
 
   /* ---------- ORDERS ---------- */
-  .order-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
-  .order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .order-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .order-ref { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
   .order-company { font-size: 15px; font-weight: 700; margin-top: 4px; }
   .order-phone { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
   .order-date { font-size: 11.5px; color: var(--ink-soft); }
   .order-status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; }
-  .order-status-badge.new { background: #FDF3E3; color: #92620A; }
+  .order-status-badge.new { background: var(--orange-soft); color: var(--orange); }
   .order-status-badge.done { background: var(--accent-soft); color: var(--accent); }
   .order-items { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
   .order-item-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 6px 0; }
-  .order-actions { display: flex; gap: 8px; margin-top: 14px; }
-  .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
+  .oi-name { flex: 1 1 100%; }
+  .item-price-grid { display: grid; grid-template-columns: 30px 60px 60px; gap: 4px; text-align: right; font-size: 11.5px; }
+  .item-price-grid span { text-align: right; }
+  .item-price-grid.no-price { grid-template-columns: 30px 1fr; }
+  .order-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--ink-soft); flex: 1 1 auto; }
 
-  .loading-msg { text-align: center; padding: 40px 0; color: var(--ink-soft); font-size: 13.5px; }
-  .save-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 100; }
+  .save-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--ink); color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none; transition: all 0.25s ease; z-index: 100; }
   .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -183,116 +175,147 @@
 
 <div id="app">
   <header>
-    <div class="header-inner">
-      <div class="brand"><span class="dot"></span>Jet Fish Admin</div>
-      <div class="tabs">
-        <button class="tab-btn active" data-panel="stock">Stock</button>
-        <button class="tab-btn" data-panel="add">Add Fish</button>
-        <button class="tab-btn" data-panel="bulk">Bulk Import</button>
-        <button class="tab-btn" data-panel="photos">Photos</button>
-        <button class="tab-btn" data-panel="orders">Orders</button>
-      </div>
+    <div class="tabs">
+      <button class="tab-btn" data-panel="orders">Orders</button>
+      <button class="tab-btn active" data-panel="stock">Stock Control</button>
+      <button class="tab-btn" data-panel="import">Product Import</button>
     </div>
   </header>
 
   <main>
-    <!-- STOCK PANEL -->
+    <!-- ================= STOCK CONTROL ================= -->
     <section class="panel active" id="panel-stock">
-      <div class="panel-head">
-        <div><h2>Stock</h2><div class="panel-sub">Toggle availability, edit prices, or remove fish. Changes go live instantly.</div></div>
-      </div>
-      <div class="toolbar">
-        <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
-        <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
-        <select class="cat-filter" id="stock-sort">
-          <option value="name-asc">Name A–Z</option>
-          <option value="name-desc">Name Z–A</option>
-          <option value="code-asc">Code A–Z</option>
-          <option value="code-desc">Code Z–A</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="price-asc">Price: Low to High</option>
-        </select>
-      </div>
-      <div class="stock-table" id="stock-table">
-        <div class="loading-msg">Loading stock…</div>
-      </div>
-    </section>
 
-    <!-- ADD FISH PANEL -->
-    <section class="panel" id="panel-add">
-      <div class="panel-head">
-        <div><h2>Add New Fish</h2><div class="panel-sub">Adds a single fish to your live stock.</div></div>
+      <!-- LIST VIEW -->
+      <div id="stock-list-view">
+        <div class="toolbar">
+          <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
+          <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
+          <select class="cat-filter" id="stock-sort">
+            <option value="name-asc">Name A–Z</option>
+            <option value="name-desc">Name Z–A</option>
+            <option value="code-asc">Code A–Z</option>
+            <option value="code-desc">Code Z–A</option>
+            <option value="price-desc">Price: High to Low</option>
+            <option value="price-asc">Price: Low to High</option>
+          </select>
+        </div>
+        <div id="fish-card-list"><div class="loading-msg">Loading stock…</div></div>
       </div>
-      <div class="form-card">
-        <div class="form-grid">
-          <div><label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700"></div>
-          <div><label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel"></div>
+
+      <!-- EDIT VIEW -->
+      <div id="stock-edit-view" style="display:none;">
+
+        <div class="editor-card">
+          <h3>Product Details</h3>
+          <div class="sub">Basic info shown to customers.</div>
+          <label>Fish Code</label>
+          <input type="text" id="ed-code" disabled>
+          <label>English Name</label>
+          <input type="text" id="ed-name">
+          <label>Chinese Name</label>
+          <input type="text" id="ed-zh">
+          <label>Category</label>
+          <select class="field" id="ed-category-select" style="margin-bottom:14px;"></select>
+          <input type="text" id="ed-category-new" placeholder="New category name" style="display:none;">
+          <label>Fish Size</label>
+          <input type="text" id="ed-size">
         </div>
-        <div class="form-grid">
-          <div><label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel"></div>
-          <div><label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳"></div>
-        </div>
-        <div class="form-grid three">
-          <div><label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm"></div>
-          <div><label>Price (RM)</label><input type="number" step="0.10" id="add-price" placeholder="3.00"></div>
-          <div><label>Featured?</label>
-            <select class="field" id="add-featured"><option value="no">No</option><option value="yes">Yes</option></select>
+
+        <div class="editor-card">
+          <h3>Normal Price Tiers</h3>
+          <div class="sub">The first tier is your base price (Minimum Qty 1).</div>
+          <div id="tier-list"></div>
+          <button class="add-tier-btn" id="add-tier-btn" type="button">+ Add Price Tier</button>
+          <div class="price-range-box">
+            <div class="label">Customer Price Ranges</div>
+            <div id="price-range-preview"></div>
           </div>
         </div>
-        <div class="form-grid">
-          <div><label>Bulk Qty 1</label><input type="number" id="add-bulk1-qty" placeholder="e.g. 40"></div>
-          <div><label>Bulk Price 1</label><input type="number" step="0.10" id="add-bulk1-price" placeholder="e.g. 2.50"></div>
+
+        <div class="editor-card">
+          <h3>Special Offer</h3>
+          <div class="sub">Offer Price is shown to customers only when Offer Active is ON.</div>
+          <div id="offer-editor"></div>
         </div>
-        <div class="form-grid">
-          <div><label>Bulk Qty 2</label><input type="number" id="add-bulk2-qty" placeholder="optional"></div>
-          <div><label>Bulk Price 2</label><input type="number" step="0.10" id="add-bulk2-price" placeholder="optional"></div>
+
+        <div class="editor-card">
+          <h3>Status</h3>
+          <div class="status-row">
+            <div class="title">Customer Visibility</div>
+            <div class="sub" id="ed-visibility-sub">OFF — Hidden from customers</div>
+            <div class="status-check-row">
+              <span class="label-text">Visible to customers</span>
+              <input type="checkbox" class="big-checkbox" id="ed-available">
+            </div>
+          </div>
+          <div class="status-row">
+            <div class="status-check-row">
+              <span class="label-text">Hot Fish</span>
+              <input type="checkbox" class="big-checkbox" id="ed-featured">
+            </div>
+          </div>
         </div>
-        <div class="form-grid single">
-          <div><label>Photo (optional)</label><input type="file" id="add-photo" accept="image/*"></div>
+
+        <button class="save-btn" id="save-product-btn">Save Product</button>
+        <button class="back-btn" id="back-to-stock-btn">Back to Stock Control</button>
+
+        <div class="editor-card">
+          <div class="img-count-row">
+            <h3 style="margin:0;">Images</h3>
+            <span class="img-count-badge" id="img-count-badge">0/5</span>
+          </div>
+          <div id="img-required-msg-wrap"></div>
+          <div class="img-gallery" id="img-gallery"></div>
+          <button class="upload-img-btn" id="upload-img-btn" type="button">Upload Image</button>
+          <input type="file" id="img-file-input" accept="image/*" style="display:none;">
+          <div class="upload-hint">JPG, JPEG, PNG, or WEBP. Max 8MB per image.</div>
         </div>
-        <button class="btn-primary" id="add-fish-btn" style="width:100%; padding:12px; margin-top:6px;">Add Fish</button>
-        <div class="bulk-result" id="add-result"></div>
+
+        <div class="danger-zone">
+          <h3>Danger Zone</h3>
+          <p>Permanently remove this fish from the catalog. This cannot be undone.</p>
+          <button class="delete-btn" id="delete-fish-btn">Delete Fish Permanently</button>
+        </div>
       </div>
     </section>
 
-    <!-- BULK IMPORT PANEL -->
-    <section class="panel" id="panel-bulk">
-      <div class="panel-head">
-        <div><h2>Bulk Import</h2><div class="panel-sub">Paste your fish list straight from Excel/Google Sheets.</div></div>
+    <!-- ================= PRODUCT IMPORT ================= -->
+    <section class="panel" id="panel-import">
+      <div class="import-toggle">
+        <button class="active" data-import-view="single">Add Single Fish</button>
+        <button data-import-view="bulk">Bulk Import</button>
       </div>
-      <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
+
+      <div class="import-view active" id="import-single">
+        <div class="editor-card">
+          <label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700">
+          <label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel">
+          <label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel">
+          <label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳">
+          <label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm">
+          <label>Price (RM)</label><input type="number" step="0.10" id="add-price" placeholder="3.00">
+          <button class="save-btn" id="add-fish-btn" type="button" style="margin-top:6px;">Add Fish</button>
+          <div class="result-msg" id="add-result"></div>
+        </div>
+      </div>
+
+      <div class="import-view" id="import-bulk">
+        <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
 Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
-      <div class="bulk-hint">
-        Paste rows copied directly from your spreadsheet (tab-separated), in this column order: <b>Group, Code, Fish, Size, Price, ImageFile</b> (ImageFile column is optional — leave blank if you'll upload photos separately in the Photos tab).<br>
-        The "Fish" column can include the Chinese name together, like "Black Angel 黑鲳" — it'll split automatically.<br>
-        Price format: <span class="mono">1xRM3 / 50xRM2.50</span> for bulk pricing, or just <span class="mono">1xRM6</span> for a single price.<br>
-        Existing fish with the same Code will be updated; new codes will be added. New fish are added as <b>not available</b> until you toggle them on in the Stock tab.
+        <div class="bulk-hint">
+          Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
+          Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stock Control.
+        </div>
+        <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
+        <div class="result-msg" id="bulk-result"></div>
       </div>
-      <button class="btn-primary" id="bulk-import-btn" style="margin-top:14px; padding:12px 24px;">Import</button>
-      <div class="bulk-result" id="bulk-result"></div>
     </section>
 
-    <!-- PHOTOS PANEL -->
-    <section class="panel" id="panel-photos">
-      <div class="panel-head">
-        <div><h2>Photos</h2><div class="panel-sub">Upload fish photos in bulk — they'll auto-match to the right fish.</div></div>
-      </div>
-      <div class="bulk-hint" style="margin-bottom:16px;">
-        <b>How to name your photos:</b> name each photo file exactly as the fish's <b>Code</b> — e.g. a photo of AGL-0628 should be named <span class="mono">AGL-0628.jpg</span> (or .png/.webp). Do this in whatever folder you keep your photos on your computer before uploading. Matching isn't case-sensitive.
-      </div>
-      <div class="drop-zone" id="drop-zone">
-        <div style="font-size:14px; font-weight:600; margin-bottom:4px;">Drag photos here, or click to select</div>
-        <div style="font-size:12.5px;">You can select many at once</div>
-        <input type="file" id="photo-input" accept="image/*" multiple style="display:none;">
-      </div>
-      <div class="photo-log" id="photo-log"></div>
-    </section>
-
-    <!-- ORDERS PANEL -->
+    <!-- ================= ORDERS ================= -->
     <section class="panel" id="panel-orders">
-      <div class="panel-head">
-        <div><h2>Orders</h2><div class="panel-sub">Every order submitted on your site shows up here.</div></div>
-        <button class="icon-btn" id="refresh-orders-btn">↻ Refresh</button>
+      <div class="toolbar">
+        <button class="icon-btn" id="refresh-orders-btn" style="flex:0 0 auto;">↻ Refresh</button>
       </div>
       <div id="orders-list"><div class="loading-msg">Loading orders…</div></div>
     </section>
@@ -308,6 +331,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 
   let fishList = [];
+  let editingFish = null; // working copy of the fish being edited
 
   function showToast(msg) {
     const toast = document.getElementById('save-toast');
@@ -338,10 +362,20 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
       if (btn.dataset.panel === 'orders') loadOrders();
+      if (btn.dataset.panel === 'stock') showListView();
     });
   });
 
-  // ---------- SHARED PARSERS (reused from the shop site) ----------
+  document.querySelectorAll('.import-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.import-toggle button').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.import-view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('import-' + btn.dataset.importView).classList.add('active');
+    });
+  });
+
+  // ---------- SHARED PARSERS ----------
   function splitFishName(raw) {
     const s = (raw || '').trim();
     const match = s.match(/^([\s\S]*?)([\u3400-\u9FFF\uF900-\uFAFF]+.*)$/);
@@ -363,19 +397,30 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       if (!isNaN(num) && s !== '') tiers.push({ qty: 1, price: num });
     }
     tiers.sort((a, b) => a.qty - b.qty);
-    const result = { price: 0 };
-    if (tiers.length) {
-      result.price = tiers[0].price;
-      if (tiers[1]) { result.bulk1Qty = tiers[1].qty; result.bulk1Price = tiers[1].price; }
-      if (tiers[2]) { result.bulk2Qty = tiers[2].qty; result.bulk2Price = tiers[2].price; }
-    }
-    return result;
+    return tiers.length ? tiers : [{ qty: 1, price: 0 }];
   }
 
-  // ---------- STOCK ----------
+  function tierRangeLabels(tiers) {
+    const sorted = [...tiers].sort((a, b) => a.qty - b.qty);
+    return sorted.map((t, i) => {
+      const next = sorted[i + 1];
+      const label = next ? `${t.qty}-${next.qty - 1}` : `${t.qty}+`;
+      return { label, price: parseFloat(t.price) };
+    });
+  }
+  function tierSummaryCompact(tiers) {
+    if (!tiers || !tiers.length) return 'No price set';
+    return tierRangeLabels(tiers).map(r => `${r.label}: RM${r.price.toFixed(2)}`).join(' · ');
+  }
+
+  // ---------- STOCK: LOAD + LIST VIEW ----------
   async function loadFish() {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*&order=category,name`, { headers });
     fishList = await res.json();
+    fishList.forEach(f => {
+      if (!Array.isArray(f.tiers)) f.tiers = [];
+      if (!Array.isArray(f.images)) f.images = [];
+    });
   }
 
   function populateCatFilter() {
@@ -384,8 +429,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
   }
 
-  let editingCode = null;
-  function renderStockTable() {
+  function renderStockList() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
     const catFilter = document.getElementById('stock-cat-filter').value;
     const sortMode = document.getElementById('stock-sort').value;
@@ -400,172 +444,275 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     else if (sortMode === 'price-desc') list.sort((a, b) => b.price - a.price);
     else if (sortMode === 'price-asc') list.sort((a, b) => a.price - b.price);
 
-    const table = document.getElementById('stock-table');
-    if (!list.length) { table.innerHTML = `<div class="empty-msg">No fish match.</div>`; return; }
+    const listEl = document.getElementById('fish-card-list');
+    if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; return; }
 
-    table.innerHTML = `<div class="stock-row header-row"><span>Fish</span><span>Price</span><span>Bulk</span><span>Feat.</span><span>Available</span></div>` +
-      list.map(f => {
-        if (editingCode === f.code) return editRowHtml(f);
-        const bulkText = f.bulk1_qty ? `${f.bulk1_qty}+` : '—';
-        return `
-        <div class="stock-row" data-code="${f.code}">
-          <div>
-            <div class="sr-name">${f.name}${f.zh ? ' <span style="color:var(--ink-soft); font-weight:400;">' + f.zh + '</span>' : ''}</div>
-            <div class="sr-meta mono">${f.code} · ${f.category}${f.size ? ' · ' + f.size : ''}</div>
+    listEl.innerHTML = list.map(f => {
+      const thumb = f.images && f.images[0]
+        ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
+        : `<div class="fc-thumb-placeholder">🐟</div>`;
+      const hasOffer = f.offer_price !== null && f.offer_price !== undefined;
+      const missingImg = !f.images || !f.images.length;
+      return `
+      <div class="fish-card" data-code="${f.code}">
+        <div class="fc-top">
+          ${thumb}
+          <div class="fc-info">
+            <div class="fc-name">${f.name}</div>
+            ${f.zh ? `<div class="fc-zh">${f.zh}</div>` : ''}
+            <div class="fc-meta mono">${f.code} · ${f.size || '—'}</div>
           </div>
-          <div class="sr-price">RM${parseFloat(f.price).toFixed(2)}</div>
-          <div class="sr-bulk">${bulkText}</div>
-          <div class="toggle-wrap"><span class="mobile-label">Feat</span><label class="toggle-switch" title="Featured"><input type="checkbox" class="feat-toggle" data-code="${f.code}" ${f.featured ? 'checked' : ''}><span class="toggle-slider"></span></label></div>
-          <div class="sr-avail-edit">
-            <span class="mobile-label">Avail</span>
-            <label class="toggle-switch" title="Available"><input type="checkbox" class="avail-toggle" data-code="${f.code}" ${f.available ? 'checked' : ''}><span class="toggle-slider"></span></label>
-            <button class="icon-btn edit-btn" data-code="${f.code}">Edit</button>
-          </div>
-        </div>`;
-      }).join('');
-
-    table.querySelectorAll('.avail-toggle').forEach(cb => cb.addEventListener('change', () => {
-      updateFishField(cb.dataset.code, 'available', cb.checked);
-      if (!cb.checked) {
-        // Turning off Available also turns off Featured — an unavailable fish shouldn't be featured
-        const row = cb.closest('.stock-row');
-        const featCb = row ? row.querySelector('.feat-toggle') : null;
-        if (featCb && featCb.checked) {
-          featCb.checked = false;
-          updateFishField(cb.dataset.code, 'featured', false);
-        }
-      }
-    }));
-    table.querySelectorAll('.feat-toggle').forEach(cb => cb.addEventListener('change', () => {
-      updateFishField(cb.dataset.code, 'featured', cb.checked);
-      if (cb.checked) {
-        // Turning on Featured also turns on Available — a featured fish must be available
-        const row = cb.closest('.stock-row');
-        const availCb = row ? row.querySelector('.avail-toggle') : null;
-        if (availCb && !availCb.checked) {
-          availCb.checked = true;
-          updateFishField(cb.dataset.code, 'available', true);
-        }
-      }
-    }));
-    table.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', () => { editingCode = btn.dataset.code; renderStockTable(); }));
-  }
-
-  function editRowHtml(f) {
-    return `
-      <div class="edit-row-form" data-code="${f.code}">
-        <div class="form-grid">
-          <div><label>Code</label><input type="text" value="${f.code}" disabled style="opacity:0.6;"></div>
-          <div><label>Category</label><input type="text" class="ef-category" value="${f.category}"></div>
+          <button class="fc-status-pill ${f.available ? 'on' : 'off'} toggle-avail-btn" data-code="${f.code}">${f.available ? 'ON' : 'OFF'}</button>
         </div>
-        <div class="form-grid">
-          <div><label>Name (English)</label><input type="text" class="ef-name" value="${f.name}"></div>
-          <div><label>Name (Chinese)</label><input type="text" class="ef-zh" value="${f.zh || ''}"></div>
+        <div class="fc-status-sub ${f.available ? 'on' : 'off'}">${f.available ? 'ON · Visible to customers' : 'OFF · Hidden from customers'}</div>
+        <div class="fc-price-line">${tierSummaryCompact(f.tiers)}</div>
+        <div class="fc-tags">
+          <span class="fc-tag ${hasOffer ? 'offer-set' : 'offer-notset'}">${hasOffer ? (f.offer_active ? 'Offer Active' : 'Offer Set') : 'Not Set'}</span>
+          ${missingImg ? `<span class="fc-tag missing-img">Missing Images</span>` : ''}
         </div>
-        <div class="form-grid three">
-          <div><label>Size</label><input type="text" class="ef-size" value="${f.size || ''}"></div>
-          <div><label>Price (RM)</label><input type="number" step="0.10" class="ef-price" value="${f.price}"></div>
-          <div><label>Featured?</label><select class="field ef-featured"><option value="no" ${!f.featured ? 'selected' : ''}>No</option><option value="yes" ${f.featured ? 'selected' : ''}>Yes</option></select></div>
-        </div>
-        <div class="form-grid">
-          <div><label>Bulk Qty 1</label><input type="number" class="ef-bulk1-qty" value="${f.bulk1_qty || ''}"></div>
-          <div><label>Bulk Price 1</label><input type="number" step="0.10" class="ef-bulk1-price" value="${f.bulk1_price || ''}"></div>
-        </div>
-        <div class="form-grid">
-          <div><label>Bulk Qty 2</label><input type="number" class="ef-bulk2-qty" value="${f.bulk2_qty || ''}"></div>
-          <div><label>Bulk Price 2</label><input type="number" step="0.10" class="ef-bulk2-price" value="${f.bulk2_price || ''}"></div>
-        </div>
-        <div class="form-grid single">
-          <div>
-            <label>Photo</label>
-            <div style="display:flex; align-items:center; gap:12px;">
-              ${f.image_url ? `<img src="${f.image_url}" style="width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--line);">` : `<div style="width:44px; height:44px; border-radius:6px; background:#F2F3F4; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-soft);">None</div>`}
-              <input type="file" class="ef-photo" accept="image/*" style="flex:1;">
-              ${f.image_url ? `<button type="button" class="btn-secondary remove-photo-btn" style="flex-shrink:0;">Remove Image</button>` : ''}
-            </div>
-          </div>
-        </div>
-        <div class="row-actions">
-          <button class="btn-primary save-edit-btn">Save</button>
-          <button class="btn-secondary cancel-edit-btn">Cancel</button>
-          <button class="btn-danger delete-fish-btn">Delete</button>
+        <div class="fc-actions">
+          <button class="fc-btn edit edit-fish-btn" data-code="${f.code}">Edit</button>
+          <button class="fc-btn offer offer-fish-btn" data-code="${f.code}">${hasOffer ? 'Edit Offer' : 'Add Offer'}</button>
         </div>
       </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.toggle-avail-btn').forEach(btn => btn.addEventListener('click', () => quickToggleAvailable(btn.dataset.code)));
+    listEl.querySelectorAll('.edit-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'details')));
+    listEl.querySelectorAll('.offer-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'offer')));
   }
 
-  document.getElementById('stock-table').addEventListener('click', async (e) => {
-    const form = e.target.closest('.edit-row-form');
-    if (!form) return;
-    const code = form.dataset.code;
+  async function quickToggleAvailable(code) {
+    const f = fishList.find(f => f.code === code);
+    if (!f) return;
+    f.available = !f.available;
+    if (!f.available) f.featured = false; // unavailable fish can't stay featured
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ available: f.available, featured: f.featured })
+    });
+    renderStockList();
+    showToast(f.available ? 'Now visible to customers' : 'Hidden from customers');
+  }
 
-    if (e.target.classList.contains('cancel-edit-btn')) { editingCode = null; renderStockTable(); }
+  document.getElementById('stock-search').addEventListener('input', renderStockList);
+  document.getElementById('stock-cat-filter').addEventListener('change', renderStockList);
+  document.getElementById('stock-sort').addEventListener('change', renderStockList);
 
-    if (e.target.classList.contains('save-edit-btn')) {
-      const saveBtn = e.target;
-      saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+  function showListView() {
+    document.getElementById('stock-list-view').style.display = 'block';
+    document.getElementById('stock-edit-view').style.display = 'none';
+    editingFish = null;
+  }
 
-      const body = {
-        name: form.querySelector('.ef-name').value.trim(),
-        zh: form.querySelector('.ef-zh').value.trim(),
-        category: form.querySelector('.ef-category').value.trim(),
-        size: form.querySelector('.ef-size').value.trim(),
-        price: parseFloat(form.querySelector('.ef-price').value) || 0,
-        featured: form.querySelector('.ef-featured').value === 'yes',
-        bulk1_qty: form.querySelector('.ef-bulk1-qty').value ? parseInt(form.querySelector('.ef-bulk1-qty').value) : null,
-        bulk1_price: form.querySelector('.ef-bulk1-price').value ? parseFloat(form.querySelector('.ef-bulk1-price').value) : null,
-        bulk2_qty: form.querySelector('.ef-bulk2-qty').value ? parseInt(form.querySelector('.ef-bulk2-qty').value) : null,
-        bulk2_price: form.querySelector('.ef-bulk2-price').value ? parseFloat(form.querySelector('.ef-bulk2-price').value) : null
-      };
+  // ---------- STOCK: EDIT VIEW ----------
+  function openEditor(code, focusSection) {
+    const f = fishList.find(f => f.code === code);
+    if (!f) return;
+    editingFish = JSON.parse(JSON.stringify(f)); // working copy
+    if (!Array.isArray(editingFish.tiers) || !editingFish.tiers.length) editingFish.tiers = [{ qty: 1, price: editingFish.price || 0 }];
+    if (!Array.isArray(editingFish.images)) editingFish.images = [];
 
-      const photoInput = form.querySelector('.ef-photo');
-      const photoFile = photoInput && photoInput.files[0];
-      if (photoFile) {
-        try {
-          body.image_url = await uploadPhotoForCode(photoFile, code);
-        } catch (err) {
-          console.error(err);
-          alert('Photo upload failed, but the rest of the changes will still be saved.');
-        }
-      }
+    document.getElementById('stock-list-view').style.display = 'none';
+    document.getElementById('stock-edit-view').style.display = 'block';
 
-      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
-      editingCode = null;
-      await loadFish(); populateCatFilter(); renderStockTable();
-      showToast('Saved');
+    document.getElementById('ed-code').value = editingFish.code;
+    document.getElementById('ed-name').value = editingFish.name;
+    document.getElementById('ed-zh').value = editingFish.zh || '';
+    document.getElementById('ed-size').value = editingFish.size || '';
+    populateCategorySelect(editingFish.category);
+    document.getElementById('ed-available').checked = !!editingFish.available;
+    document.getElementById('ed-featured').checked = !!editingFish.featured;
+    updateVisibilitySub();
+
+    renderTierList();
+    renderOfferEditor();
+    renderImageGallery();
+
+    if (focusSection === 'offer') {
+      setTimeout(() => document.querySelectorAll('.editor-card')[2].scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  }
 
-    if (e.target.classList.contains('remove-photo-btn')) {
-      if (!confirm('Remove this fish\'s photo?')) return;
-      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'PATCH', headers, body: JSON.stringify({ image_url: null }) });
-      const f = fishList.find(f => f.code === code);
-      if (f) f.image_url = null;
-      renderStockTable();
-      showToast('Photo removed');
-    }
-
-    if (e.target.classList.contains('delete-fish-btn')) {
-      if (!confirm('Delete this fish permanently? This cannot be undone.')) return;
-      await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, { method: 'DELETE', headers });
-      editingCode = null;
-      await loadFish(); populateCatFilter(); renderStockTable();
-      showToast('Deleted');
-    }
+  function populateCategorySelect(currentCat) {
+    const sel = document.getElementById('ed-category-select');
+    const cats = [...new Set(fishList.map(f => f.category))].sort();
+    sel.innerHTML = cats.map(c => `<option value="${c}" ${c === currentCat ? 'selected' : ''}>${c}</option>`).join('') + `<option value="__new__">+ Add new category</option>`;
+    document.getElementById('ed-category-new').style.display = 'none';
+  }
+  document.getElementById('ed-category-select').addEventListener('change', function() {
+    document.getElementById('ed-category-new').style.display = this.value === '__new__' ? 'block' : 'none';
   });
 
-  async function updateFishField(code, field, value) {
-    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
-      method: 'PATCH', headers, body: JSON.stringify({ [field]: value })
-    });
-    const f = fishList.find(f => f.code === code);
-    if (f) f[field] = value;
-    showToast('Saved — live on site now');
+  document.getElementById('ed-available').addEventListener('change', function() {
+    if (!this.checked) document.getElementById('ed-featured').checked = false;
+    updateVisibilitySub();
+  });
+  document.getElementById('ed-featured').addEventListener('change', function() {
+    if (this.checked) document.getElementById('ed-available').checked = true;
+    updateVisibilitySub();
+  });
+  function updateVisibilitySub() {
+    const on = document.getElementById('ed-available').checked;
+    const sub = document.getElementById('ed-visibility-sub');
+    sub.textContent = on ? 'ON — Visible to customers' : 'OFF — Hidden from customers';
+    sub.className = 'sub ' + (on ? 'on' : 'off');
   }
 
-  document.getElementById('stock-search').addEventListener('input', renderStockTable);
-  document.getElementById('stock-cat-filter').addEventListener('change', renderStockTable);
-  document.getElementById('stock-sort').addEventListener('change', renderStockTable);
+  // ---------- TIER EDITOR ----------
+  function renderTierList() {
+    const el = document.getElementById('tier-list');
+    el.innerHTML = editingFish.tiers.map((t, i) => `
+      <div class="tier-box" data-idx="${i}">
+        <label>Minimum Qty</label>
+        <input type="number" class="tier-qty-input" value="${t.qty}" ${i === 0 ? 'min="1"' : ''}>
+        <label>Unit Price (RM)</label>
+        <input type="number" step="0.10" class="tier-price-input" value="${t.price}">
+        ${editingFish.tiers.length > 1 ? `<button type="button" class="remove-tier-btn" data-idx="${i}">Remove Tier</button>` : ''}
+      </div>
+    `).join('');
 
-  // ---------- ADD FISH ----------
+    el.querySelectorAll('.tier-qty-input').forEach((input, i) => input.addEventListener('input', () => { editingFish.tiers[i].qty = parseInt(input.value) || 1; renderPriceRangePreview(); }));
+    el.querySelectorAll('.tier-price-input').forEach((input, i) => input.addEventListener('input', () => { editingFish.tiers[i].price = parseFloat(input.value) || 0; renderPriceRangePreview(); }));
+    el.querySelectorAll('.remove-tier-btn').forEach(btn => btn.addEventListener('click', () => {
+      editingFish.tiers.splice(parseInt(btn.dataset.idx), 1);
+      renderTierList(); renderPriceRangePreview();
+    }));
+    renderPriceRangePreview();
+  }
+  document.getElementById('add-tier-btn').addEventListener('click', () => {
+    const last = editingFish.tiers[editingFish.tiers.length - 1];
+    editingFish.tiers.push({ qty: (last ? last.qty : 0) + 10, price: last ? last.price : 0 });
+    renderTierList();
+  });
+  function renderPriceRangePreview() {
+    const el = document.getElementById('price-range-preview');
+    const sorted = [...editingFish.tiers].sort((a, b) => a.qty - b.qty);
+    el.innerHTML = tierRangeLabels(sorted).map(r => `<div class="row">${r.label} pcs — RM${r.price.toFixed(2)}</div>`).join('');
+  }
+
+  // ---------- SPECIAL OFFER EDITOR ----------
+  function renderOfferEditor() {
+    const el = document.getElementById('offer-editor');
+    const hasOffer = editingFish.offer_price !== null && editingFish.offer_price !== undefined;
+    if (!hasOffer) {
+      el.innerHTML = `
+        <button type="button" class="offer-add-btn" id="add-offer-btn">Add Offer Price</button>
+        <div class="offer-not-set">Not Set</div>`;
+      document.getElementById('add-offer-btn').addEventListener('click', () => {
+        editingFish.offer_price = editingFish.price;
+        editingFish.offer_active = false;
+        renderOfferEditor();
+      });
+    } else {
+      el.innerHTML = `
+        <label>Offer Price (RM)</label>
+        <input type="number" step="0.10" id="ed-offer-price" value="${editingFish.offer_price}">
+        <div class="offer-active-row">
+          <span class="status-check-row" style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+            <span class="label-text">Offer Active</span>
+            <input type="checkbox" class="big-checkbox" id="ed-offer-active" ${editingFish.offer_active ? 'checked' : ''}>
+          </span>
+        </div>
+        <button type="button" class="remove-tier-btn" id="remove-offer-btn" style="margin-top:14px;">Remove Offer</button>
+      `;
+      document.getElementById('ed-offer-price').addEventListener('input', (e) => { editingFish.offer_price = parseFloat(e.target.value) || 0; });
+      document.getElementById('ed-offer-active').addEventListener('change', (e) => { editingFish.offer_active = e.target.checked; });
+      document.getElementById('remove-offer-btn').addEventListener('click', () => {
+        editingFish.offer_price = null; editingFish.offer_active = false;
+        renderOfferEditor();
+      });
+    }
+  }
+
+  // ---------- IMAGE GALLERY ----------
+  async function uploadImageFile(file, code) {
+    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
+    const storagePath = `${code}-${Date.now()}${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
+      body: file
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
+  }
+
+  function renderImageGallery() {
+    document.getElementById('img-count-badge').textContent = `${editingFish.images.length}/5`;
+    const reqWrap = document.getElementById('img-required-msg-wrap');
+    reqWrap.innerHTML = !editingFish.images.length ? `<div class="img-required-msg">Image Required</div>` : '';
+
+    document.getElementById('img-gallery').innerHTML = editingFish.images.map((url, i) => `
+      <div class="img-thumb-wrap">
+        <img src="${url}">
+        <button type="button" class="img-remove-btn" data-idx="${i}">✕</button>
+      </div>
+    `).join('');
+    document.querySelectorAll('.img-remove-btn').forEach(btn => btn.addEventListener('click', () => {
+      editingFish.images.splice(parseInt(btn.dataset.idx), 1);
+      renderImageGallery();
+    }));
+
+    document.getElementById('upload-img-btn').style.display = editingFish.images.length >= 5 ? 'none' : 'block';
+  }
+
+  document.getElementById('upload-img-btn').addEventListener('click', () => document.getElementById('img-file-input').click());
+  document.getElementById('img-file-input').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const btn = document.getElementById('upload-img-btn');
+    btn.disabled = true; btn.textContent = 'Uploading…';
+    try {
+      const url = await uploadImageFile(file, editingFish.code);
+      editingFish.images.push(url);
+      renderImageGallery();
+    } catch (err) {
+      console.error(err);
+      alert('Photo upload failed. Please try again.');
+    }
+    btn.disabled = false; btn.textContent = 'Upload Image';
+    e.target.value = '';
+  });
+
+  // ---------- SAVE / DELETE ----------
+  document.getElementById('save-product-btn').addEventListener('click', async () => {
+    const catSelect = document.getElementById('ed-category-select');
+    const category = catSelect.value === '__new__' ? document.getElementById('ed-category-new').value.trim() : catSelect.value;
+
+    const body = {
+      name: document.getElementById('ed-name').value.trim(),
+      zh: document.getElementById('ed-zh').value.trim(),
+      category, size: document.getElementById('ed-size').value.trim(),
+      price: editingFish.tiers[0] ? parseFloat(editingFish.tiers[0].price) : 0,
+      tiers: editingFish.tiers,
+      images: editingFish.images,
+      offer_price: editingFish.offer_price,
+      offer_active: !!editingFish.offer_active,
+      available: document.getElementById('ed-available').checked,
+      featured: document.getElementById('ed-featured').checked
+    };
+
+    const saveBtn = document.getElementById('save-product-btn');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    saveBtn.disabled = false; saveBtn.textContent = 'Save Product';
+
+    await loadFish(); populateCatFilter(); showListView(); renderStockList();
+    showToast('Saved — live on site now');
+  });
+
+  document.getElementById('back-to-stock-btn').addEventListener('click', showListView);
+
+  document.getElementById('delete-fish-btn').addEventListener('click', async () => {
+    if (!confirm('Delete this fish permanently? This cannot be undone.')) return;
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'DELETE', headers });
+    await loadFish(); populateCatFilter(); showListView(); renderStockList();
+    showToast('Deleted');
+  });
+
+  // ---------- ADD SINGLE FISH ----------
   document.getElementById('add-fish-btn').addEventListener('click', async () => {
     const code = document.getElementById('add-code').value.trim();
     const category = document.getElementById('add-category').value.trim();
@@ -573,44 +720,20 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     const zh = document.getElementById('add-zh').value.trim();
     const size = document.getElementById('add-size').value.trim();
     const price = parseFloat(document.getElementById('add-price').value);
-    const featured = document.getElementById('add-featured').value === 'yes';
-    const bulk1Qty = document.getElementById('add-bulk1-qty').value ? parseInt(document.getElementById('add-bulk1-qty').value) : null;
-    const bulk1Price = document.getElementById('add-bulk1-price').value ? parseFloat(document.getElementById('add-bulk1-price').value) : null;
-    const bulk2Qty = document.getElementById('add-bulk2-qty').value ? parseInt(document.getElementById('add-bulk2-qty').value) : null;
-    const bulk2Price = document.getElementById('add-bulk2-price').value ? parseFloat(document.getElementById('add-bulk2-price').value) : null;
-    const photoFile = document.getElementById('add-photo').files[0];
-
     const resultEl = document.getElementById('add-result');
+
     if (!code || !category || !name || isNaN(price)) {
       resultEl.innerHTML = `<span class="err">Please fill in code, category, name, and price.</span>`;
       return;
     }
-
-    const addBtn = document.getElementById('add-fish-btn');
-    addBtn.disabled = true; addBtn.textContent = 'Adding…';
-
-    let imageUrl = null;
-    if (photoFile) {
-      try {
-        imageUrl = await uploadPhotoForCode(photoFile, code);
-      } catch (err) {
-        console.error(err);
-        resultEl.innerHTML = `<span class="err">Photo upload failed, but you can still add the fish and upload the photo later in the Photos tab.</span>`;
-      }
-    }
-
     const res = await fetch(`${SUPABASE_URL}/rest/v1/fish`, {
       method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify([{ code, category, name, zh, size, price, featured, available: true, image_url: imageUrl,
-        bulk1_qty: bulk1Qty, bulk1_price: bulk1Price, bulk2_qty: bulk2Qty, bulk2_price: bulk2Price }])
+      body: JSON.stringify([{ code, category, name, zh, size, price, featured: false, available: true, tiers: [{ qty: 1, price }], images: [] }])
     });
-    addBtn.disabled = false; addBtn.textContent = 'Add Fish';
     if (res.ok) {
       resultEl.innerHTML = `<span class="ok">Added "${name}" — now live on your site.</span>`;
-      ['add-code','add-name','add-zh','add-size','add-price','add-bulk1-qty','add-bulk1-price','add-bulk2-qty','add-bulk2-price'].forEach(id => document.getElementById(id).value = '');
+      ['add-code','add-name','add-zh','add-size','add-price'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('add-category').value = '';
-      document.getElementById('add-featured').value = 'no';
-      document.getElementById('add-photo').value = '';
       await loadFish(); populateCatFilter();
     } else {
       resultEl.innerHTML = `<span class="err">Could not add fish — check that the Code isn't already used.</span>`;
@@ -621,25 +744,17 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   function parseBulkText(text) {
     const lines = text.split('\n').map(l => l.replace(/\r$/, '')).filter(l => l.trim() !== '');
     if (!lines.length) return [];
-    // Detect and skip a header row if the first line looks like column names
     let startIdx = 0;
     if (/group/i.test(lines[0]) && /code/i.test(lines[0])) startIdx = 1;
-
     const rows = [];
     for (let i = startIdx; i < lines.length; i++) {
       const cols = lines[i].split('\t');
       if (cols.length < 3) continue;
-      const [group, code, fish, size, price, imageFile] = cols;
+      const [group, code, fish, size, price] = cols;
       if (!code || !fish) continue;
       const { name, zh } = splitFishName(fish);
-      const priceInfo = parsePriceField(price);
-      const row = {
-        code: code.trim(), category: (group || '').trim(), name, zh,
-        size: (size || '').trim(), price: priceInfo.price,
-        bulk1_qty: priceInfo.bulk1Qty ?? null, bulk1_price: priceInfo.bulk1Price ?? null,
-        bulk2_qty: priceInfo.bulk2Qty ?? null, bulk2_price: priceInfo.bulk2Price ?? null
-      };
-      rows.push(row);
+      const tiers = parsePriceField(price);
+      rows.push({ code: code.trim(), category: (group || '').trim(), name, zh, size: (size || '').trim(), price: tiers[0].price, tiers });
     }
     return rows;
   }
@@ -648,96 +763,30 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     const text = document.getElementById('bulk-textarea').value;
     const resultEl = document.getElementById('bulk-result');
     const rows = parseBulkText(text);
-    if (!rows.length) { resultEl.innerHTML = `<span class="err">No valid rows found. Make sure you pasted tab-separated columns.</span>`; return; }
-
+    if (!rows.length) { resultEl.innerHTML = `<span class="err">No valid rows found.</span>`; return; }
     resultEl.innerHTML = `Importing ${rows.length} fish…`;
 
     const existingByCode = {};
     fishList.forEach(f => { existingByCode[f.code] = f; });
     const finalPayload = rows.map(r => {
       const existing = existingByCode[r.code];
-      return {
-        ...r,
-        available: existing ? existing.available : false,
-        featured: existing ? existing.featured : false
-      };
+      return { ...r, available: existing ? existing.available : false, featured: existing ? existing.featured : false, images: existing ? existing.images : [] };
     });
 
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?on_conflict=code`, {
-        method: 'POST',
-        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        method: 'POST', headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(finalPayload)
       });
       if (!res.ok) throw new Error(await res.text());
-      resultEl.innerHTML = `<span class="ok">Imported ${rows.length} fish successfully.</span> New fish are set to "not available" until you toggle them on in the Stock tab.`;
+      resultEl.innerHTML = `<span class="ok">Imported ${rows.length} fish successfully.</span> New fish are set to "not available" until toggled on.`;
       document.getElementById('bulk-textarea').value = '';
-      await loadFish(); populateCatFilter(); renderStockTable();
+      await loadFish(); populateCatFilter();
     } catch (err) {
       console.error(err);
       resultEl.innerHTML = `<span class="err">Import failed. Check your data format and try again.</span>`;
     }
   });
-
-  // ---------- PHOTOS ----------
-  const dropZone = document.getElementById('drop-zone');
-  const photoInput = document.getElementById('photo-input');
-  dropZone.addEventListener('click', () => photoInput.click());
-  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault(); dropZone.classList.remove('dragover');
-    handlePhotoFiles(e.dataTransfer.files);
-  });
-  photoInput.addEventListener('change', () => handlePhotoFiles(photoInput.files));
-
-  // Uploads a single photo file to storage and returns its public URL (or null on failure)
-  async function uploadPhotoForCode(file, code) {
-    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
-    const storagePath = `${code}-${Date.now()}${ext}`;
-    const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
-      method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
-    });
-    if (!uploadRes.ok) throw new Error(await uploadRes.text());
-    return `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
-  }
-
-  async function handlePhotoFiles(fileList) {
-    const files = Array.from(fileList);
-    const logEl = document.getElementById('photo-log');
-    logEl.innerHTML = '';
-
-    for (const file of files) {
-      const row = document.createElement('div');
-      row.className = 'photo-log-row';
-      row.innerHTML = `<span>${file.name}</span><span class="status">Uploading…</span>`;
-      logEl.appendChild(row);
-
-      const baseName = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
-      const match = fishList.find(f => f.code.toUpperCase() === baseName);
-      if (!match) {
-        row.querySelector('.status').className = 'status err';
-        row.querySelector('.status').textContent = 'No matching fish code';
-        continue;
-      }
-
-      try {
-        const publicUrl = await uploadPhotoForCode(file, match.code);
-        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(match.code)}`, {
-          method: 'PATCH', headers, body: JSON.stringify({ image_url: publicUrl })
-        });
-        match.image_url = publicUrl;
-        row.querySelector('.status').className = 'status ok';
-        row.querySelector('.status').textContent = `Matched → ${match.code}`;
-      } catch (err) {
-        console.error(err);
-        row.querySelector('.status').className = 'status err';
-        row.querySelector('.status').textContent = 'Upload failed';
-      }
-    }
-  }
 
   // ---------- ORDERS ----------
   async function loadOrders() {
@@ -749,7 +798,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       if (!orders.length) { listEl.innerHTML = `<div class="empty-msg">No orders yet.</div>`; return; }
 
       listEl.innerHTML = orders.map(o => `
-        <div class="order-card" data-id="${o.id}">
+        <div class="order-card">
           <div class="order-card-head">
             <div>
               <div class="order-ref">${o.order_ref}</div>
@@ -762,24 +811,15 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
             </div>
           </div>
           <div class="order-items">
-            <div class="order-item-row" style="font-size:11px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
+            <div class="order-item-row" style="font-size:10.5px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
               <span>Fish</span>
-              <div class="item-price-grid">
-                <span>Qty</span><span>Price</span><span>Total</span>
-              </div>
+              <div class="item-price-grid"><span>Qty</span><span>Price</span><span>Total</span></div>
             </div>
             ${o.items.map(it => `<div class="order-item-row">
                 <span class="oi-name"><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
                 ${it.unit_price !== undefined
-                  ? `<div class="mono item-price-grid" style="color:var(--ink);">
-                      <span>${it.qty}</span>
-                      <span style="color:var(--ink-soft);">RM${parseFloat(it.unit_price).toFixed(2)}</span>
-                      <span>RM${parseFloat(it.line_total).toFixed(2)}</span>
-                    </div>`
-                  : `<div class="mono item-price-grid no-price" style="color:var(--ink-soft);">
-                      <span>${it.qty}</span>
-                      <span style="grid-column: span 2;">No price recorded</span>
-                    </div>`}
+                  ? `<div class="mono item-price-grid" style="color:var(--ink);"><span>${it.qty}</span><span style="color:var(--ink-soft);">RM${parseFloat(it.unit_price).toFixed(2)}</span><span>RM${parseFloat(it.line_total).toFixed(2)}</span></div>`
+                  : `<div class="mono item-price-grid no-price" style="color:var(--ink-soft);"><span>${it.qty}</span><span>No price recorded</span></div>`}
               </div>`).join('')}
             ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
           </div>
@@ -797,9 +837,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
           loadOrders();
         });
       });
-      listEl.querySelectorAll('.download-receipt-btn').forEach((btn, i) => {
-        btn.addEventListener('click', () => downloadReceiptImage(orders[i]));
-      });
+      listEl.querySelectorAll('.download-receipt-btn').forEach((btn, i) => btn.addEventListener('click', () => downloadReceiptImage(orders[i])));
     } catch (err) {
       console.error(err);
       listEl.innerHTML = `<div class="empty-msg">Could not load orders.</div>`;
@@ -807,49 +845,34 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
 
   function downloadReceiptImage(order) {
-    const padding = 32;
-    const lineHeight = 26;
-    const width = 480;
+    const padding = 32, lineHeight = 26, width = 480;
     const height = padding * 2 + 210 + order.items.length * lineHeight;
-
     const canvas = document.createElement('canvas');
     canvas.width = width; canvas.height = height;
     const ctx = canvas.getContext('2d');
-
     ctx.fillStyle = '#FAFAFA'; ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = '#14181A';
     ctx.font = '700 20px Arial'; ctx.fillText('Jet Fish — Order Receipt', padding, padding + 10);
     ctx.font = '400 13px Arial'; ctx.fillStyle = '#6B7280';
     ctx.fillText(order.order_ref, padding, padding + 34);
-
     let y = padding + 70;
     ctx.fillStyle = '#14181A'; ctx.font = '700 14px Arial';
     ctx.fillText('Company: ' + order.company, padding, y); y += 22;
     ctx.fillText('Phone: ' + order.phone, padding, y); y += 22;
     ctx.fillStyle = '#6B7280'; ctx.font = '400 12px Arial';
     ctx.fillText(new Date(order.created_at).toLocaleString(), padding, y); y += 30;
-
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-    y += 24;
-
-    ctx.font = '700 13px Arial'; ctx.fillStyle = '#14181A';
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke(); y += 24;
     order.items.forEach(it => {
       const label = `${it.code} — ${it.name}`;
-      ctx.font = '600 13px Arial';
+      ctx.font = '600 13px Arial'; ctx.fillStyle = '#14181A';
       ctx.fillText(label.length > 34 ? label.slice(0, 32) + '…' : label, padding, y);
-      ctx.font = '700 13px Arial';
-      ctx.textAlign = 'right';
-      const qtyPriceText = it.unit_price !== undefined
-        ? `×${it.qty} = RM${parseFloat(it.line_total).toFixed(2)}`
-        : 'Qty: ' + it.qty;
-      ctx.fillText(qtyPriceText, width - padding, y);
-      ctx.textAlign = 'left';
+      ctx.font = '700 13px Arial'; ctx.textAlign = 'right';
+      const qtyPriceText = it.unit_price !== undefined ? `×${it.qty} = RM${parseFloat(it.line_total).toFixed(2)}` : 'Qty: ' + it.qty;
+      ctx.fillText(qtyPriceText, width - padding, y); ctx.textAlign = 'left';
       y += lineHeight;
     });
-
     y += 6;
-    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
-    y += 26;
+    ctx.strokeStyle = '#E5E7EB'; ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke(); y += 26;
     ctx.font = '700 13px Arial';
     ctx.fillText(`Total Fish Types: ${order.total_types}`, padding, y); y += 20;
     ctx.fillText(`Total Quantity: ${order.total_qty}`, padding, y); y += 20;
@@ -857,7 +880,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       ctx.font = '700 16px Arial';
       ctx.fillText(`Order Total: RM${parseFloat(order.order_total).toFixed(2)}`, padding, y);
     }
-
     const link = document.createElement('a');
     link.download = `${order.order_ref}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -870,7 +892,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   async function init() {
     await loadFish();
     populateCatFilter();
-    renderStockTable();
+    renderStockList();
   }
 </script>
 
