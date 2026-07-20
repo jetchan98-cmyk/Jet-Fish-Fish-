@@ -187,8 +187,8 @@
   <header>
     <div class="tabs">
       <button class="tab-btn active" data-panel="stock">Stocks</button>
-      <button class="tab-btn" data-panel="addfish">Add Fish</button>
-      <button class="tab-btn" data-panel="addimage">Add Image</button>
+      <button class="tab-btn" data-panel="addfish">Add Fish/Image</button>
+      <button class="tab-btn" data-panel="weekly">Weekly Import</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
   </header>
@@ -303,7 +303,7 @@
       </div>
     </section>
 
-    <!-- ================= ADD FISH ================= -->
+    <!-- ================= ADD FISH / IMAGE ================= -->
     <section class="panel" id="panel-addfish">
       <div class="editor-card">
         <h3>Add Single Fish</h3>
@@ -318,6 +318,20 @@
       </div>
 
       <div class="editor-card">
+        <h3>Bulk Images</h3>
+        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive. You can select many at once.</div>
+        <div class="drop-zone" id="bulk-drop-zone">
+          <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
+          <div style="font-size:12px;">You can select many at once</div>
+          <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
+        </div>
+        <div id="bulk-photo-log" style="margin-top:14px;"></div>
+      </div>
+    </section>
+
+    <!-- ================= WEEKLY IMPORT ================= -->
+    <section class="panel" id="panel-weekly">
+      <div class="editor-card">
         <h3>Weekly Import</h3>
         <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
         <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
@@ -328,20 +342,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         </div>
         <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
         <div class="result-msg" id="bulk-result"></div>
-      </div>
-    </section>
-
-    <!-- ================= ADD IMAGE ================= -->
-    <section class="panel" id="panel-addimage">
-      <div class="editor-card">
-        <h3>Bulk Images</h3>
-        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive. You can select many at once.</div>
-        <div class="drop-zone" id="bulk-drop-zone">
-          <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
-          <div style="font-size:12px;">You can select many at once</div>
-          <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
-        </div>
-        <div id="bulk-photo-log" style="margin-top:14px;"></div>
       </div>
     </section>
 
@@ -618,8 +618,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
     doc.setFont('NotoSansSC');
 
-    doc.setFontSize(13);
-    doc.text(`Jet Fish Shop  ·  ${CONTACT_PHONE}`, pageWidth / 2, 30, { align: 'center' });
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
     const available = fishList.filter(f => f.available).slice().sort((a, b) => {
       if (a.category !== b.category) return a.category.localeCompare(b.category);
@@ -633,7 +632,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     ]);
 
     doc.autoTable({
-      startY: 45,
+      startY: 76,
+      margin: { top: 76 },
       head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
       body: rows,
       styles: { font: 'NotoSansSC', fontSize: 8, cellPadding: 4 },
@@ -643,10 +643,16 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         1: { cellWidth: 48 },
         2: { cellWidth: 62, overflow: 'visible' }, // keep Code on one line
         4: { cellWidth: 45 }
+      },
+      didDrawPage: () => {
+        doc.setFont('NotoSansSC');
+        doc.setFontSize(10);
+        doc.text(`Date: ${today}`, pageWidth / 2, 26, { align: 'center' });
+        doc.text(`Jet: ${CONTACT_PHONE}`, pageWidth / 2, 40, { align: 'center' });
+        doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 54, { align: 'center' });
       }
     });
 
-    const today = new Date().toLocaleDateString('en-GB');
     doc.save(`Jet-Fish-Price-List-${today.replace(/\//g, '-')}.pdf`);
   });
 
