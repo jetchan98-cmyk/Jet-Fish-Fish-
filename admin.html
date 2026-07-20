@@ -139,12 +139,7 @@
   .danger-zone p { font-size: 12.5px; color: #8A3A3A; margin: 6px 0 14px; }
   .delete-btn { width: 100%; background: var(--red); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 700; font-size: 14px; }
 
-  /* ---------- ADD FISH / BULK IMPORT (Product Import tab) ---------- */
-  .import-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-  .import-toggle button { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
-  .import-toggle button.active { background: var(--ink); border-color: var(--ink); color: white; }
-  .import-view { display: none; }
-  .import-view.active { display: block; }
+  /* ---------- ADD FISH / ADD IMAGE ---------- */
   .bulk-textarea { width: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; margin-bottom: 10px; }
   .bulk-hint { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
   .result-msg { margin-top: 12px; font-size: 13.5px; }
@@ -192,7 +187,8 @@
   <header>
     <div class="tabs">
       <button class="tab-btn active" data-panel="stock">Stocks</button>
-      <button class="tab-btn" data-panel="import">Product Import</button>
+      <button class="tab-btn" data-panel="addfish">Add Fish</button>
+      <button class="tab-btn" data-panel="addimage">Add Image</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
   </header>
@@ -203,22 +199,8 @@
 
       <!-- LIST VIEW -->
       <div id="stock-list-view">
-        <div class="quick-actions">
-          <button class="qa-btn qa-green" id="qa-add-fish">+ Add Fish</button>
-          <button class="qa-btn qa-blue" id="qa-weekly-import">Weekly Import</button>
-          <button class="qa-btn qa-outline" id="qa-bulk-images">Bulk Images</button>
+        <div class="quick-actions" style="grid-template-columns: 1fr;">
           <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
-        </div>
-
-        <div class="editor-card" id="bulk-images-panel" style="display:none;">
-          <h3>Bulk Images</h3>
-          <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive.</div>
-          <div class="drop-zone" id="bulk-drop-zone">
-            <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
-            <div style="font-size:12px;">You can select many at once</div>
-            <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
-          </div>
-          <div id="bulk-photo-log" style="margin-top:14px;"></div>
         </div>
 
         <div class="avail-filter-toggle">
@@ -321,27 +303,23 @@
       </div>
     </section>
 
-    <!-- ================= PRODUCT IMPORT ================= -->
-    <section class="panel" id="panel-import">
-      <div class="import-toggle">
-        <button class="active" data-import-view="single">Add Single Fish</button>
-        <button data-import-view="bulk">Bulk Import</button>
+    <!-- ================= ADD FISH ================= -->
+    <section class="panel" id="panel-addfish">
+      <div class="editor-card">
+        <h3>Add Single Fish</h3>
+        <label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700">
+        <label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel">
+        <label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel">
+        <label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳">
+        <label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm">
+        <label>Price (RM)</label><input type="number" step="0.10" id="add-price" placeholder="3.00">
+        <button class="save-btn" id="add-fish-btn" type="button" style="margin-top:6px;">Add Fish</button>
+        <div class="result-msg" id="add-result"></div>
       </div>
 
-      <div class="import-view active" id="import-single">
-        <div class="editor-card">
-          <label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700">
-          <label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel">
-          <label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel">
-          <label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳">
-          <label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm">
-          <label>Price (RM)</label><input type="number" step="0.10" id="add-price" placeholder="3.00">
-          <button class="save-btn" id="add-fish-btn" type="button" style="margin-top:6px;">Add Fish</button>
-          <div class="result-msg" id="add-result"></div>
-        </div>
-      </div>
-
-      <div class="import-view" id="import-bulk">
+      <div class="editor-card">
+        <h3>Weekly Import</h3>
+        <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
         <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
 Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
         <div class="bulk-hint">
@@ -350,6 +328,20 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         </div>
         <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
         <div class="result-msg" id="bulk-result"></div>
+      </div>
+    </section>
+
+    <!-- ================= ADD IMAGE ================= -->
+    <section class="panel" id="panel-addimage">
+      <div class="editor-card">
+        <h3>Bulk Images</h3>
+        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive. You can select many at once.</div>
+        <div class="drop-zone" id="bulk-drop-zone">
+          <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
+          <div style="font-size:12px;">You can select many at once</div>
+          <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
+        </div>
+        <div id="bulk-photo-log" style="margin-top:14px;"></div>
       </div>
     </section>
 
@@ -407,15 +399,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
       if (btn.dataset.panel === 'orders') loadOrders();
       if (btn.dataset.panel === 'stock') showListView();
-    });
-  });
-
-  document.querySelectorAll('.import-toggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.import-toggle button').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.import-view').forEach(v => v.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('import-' + btn.dataset.importView).classList.add('active');
     });
   });
 
@@ -562,24 +545,6 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
 
   // ---------- QUICK ACTIONS ----------
-  function goToImportTab(view) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.querySelector('.tab-btn[data-panel="import"]').classList.add('active');
-    document.getElementById('panel-import').classList.add('active');
-    document.querySelectorAll('.import-toggle button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.import-view').forEach(v => v.classList.remove('active'));
-    document.querySelector(`.import-toggle button[data-import-view="${view}"]`).classList.add('active');
-    document.getElementById('import-' + view).classList.add('active');
-  }
-  document.getElementById('qa-add-fish').addEventListener('click', () => goToImportTab('single'));
-  document.getElementById('qa-weekly-import').addEventListener('click', () => goToImportTab('bulk'));
-
-  document.getElementById('qa-bulk-images').addEventListener('click', () => {
-    const panel = document.getElementById('bulk-images-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  });
-
   const bulkDropZone = document.getElementById('bulk-drop-zone');
   const bulkPhotoInput = document.getElementById('bulk-photo-input');
   bulkDropZone.addEventListener('click', () => bulkPhotoInput.click());
