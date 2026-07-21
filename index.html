@@ -27,9 +27,9 @@
   .search-cat-dropdown {
     display: none; position: absolute; top: calc(100% - 6px); left: 20px; right: 20px; background: var(--panel);
     border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 10px;
-    z-index: 65; max-width: 1140px; margin: 0 auto; flex-wrap: wrap; gap: 8px;
+    z-index: 65; max-width: 1140px; margin: 0 auto; gap: 8px;
   }
-  .search-cat-dropdown.open { display: flex; }
+  .search-cat-dropdown.open { display: grid; grid-template-columns: 1fr 1fr; }
   .search-cat-pill { border: 1px solid var(--line); background: var(--bg); padding: 8px 14px; border-radius: 16px; font-size: 13px; font-weight: 500; color: var(--ink); }
   .search-cat-pill.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
   @media (max-width: 600px) {
@@ -373,7 +373,7 @@
   <button class="confirm-done-btn" id="confirm-done-btn">Done</button>
 </section>
 
-<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 012-7735057</div></div></footer>
+<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div></div></footer>
 
 <script>
   // Builds a cute cartoon body: filled color body + dark outline + big eye with highlight

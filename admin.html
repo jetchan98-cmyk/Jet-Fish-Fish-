@@ -82,7 +82,9 @@
   .fc-tag.offer-notset { background: #F2F3F4; color: var(--ink-soft); }
   .fc-tag.missing-img { background: var(--red-soft); color: var(--red); }
   .fc-actions { display: flex; gap: 8px; margin-top: 12px; }
-  .stock-pager { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
+  .stock-pager { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
+  .pager-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pager-input { width: 70px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 13px; text-align: center; }
   .fc-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
@@ -347,7 +349,7 @@
     <section class="panel" id="panel-weekly">
       <div class="import-mode-toggle">
         <button class="mode-btn active" data-mode="full">Full Product Data</button>
-        <button class="mode-btn" data-mode="codes">Fish Codes Only</button>
+        <button class="mode-btn" data-mode="codes">Turn On Only</button>
         <button class="mode-btn" data-mode="turnoff">Turn Off Only</button>
       </div>
 
@@ -529,7 +531,7 @@ BET-0166"></textarea>
     return sorted.map(t => {
       const price = parseFloat(t.price).toFixed(2);
       return t.qty === 1 ? `1 x RM${price}` : `${t.qty}+ RM${price}`;
-    }).join(' . ');
+    }).join('   /   ');
   }
 
   // ---------- STOCK: LOAD + LIST VIEW ----------
@@ -632,13 +634,35 @@ BET-0166"></textarea>
       document.getElementById('fish-card-list').after(pagerEl);
     }
     if (totalCount === 0) { pagerEl.innerHTML = ''; return; }
+
+    function goTo(p) {
+      stockPage = Math.min(Math.max(1, p), totalPages);
+      renderStockList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
     pagerEl.innerHTML = `
-      <button class="icon-btn" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
-      <span>Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish</span>
-      <button class="icon-btn" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>Next ›</button>
+      <div class="pager-row">
+        <button class="icon-btn" id="stock-page-back2" ${stockPage <= 1 ? 'disabled' : ''}>« -2</button>
+        <button class="icon-btn" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
+        <span>Page ${stockPage} of ${totalPages}</span>
+        <button class="icon-btn" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>Next ›</button>
+        <button class="icon-btn" id="stock-page-fwd2" ${stockPage >= totalPages ? 'disabled' : ''}>+2 »</button>
+      </div>
+      <div class="pager-row">
+        <span style="color:var(--ink-soft);">${totalCount} fish</span>
+        <input type="number" id="stock-page-input" class="pager-input" min="1" max="${totalPages}" placeholder="Page #">
+        <button class="icon-btn" id="stock-page-go">Go</button>
+      </div>
     `;
-    document.getElementById('stock-page-prev').addEventListener('click', () => { if (stockPage > 1) { stockPage--; renderStockList(); window.scrollTo({top:0, behavior:'smooth'}); } });
-    document.getElementById('stock-page-next').addEventListener('click', () => { if (stockPage < totalPages) { stockPage++; renderStockList(); window.scrollTo({top:0, behavior:'smooth'}); } });
+    document.getElementById('stock-page-back2').addEventListener('click', () => goTo(stockPage - 2));
+    document.getElementById('stock-page-prev').addEventListener('click', () => goTo(stockPage - 1));
+    document.getElementById('stock-page-next').addEventListener('click', () => goTo(stockPage + 1));
+    document.getElementById('stock-page-fwd2').addEventListener('click', () => goTo(stockPage + 2));
+    const pageInput = document.getElementById('stock-page-input');
+    const goToTyped = () => { const v = parseInt(pageInput.value); if (!isNaN(v)) goTo(v); };
+    document.getElementById('stock-page-go').addEventListener('click', goToTyped);
+    pageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') goToTyped(); });
   }
 
   async function quickToggleAvailable(code) {
@@ -1080,6 +1104,10 @@ BET-0166"></textarea>
   });
 
   // ---------- WEEKLY IMPORT: FISH CODES ONLY ----------
+  function normalizeCode(c) {
+    return (c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
+
   function analyzeCodesInput() {
     const raw = document.getElementById('codes-textarea').value;
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
@@ -1088,18 +1116,18 @@ BET-0166"></textarea>
     const duplicateLines = [];
     const uniqueCodes = [];
     lines.forEach(code => {
-      const key = code.toUpperCase();
+      const key = normalizeCode(code);
       if (seen.has(key)) { duplicateLines.push(code); }
       else { seen.add(key); uniqueCodes.push(code); }
     });
 
     const byCodeUpper = {};
-    fishList.forEach(f => { byCodeUpper[f.code.toUpperCase()] = f; });
+    fishList.forEach(f => { byCodeUpper[normalizeCode(f.code)] = f; });
 
     const matched = [];
     const unknown = [];
     uniqueCodes.forEach(code => {
-      const f = byCodeUpper[code.toUpperCase()];
+      const f = byCodeUpper[normalizeCode(code)];
       if (f) matched.push(f); else unknown.push(code);
     });
 
@@ -1169,15 +1197,20 @@ BET-0166"></textarea>
   function analyzeTurnOffInput() {
     const raw = document.getElementById('turnoff-textarea').value;
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
-    const uniqueCodes = [...new Set(lines.map(l => l.toUpperCase()))];
+    const seenKeys = new Set();
+    const uniqueCodes = [];
+    lines.forEach(code => {
+      const key = normalizeCode(code);
+      if (!seenKeys.has(key)) { seenKeys.add(key); uniqueCodes.push(code); }
+    });
 
     const byCodeUpper = {};
-    fishList.forEach(f => { byCodeUpper[f.code.toUpperCase()] = f; });
+    fishList.forEach(f => { byCodeUpper[normalizeCode(f.code)] = f; });
 
     const matched = [];
     const unknown = [];
     uniqueCodes.forEach(code => {
-      const f = byCodeUpper[code];
+      const f = byCodeUpper[normalizeCode(code)];
       if (f) matched.push(f); else unknown.push(code);
     });
 
