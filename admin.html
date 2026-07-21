@@ -66,7 +66,7 @@
   .fc-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #F2F3F4; }
   .fc-thumb-placeholder { width: 56px; height: 56px; border-radius: 10px; background: #F2F3F4; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
   .fc-info { flex: 1; min-width: 0; }
-  .fc-name { font-size: 15px; font-weight: 700; }
+  .fc-name { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
   .fc-zh { font-size: 12.5px; color: var(--ink-soft); }
   .fc-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
   .fc-status-pill { flex-shrink: 0; border: none; padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: 700; }
@@ -142,6 +142,16 @@
   /* ---------- ADD FISH / ADD IMAGE ---------- */
   .bulk-textarea { width: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; margin-bottom: 10px; }
   .bulk-hint { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
+  .import-mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
+  .mode-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
+  .mode-view { display: none; }
+  .mode-view.active { display: block; }
+  .codes-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .stat-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .codes-list-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
   .result-msg { margin-top: 12px; font-size: 13.5px; }
   .result-msg .ok { color: var(--accent); font-weight: 600; }
   .result-msg .err { color: var(--red); }
@@ -308,7 +318,9 @@
       <div class="editor-card">
         <h3>Add Single Fish</h3>
         <label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700">
-        <label>Category</label><input type="text" id="add-category" placeholder="e.g. Angel">
+        <label>Category</label>
+        <select class="field" id="add-category-select" style="margin-bottom:14px;"></select>
+        <input type="text" id="add-category-new" placeholder="New category name" style="display:none;">
         <label>Name (English)</label><input type="text" id="add-name" placeholder="e.g. Black Angel">
         <label>Name (Chinese)</label><input type="text" id="add-zh" placeholder="e.g. 黑鲳">
         <label>Size</label><input type="text" id="add-size" placeholder="e.g. 4-5cm">
@@ -331,17 +343,60 @@
 
     <!-- ================= WEEKLY IMPORT ================= -->
     <section class="panel" id="panel-weekly">
-      <div class="editor-card">
-        <h3>Weekly Import</h3>
-        <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
-        <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
+      <div class="import-mode-toggle">
+        <button class="mode-btn active" data-mode="full">Full Product Data</button>
+        <button class="mode-btn" data-mode="codes">Fish Codes Only</button>
+      </div>
+
+      <!-- FULL PRODUCT DATA -->
+      <div class="mode-view active" id="mode-full">
+        <div class="editor-card">
+          <h3>Weekly Import</h3>
+          <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
+          <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
 Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
-        <div class="bulk-hint">
-          Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
-          Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stocks.
+          <div class="bulk-hint">
+            Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
+            Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stocks.
+          </div>
+          <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
+          <div class="result-msg" id="bulk-result"></div>
         </div>
-        <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
-        <div class="result-msg" id="bulk-result"></div>
+      </div>
+
+      <!-- FISH CODES ONLY -->
+      <div class="mode-view" id="mode-codes">
+        <div class="editor-card">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <h3 style="margin-bottom:2px;">Paste Fish Codes</h3>
+            <span style="font-size:11.5px; color:var(--brand-blue); font-weight:600;">One fish code per line</span>
+          </div>
+          <div class="sub">Paste the codes of fish you have this week. Those codes turn <b>ON</b> — everything else turns <b>OFF</b>, just like your weekly stock update.</div>
+          <textarea class="bulk-textarea" id="codes-textarea" style="min-height:160px;" placeholder="AGL-0628
+BET-0166
+BAB-9042"></textarea>
+        </div>
+
+        <div class="editor-card">
+          <h3>Preview</h3>
+          <div class="codes-stats-grid">
+            <div class="stat-box"><div class="stat-label">Codes Pasted</div><div class="stat-value" id="stat-pasted">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--accent);">Turn On</div><div class="stat-value" style="color:var(--accent);" id="stat-turnon">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--brand-blue);">Already On</div><div class="stat-value" style="color:var(--brand-blue);" id="stat-alreadyon">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--orange);">Turn Off</div><div class="stat-value" style="color:var(--orange);" id="stat-turnoff">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unknown</div><div class="stat-value" style="color:var(--red);" id="stat-unknown">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Duplicates</div><div class="stat-value" style="color:var(--red);" id="stat-duplicates">0</div></div>
+          </div>
+          <button class="save-btn" id="codes-import-btn" type="button" style="margin-top:14px;">Apply Weekly Update</button>
+          <div class="result-msg" id="codes-result"></div>
+        </div>
+
+        <div class="editor-card" id="codes-lists-wrap" style="display:none;">
+          <h3>Matched Products <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn ON)</span></h3>
+          <div id="codes-matched-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Products To Deactivate <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn OFF)</span></h3>
+          <div id="codes-deactivate-list" style="font-size:13px;"></div>
+        </div>
       </div>
     </section>
 
@@ -437,7 +492,11 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   }
   function tierSummaryCompact(tiers) {
     if (!tiers || !tiers.length) return 'No price set';
-    return tierRangeLabels(tiers).map(r => `${r.label}: RM${r.price.toFixed(2)}`).join(' · ');
+    const sorted = [...tiers].sort((a, b) => a.qty - b.qty);
+    return sorted.map(t => {
+      const price = parseFloat(t.price).toFixed(2);
+      return t.qty === 1 ? `1 x RM${price}` : `${t.qty}+ RM${price}`;
+    }).join(' . ');
   }
 
   // ---------- STOCK: LOAD + LIST VIEW ----------
@@ -455,6 +514,16 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     const cats = [...new Set(fishList.map(f => f.category))].sort();
     sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
   }
+
+  function populateAddCategorySelect() {
+    const sel = document.getElementById('add-category-select');
+    const cats = [...new Set(fishList.map(f => f.category))].sort();
+    sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="__new__">+ Add new category</option>`;
+    document.getElementById('add-category-new').style.display = 'none';
+  }
+  document.getElementById('add-category-select').addEventListener('change', function() {
+    document.getElementById('add-category-new').style.display = this.value === '__new__' ? 'block' : 'none';
+  });
 
   let availFilter = 'all';
   function renderStockList() {
@@ -490,9 +559,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
         <div class="fc-top">
           ${thumb}
           <div class="fc-info">
-            <div class="fc-name">${f.name}</div>
-            ${f.zh ? `<div class="fc-zh">${f.zh}</div>` : ''}
-            <div class="fc-meta mono">${f.code} · ${f.size || '—'}</div>
+            <div class="fc-name"><span class="mono" style="color:var(--ink-soft); font-weight:600;">${f.code}</span> — ${f.name}${f.zh ? ' ' + f.zh : ''}</div>
+            <div class="fc-meta">${f.size || '—'}</div>
           </div>
           <button class="fc-status-pill ${f.available ? 'on' : 'off'} toggle-avail-btn" data-code="${f.code}">${f.available ? 'ON' : 'OFF'}</button>
         </div>
@@ -867,7 +935,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   // ---------- ADD SINGLE FISH ----------
   document.getElementById('add-fish-btn').addEventListener('click', async () => {
     const code = document.getElementById('add-code').value.trim();
-    const category = document.getElementById('add-category').value.trim();
+    const catSelect = document.getElementById('add-category-select');
+    const category = catSelect.value === '__new__' ? document.getElementById('add-category-new').value.trim() : catSelect.value;
     const name = document.getElementById('add-name').value.trim();
     const zh = document.getElementById('add-zh').value.trim();
     const size = document.getElementById('add-size').value.trim();
@@ -885,8 +954,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     if (res.ok) {
       resultEl.innerHTML = `<span class="ok">Added "${name}" — now live on your site.</span>`;
       ['add-code','add-name','add-zh','add-size','add-price'].forEach(id => document.getElementById(id).value = '');
-      document.getElementById('add-category').value = '';
-      await loadFish(); populateCatFilter();
+      document.getElementById('add-category-new').value = '';
+      await loadFish(); populateCatFilter(); populateAddCategorySelect();
     } else {
       resultEl.innerHTML = `<span class="err">Could not add fish — check that the Code isn't already used.</span>`;
     }
@@ -938,6 +1007,102 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       console.error(err);
       resultEl.innerHTML = `<span class="err">Import failed. Check your data format and try again.</span>`;
     }
+  });
+
+  // ---------- WEEKLY IMPORT: MODE TOGGLE ----------
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mode-view').forEach(v => v.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('mode-' + btn.dataset.mode).classList.add('active');
+    });
+  });
+
+  // ---------- WEEKLY IMPORT: FISH CODES ONLY ----------
+  function analyzeCodesInput() {
+    const raw = document.getElementById('codes-textarea').value;
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
+
+    const seen = new Set();
+    const duplicateLines = [];
+    const uniqueCodes = [];
+    lines.forEach(code => {
+      const key = code.toUpperCase();
+      if (seen.has(key)) { duplicateLines.push(code); }
+      else { seen.add(key); uniqueCodes.push(code); }
+    });
+
+    const byCodeUpper = {};
+    fishList.forEach(f => { byCodeUpper[f.code.toUpperCase()] = f; });
+
+    const matched = [];
+    const unknown = [];
+    uniqueCodes.forEach(code => {
+      const f = byCodeUpper[code.toUpperCase()];
+      if (f) matched.push(f); else unknown.push(code);
+    });
+
+    const matchedCodesUpper = new Set(matched.map(f => f.code.toUpperCase()));
+    const turnOn = matched.filter(f => !f.available);
+    const alreadyOn = matched.filter(f => f.available);
+    const turnOff = fishList.filter(f => f.available && !matchedCodesUpper.has(f.code.toUpperCase()));
+
+    return { codesPasted: lines.length, duplicates: duplicateLines.length, unknown, matched, turnOn, alreadyOn, turnOff };
+  }
+
+  function renderCodesPreview() {
+    const r = analyzeCodesInput();
+    document.getElementById('stat-pasted').textContent = r.codesPasted;
+    document.getElementById('stat-turnon').textContent = r.turnOn.length;
+    document.getElementById('stat-alreadyon').textContent = r.alreadyOn.length;
+    document.getElementById('stat-turnoff').textContent = r.turnOff.length;
+    document.getElementById('stat-unknown').textContent = r.unknown.length;
+    document.getElementById('stat-duplicates').textContent = r.duplicates;
+
+    const listsWrap = document.getElementById('codes-lists-wrap');
+    if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
+    listsWrap.style.display = 'block';
+
+    document.getElementById('codes-matched-list').innerHTML = r.matched.length
+      ? r.matched.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--accent); font-weight:600;">${f.available ? 'Already ON' : 'Will turn ON'}</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">No fish matched.</div>`;
+
+    document.getElementById('codes-deactivate-list').innerHTML = r.turnOff.length
+      ? r.turnOff.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--orange); font-weight:600;">Will turn OFF</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">Nothing to deactivate.</div>`;
+  }
+
+  document.getElementById('codes-textarea').addEventListener('input', renderCodesPreview);
+
+  document.getElementById('codes-import-btn').addEventListener('click', async () => {
+    const r = analyzeCodesInput();
+    const resultEl = document.getElementById('codes-result');
+    if (r.codesPasted === 0) { resultEl.innerHTML = `<span class="err">Paste some fish codes first.</span>`; return; }
+
+    if (!confirm(`This will turn ON ${r.turnOn.length} fish and turn OFF ${r.turnOff.length} fish not in this list. Continue?`)) return;
+
+    const btn = document.getElementById('codes-import-btn');
+    btn.disabled = true; btn.textContent = 'Applying…';
+
+    try {
+      const updates = [
+        ...r.turnOn.map(f => ({ code: f.code, available: true })),
+        ...r.turnOff.map(f => ({ code: f.code, available: false }))
+      ];
+      await Promise.all(updates.map(u =>
+        fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(u.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ available: u.available })
+        })
+      ));
+      resultEl.innerHTML = `<span class="ok">Weekly update applied — ${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF.</span>`;
+      document.getElementById('codes-textarea').value = '';
+      await loadFish(); populateCatFilter(); renderCodesPreview();
+    } catch (err) {
+      console.error(err);
+      resultEl.innerHTML = `<span class="err">Update failed. Please try again.</span>`;
+    }
+    btn.disabled = false; btn.textContent = 'Apply Weekly Update';
   });
 
   // ---------- ORDERS ----------
@@ -998,7 +1163,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   function downloadReceiptImage(order) {
     const padding = 24, width = 520;
     const rowHeight = 44;
-    const headerHeight = 66;
+    const headerHeight = 80;
     const height = headerHeight + order.items.length * rowHeight + padding;
 
     const canvas = document.createElement('canvas');
@@ -1016,10 +1181,14 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
     ctx.textAlign = 'left';
 
     let y = headerHeight;
+    // ---- Column header row ----
+    ctx.font = '700 10px Poppins, Arial'; ctx.fillStyle = '#9AA0A6'; ctx.textAlign = 'right';
+    ctx.fillText('QTY', width - padding, y - 6);
+    ctx.textAlign = 'left';
     ctx.strokeStyle = '#E5E7EB';
     ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
 
-    // ---- One row per fish: Code | Name | Size | Qty ----
+    // ---- One row per fish: Code | Name | Size | (number only) ----
     order.items.forEach((it) => {
       const textY = y + rowHeight / 2 + 4;
 
@@ -1034,8 +1203,8 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
       ctx.fillText('Size: ' + (it.size || '—'), width - padding - 90, textY);
       ctx.textAlign = 'left';
 
-      ctx.font = '700 14px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
-      ctx.fillText('Qty: ' + it.qty, width - padding, textY);
+      ctx.font = '700 15px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
+      ctx.fillText(String(it.qty), width - padding, textY);
       ctx.textAlign = 'left';
 
       y += rowHeight;
@@ -1055,6 +1224,7 @@ Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textar
   async function init() {
     await loadFish();
     populateCatFilter();
+    populateAddCategorySelect();
     renderStockList();
   }
 </script>
