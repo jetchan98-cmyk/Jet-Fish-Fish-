@@ -23,7 +23,15 @@
 
   header { position: sticky; top: 0; z-index: 60; background: rgba(250,250,250,0.92); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
   nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px; max-width: 1180px; margin: 0 auto; gap: 12px; }
-  .search-wrap { padding: 4px 20px 14px; max-width: 1180px; margin: 0 auto; }
+  .search-wrap { padding: 4px 20px 14px; max-width: 1180px; margin: 0 auto; position: relative; }
+  .search-cat-dropdown {
+    display: none; position: absolute; top: calc(100% - 6px); left: 20px; right: 20px; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 10px;
+    z-index: 65; max-width: 1140px; margin: 0 auto; flex-wrap: wrap; gap: 8px;
+  }
+  .search-cat-dropdown.open { display: flex; }
+  .search-cat-pill { border: 1px solid var(--line); background: var(--bg); padding: 8px 14px; border-radius: 16px; font-size: 13px; font-weight: 500; color: var(--ink); }
+  .search-cat-pill.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
   @media (max-width: 600px) {
     nav { padding: 10px 12px 6px; gap: 8px; }
     .search-wrap { padding: 2px 12px 10px; }
@@ -161,7 +169,7 @@
   .card-zh-line { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
   .card-code { font-size: 10.5px; color: var(--ink-soft); margin-top: 3px; }
   .card-size-line { font-size: 12px; font-weight: 700; color: var(--ink); margin-top: 6px; }
-  .card-price-line { font-size: 14px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .card-price-line { font-size: 16px; font-weight: 700; color: var(--accent); margin-top: 4px; }
   .card-price-line .from-label { font-weight: 400; color: var(--ink-soft); font-size: 11px; }
   .card-price-line .cur { font-size: 12px; margin-right: 1px; }
   .empty-state { grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--ink-soft); }
@@ -264,6 +272,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
       <input type="text" id="search-input" placeholder="Search fish name or code">
     </div>
+    <div class="search-cat-dropdown" id="search-cat-dropdown"></div>
   </div>
 </header>
 
@@ -605,6 +614,24 @@
     if (!catDropdownMenu.contains(e.target) && e.target !== catDropdownBtn) catDropdownMenu.classList.remove('open');
   });
 
+  // ---------- SEARCH BAR CATEGORY DROPDOWN ----------
+  const searchCatDropdown = document.getElementById('search-cat-dropdown');
+  function renderSearchCatDropdown() {
+    let html = `<button class="search-cat-pill ${activeCategory === 'All Fish' ? 'active' : ''}" data-cat="All Fish">${t('allFish')}</button>`;
+    getCategories().forEach(cat => {
+      html += `<button class="search-cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${cat}</button>`;
+    });
+    searchCatDropdown.innerHTML = html;
+    searchCatDropdown.querySelectorAll('.search-cat-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        activeCategory = btn.dataset.cat;
+        renderCatRail(); renderSearchCatDropdown(); renderGrid();
+        searchCatDropdown.classList.remove('open');
+        document.getElementById('all-fish-section').scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }
+
   document.getElementById('home-btn').addEventListener('click', () => {
     activeCategory = 'All Fish';
     searchInput.value = '';
@@ -698,6 +725,10 @@
     });
   }
   searchInput.addEventListener('input', renderGrid);
+  searchInput.addEventListener('focus', () => searchCatDropdown.classList.add('open'));
+  document.addEventListener('click', (e) => {
+    if (!searchCatDropdown.contains(e.target) && e.target !== searchInput) searchCatDropdown.classList.remove('open');
+  });
   document.getElementById('grid-sort').addEventListener('change', renderGrid);
 
 
@@ -1017,7 +1048,7 @@
   document.getElementById('lang-toggle-btn').addEventListener('click', () => {
     lang = lang === 'en' ? 'zh' : 'en';
     applyStaticTranslations();
-    renderCatRail(); renderFeatured(); renderGrid(); renderCart();
+    renderCatRail(); renderSearchCatDropdown(); renderFeatured(); renderGrid(); renderCart();
     if (detailProduct) openDetail(detailProduct.id);
   });
 
@@ -1025,7 +1056,7 @@
   (async function init() {
     await loadCatalog();
     applyStaticTranslations();
-    renderCatRail(); renderFeatured(); renderGrid(); renderCart();
+    renderCatRail(); renderSearchCatDropdown(); renderFeatured(); renderGrid(); renderCart();
   })();
 </script>
 

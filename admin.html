@@ -82,6 +82,7 @@
   .fc-tag.offer-notset { background: #F2F3F4; color: var(--ink-soft); }
   .fc-tag.missing-img { background: var(--red-soft); color: var(--red); }
   .fc-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .stock-pager { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
   .fc-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 600; text-align: center; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
@@ -169,8 +170,8 @@
   .order-items { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
   .order-item-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 6px 0; }
   .oi-name { flex: 1 1 100%; }
-  .item-price-grid { display: grid; grid-template-columns: 30px 60px 60px; gap: 4px; text-align: right; font-size: 11.5px; }
-  .item-price-grid span { text-align: right; }
+  .item-price-grid { display: grid; grid-template-columns: 30px 60px 60px; gap: 4px; text-align: center; font-size: 11.5px; }
+  .item-price-grid span { text-align: center; }
   .item-price-grid.no-price { grid-template-columns: 30px 1fr; }
   .order-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
   .icon-btn { border: 1px solid var(--line); background: var(--panel); border-radius: 7px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--ink-soft); flex: 1 1 auto; }
@@ -231,6 +232,7 @@
             <option value="price-asc">Price: Low to High</option>
             <option value="img-yes">With Image</option>
             <option value="img-no">No Image</option>
+            <option value="offer">Offer Fish</option>
           </select>
         </div>
         <div id="fish-card-list"><div class="loading-msg">Loading stock…</div></div>
@@ -346,6 +348,7 @@
       <div class="import-mode-toggle">
         <button class="mode-btn active" data-mode="full">Full Product Data</button>
         <button class="mode-btn" data-mode="codes">Fish Codes Only</button>
+        <button class="mode-btn" data-mode="turnoff">Turn Off Only</button>
       </div>
 
       <!-- FULL PRODUCT DATA -->
@@ -398,12 +401,37 @@ BAB-9042"></textarea>
           <div id="codes-deactivate-list" style="font-size:13px;"></div>
         </div>
       </div>
+
+      <!-- TURN OFF ONLY -->
+      <div class="mode-view" id="mode-turnoff">
+        <div class="editor-card">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <h3 style="margin-bottom:2px;">Paste Fish Codes To Turn Off</h3>
+            <span style="font-size:11.5px; color:var(--brand-blue); font-weight:600;">One fish code per line</span>
+          </div>
+          <div class="sub">Only the codes you paste here get turned <b>OFF</b>. Everything else stays untouched — use this when a few fish sold out mid-week.</div>
+          <textarea class="bulk-textarea" id="turnoff-textarea" style="min-height:160px;" placeholder="AGL-0628
+BET-0166"></textarea>
+        </div>
+        <div class="editor-card">
+          <h3>Preview</h3>
+          <div class="codes-stats-grid">
+            <div class="stat-box"><div class="stat-label">Codes Pasted</div><div class="stat-value" id="stat-off-pasted">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--orange);">Will Turn Off</div><div class="stat-value" style="color:var(--orange);" id="stat-off-matched">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--ink-soft);">Already Off</div><div class="stat-value" id="stat-off-alreadyoff">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unknown</div><div class="stat-value" style="color:var(--red);" id="stat-off-unknown">0</div></div>
+          </div>
+          <button class="save-btn" id="turnoff-import-btn" type="button" style="margin-top:14px;">Turn Off Listed Fish</button>
+          <div class="result-msg" id="turnoff-result"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ================= ORDERS ================= -->
     <section class="panel" id="panel-orders">
       <div class="toolbar">
         <button class="icon-btn" id="refresh-orders-btn" style="flex:0 0 auto;">↻ Refresh</button>
+        <button class="icon-btn" id="orders-lang-btn" style="flex:0 0 auto;">中文</button>
       </div>
       <div id="orders-list"><div class="loading-msg">Loading orders…</div></div>
     </section>
@@ -422,6 +450,11 @@ BAB-9042"></textarea>
   const headers = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
 
   let fishList = [];
+  let orderLang = 'en';
+  const orderI18n = {
+    en: { fish: 'Fish', qty: 'Qty', price: 'Price', total: 'Total', orderTotal: 'Order Total', noPrice: 'No price recorded', size: 'Size' },
+    zh: { fish: '鱼种', qty: '数量', price: '单价', total: '总计', orderTotal: '订单总额', noPrice: '未记录价格', size: '尺寸' }
+  };
   let editingFish = null; // working copy of the fish being edited
 
   function showToast(msg) {
@@ -526,6 +559,8 @@ BAB-9042"></textarea>
   });
 
   let availFilter = 'all';
+  let stockPage = 1;
+  const STOCK_PAGE_SIZE = 50;
   function renderStockList() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
     const catFilter = document.getElementById('stock-cat-filter').value;
@@ -544,11 +579,16 @@ BAB-9042"></textarea>
     else if (sortMode === 'price-asc') list.sort((a, b) => a.price - b.price);
     else if (sortMode === 'img-yes') list = list.filter(f => f.images && f.images.length > 0);
     else if (sortMode === 'img-no') list = list.filter(f => !f.images || !f.images.length);
+    else if (sortMode === 'offer') list = list.filter(f => f.offer_price !== null && f.offer_price !== undefined);
 
     const listEl = document.getElementById('fish-card-list');
-    if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; return; }
+    if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; renderStockPager(0, 0); return; }
 
-    listEl.innerHTML = list.map(f => {
+    const totalPages = Math.max(1, Math.ceil(list.length / STOCK_PAGE_SIZE));
+    if (stockPage > totalPages) stockPage = totalPages;
+    const pageList = list.slice((stockPage - 1) * STOCK_PAGE_SIZE, stockPage * STOCK_PAGE_SIZE);
+
+    listEl.innerHTML = pageList.map(f => {
       const thumb = f.images && f.images[0]
         ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
         : `<div class="fc-thumb-placeholder">🐟</div>`;
@@ -580,6 +620,25 @@ BAB-9042"></textarea>
     listEl.querySelectorAll('.toggle-avail-btn').forEach(btn => btn.addEventListener('click', () => quickToggleAvailable(btn.dataset.code)));
     listEl.querySelectorAll('.edit-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'details')));
     listEl.querySelectorAll('.offer-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'offer')));
+    renderStockPager(list.length, totalPages);
+  }
+
+  function renderStockPager(totalCount, totalPages) {
+    let pagerEl = document.getElementById('stock-pager');
+    if (!pagerEl) {
+      pagerEl = document.createElement('div');
+      pagerEl.id = 'stock-pager';
+      pagerEl.className = 'stock-pager';
+      document.getElementById('fish-card-list').after(pagerEl);
+    }
+    if (totalCount === 0) { pagerEl.innerHTML = ''; return; }
+    pagerEl.innerHTML = `
+      <button class="icon-btn" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
+      <span>Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish</span>
+      <button class="icon-btn" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>Next ›</button>
+    `;
+    document.getElementById('stock-page-prev').addEventListener('click', () => { if (stockPage > 1) { stockPage--; renderStockList(); window.scrollTo({top:0, behavior:'smooth'}); } });
+    document.getElementById('stock-page-next').addEventListener('click', () => { if (stockPage < totalPages) { stockPage++; renderStockList(); window.scrollTo({top:0, behavior:'smooth'}); } });
   }
 
   async function quickToggleAvailable(code) {
@@ -594,14 +653,15 @@ BAB-9042"></textarea>
     showToast(f.available ? 'Now visible to customers' : 'Hidden from customers');
   }
 
-  document.getElementById('stock-search').addEventListener('input', renderStockList);
-  document.getElementById('stock-cat-filter').addEventListener('change', renderStockList);
-  document.getElementById('stock-sort').addEventListener('change', renderStockList);
+  document.getElementById('stock-search').addEventListener('input', () => { stockPage = 1; renderStockList(); });
+  document.getElementById('stock-cat-filter').addEventListener('change', () => { stockPage = 1; renderStockList(); });
+  document.getElementById('stock-sort').addEventListener('change', () => { stockPage = 1; renderStockList(); });
   document.querySelectorAll('.avail-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.avail-filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       availFilter = btn.dataset.avail;
+      stockPage = 1;
       renderStockList();
     });
   });
@@ -1105,10 +1165,68 @@ BAB-9042"></textarea>
     btn.disabled = false; btn.textContent = 'Apply Weekly Update';
   });
 
+  // ---------- WEEKLY IMPORT: TURN OFF ONLY ----------
+  function analyzeTurnOffInput() {
+    const raw = document.getElementById('turnoff-textarea').value;
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
+    const uniqueCodes = [...new Set(lines.map(l => l.toUpperCase()))];
+
+    const byCodeUpper = {};
+    fishList.forEach(f => { byCodeUpper[f.code.toUpperCase()] = f; });
+
+    const matched = [];
+    const unknown = [];
+    uniqueCodes.forEach(code => {
+      const f = byCodeUpper[code];
+      if (f) matched.push(f); else unknown.push(code);
+    });
+
+    const willTurnOff = matched.filter(f => f.available);
+    const alreadyOff = matched.filter(f => !f.available);
+
+    return { codesPasted: lines.length, willTurnOff, alreadyOff, unknown };
+  }
+
+  function renderTurnOffPreview() {
+    const r = analyzeTurnOffInput();
+    document.getElementById('stat-off-pasted').textContent = r.codesPasted;
+    document.getElementById('stat-off-matched').textContent = r.willTurnOff.length;
+    document.getElementById('stat-off-alreadyoff').textContent = r.alreadyOff.length;
+    document.getElementById('stat-off-unknown').textContent = r.unknown.length;
+  }
+  document.getElementById('turnoff-textarea').addEventListener('input', renderTurnOffPreview);
+
+  document.getElementById('turnoff-import-btn').addEventListener('click', async () => {
+    const r = analyzeTurnOffInput();
+    const resultEl = document.getElementById('turnoff-result');
+    if (r.codesPasted === 0) { resultEl.innerHTML = `<span class="err">Paste some fish codes first.</span>`; return; }
+    if (!r.willTurnOff.length) { resultEl.innerHTML = `<span class="err">Nothing to turn off — all listed codes are already off or unknown.</span>`; return; }
+
+    if (!confirm(`Turn OFF ${r.willTurnOff.length} fish? Everything else stays untouched.`)) return;
+
+    const btn = document.getElementById('turnoff-import-btn');
+    btn.disabled = true; btn.textContent = 'Applying…';
+    try {
+      await Promise.all(r.willTurnOff.map(f =>
+        fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(f.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ available: false })
+        })
+      ));
+      resultEl.innerHTML = `<span class="ok">${r.willTurnOff.length} fish turned OFF.</span>`;
+      document.getElementById('turnoff-textarea').value = '';
+      await loadFish(); populateCatFilter(); renderTurnOffPreview();
+    } catch (err) {
+      console.error(err);
+      resultEl.innerHTML = `<span class="err">Update failed. Please try again.</span>`;
+    }
+    btn.disabled = false; btn.textContent = 'Turn Off Listed Fish';
+  });
+
   // ---------- ORDERS ----------
   async function loadOrders() {
     const listEl = document.getElementById('orders-list');
     listEl.innerHTML = `<div class="loading-msg">Loading orders…</div>`;
+    const t = orderI18n[orderLang];
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, { headers });
       const orders = await res.json();
@@ -1128,16 +1246,19 @@ BAB-9042"></textarea>
           </div>
           <div class="order-items">
             <div class="order-item-row" style="font-size:10.5px; color:var(--ink-soft); font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
-              <span>Fish</span>
-              <div class="item-price-grid"><span>Qty</span><span>Price</span><span>Total</span></div>
+              <span>${t.fish}</span>
+              <div class="item-price-grid"><span>${t.qty}</span><span>${t.price}</span><span>${t.total}</span></div>
             </div>
-            ${o.items.map(it => `<div class="order-item-row">
-                <span class="oi-name"><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${it.name}</span>
+            ${o.items.map(it => {
+              const displayName = orderLang === 'zh' && it.zh ? it.zh : it.name;
+              return `<div class="order-item-row">
+                <span class="oi-name"><span class="mono" style="color:var(--ink-soft);">${it.code}</span> — ${displayName}</span>
                 ${it.unit_price !== undefined
                   ? `<div class="mono item-price-grid" style="color:var(--ink);"><span>${it.qty}</span><span style="color:var(--ink-soft);">RM${parseFloat(it.unit_price).toFixed(2)}</span><span>RM${parseFloat(it.line_total).toFixed(2)}</span></div>`
-                  : `<div class="mono item-price-grid no-price" style="color:var(--ink-soft);"><span>${it.qty}</span><span>No price recorded</span></div>`}
-              </div>`).join('')}
-            ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>Order Total</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
+                  : `<div class="mono item-price-grid no-price" style="color:var(--ink-soft);"><span>${it.qty}</span><span>${t.noPrice}</span></div>`}
+              </div>`;
+            }).join('')}
+            ${o.order_total !== null && o.order_total !== undefined ? `<div class="order-item-row" style="border-top:1px solid var(--line); margin-top:6px; padding-top:10px; font-weight:700;"><span>${t.orderTotal}</span><span>RM${parseFloat(o.order_total).toFixed(2)}</span></div>` : ''}
           </div>
           <div class="order-actions">
             <button class="icon-btn toggle-status-btn" data-id="${o.id}" data-status="${o.status}">${o.status === 'done' ? 'Mark as New' : 'Mark as Done'}</button>
@@ -1161,6 +1282,7 @@ BAB-9042"></textarea>
   }
 
   function downloadReceiptImage(order) {
+    const t = orderI18n[orderLang];
     const padding = 24, width = 520;
     const rowHeight = 44;
     const headerHeight = 80;
@@ -1183,7 +1305,7 @@ BAB-9042"></textarea>
     let y = headerHeight;
     // ---- Column header row ----
     ctx.font = '700 10px Poppins, Arial'; ctx.fillStyle = '#9AA0A6'; ctx.textAlign = 'right';
-    ctx.fillText('QTY', width - padding, y - 6);
+    ctx.fillText(t.qty.toUpperCase(), width - padding, y - 6);
     ctx.textAlign = 'left';
     ctx.strokeStyle = '#E5E7EB';
     ctx.beginPath(); ctx.moveTo(padding, y); ctx.lineTo(width - padding, y); ctx.stroke();
@@ -1191,16 +1313,17 @@ BAB-9042"></textarea>
     // ---- One row per fish: Code | Name | Size | (number only) ----
     order.items.forEach((it) => {
       const textY = y + rowHeight / 2 + 4;
+      const displayName = orderLang === 'zh' && it.zh ? it.zh : it.name;
 
       ctx.font = '400 10.5px monospace'; ctx.fillStyle = '#9AA0A6';
       ctx.fillText(it.code, padding, textY - 8);
 
       ctx.font = '700 13px Poppins, Arial'; ctx.fillStyle = '#14181A';
-      const nameText = it.name.length > 26 ? it.name.slice(0, 24) + '…' : it.name;
+      const nameText = displayName.length > 26 ? displayName.slice(0, 24) + '…' : displayName;
       ctx.fillText(nameText, padding, textY + 8);
 
       ctx.font = '400 11.5px Poppins, Arial'; ctx.fillStyle = '#6B7280'; ctx.textAlign = 'right';
-      ctx.fillText('Size: ' + (it.size || '—'), width - padding - 90, textY);
+      ctx.fillText(t.size + ': ' + (it.size || '—'), width - padding - 90, textY);
       ctx.textAlign = 'left';
 
       ctx.font = '700 15px Poppins, Arial'; ctx.fillStyle = '#14181A'; ctx.textAlign = 'right';
@@ -1219,6 +1342,11 @@ BAB-9042"></textarea>
   }
 
   document.getElementById('refresh-orders-btn').addEventListener('click', loadOrders);
+  document.getElementById('orders-lang-btn').addEventListener('click', () => {
+    orderLang = orderLang === 'en' ? 'zh' : 'en';
+    document.getElementById('orders-lang-btn').textContent = orderLang === 'en' ? '中文' : 'EN';
+    loadOrders();
+  });
 
   // ---------- INIT ----------
   async function init() {
