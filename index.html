@@ -15,6 +15,21 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { max-width: 100vw; }
   body { background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+
+  #client-login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .client-login-box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 32px; width: 100%; max-width: 360px; text-align: center; }
+  .client-login-box h1 { font-family: 'Space Grotesk', sans-serif; font-size: 20px; margin-bottom: 6px; }
+  .client-login-box p { font-size: 13px; color: var(--ink-soft); margin-bottom: 20px; }
+  .client-login-box label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-soft); text-align: left; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .client-login-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; font-size: 14px; outline: none; }
+  .client-login-box input:focus { border-color: var(--brand-blue); }
+  .client-login-box button#client-login-btn, .client-login-box button#forgot-lookup-btn, .client-login-box button#forgot-reset-btn {
+    width: 100%; background: var(--ink); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-bottom: 10px;
+  }
+  .client-login-error { color: #B91C1C; font-size: 12.5px; margin: 4px 0 10px; display: none; }
+  .client-login-error:not(:empty) { display: block; }
+  .client-forgot-link { background: none; border: none; color: var(--brand-blue); font-size: 13px; text-decoration: underline; padding: 4px; }
+  .client-security-q { background: #F7F8F8; border-radius: 8px; padding: 12px; font-size: 13px; text-align: left; margin-bottom: 14px; }
   h1, h2, .display { font-family: 'Space Grotesk', sans-serif; font-weight: 600; letter-spacing: -0.01em; }
   .mono { font-family: 'JetBrains Mono', monospace; }
   a { color: inherit; text-decoration: none; }
@@ -250,6 +265,40 @@
 </head>
 <body>
 
+<div id="client-login-screen">
+  <div class="client-login-box">
+    <h1>Jet Fish Shop</h1>
+    <p id="client-login-sub">Please log in to view our stock and prices.</p>
+
+    <div id="client-login-form">
+      <label>Login ID</label>
+      <input type="text" id="client-login-username" autocomplete="username">
+      <label>Password</label>
+      <input type="password" id="client-login-password" autocomplete="current-password">
+      <button id="client-login-btn">Log In</button>
+      <div class="client-login-error" id="client-login-error">Incorrect login ID or password.</div>
+      <button class="client-forgot-link" id="client-forgot-link" type="button">Forgot password?</button>
+    </div>
+
+    <div id="client-forgot-form" style="display:none;">
+      <label>Login ID</label>
+      <input type="text" id="forgot-username">
+      <button id="forgot-lookup-btn">Continue</button>
+      <div id="forgot-question-wrap" style="display:none;">
+        <div class="client-security-q" id="forgot-question-text"></div>
+        <label>Your Answer</label>
+        <input type="text" id="forgot-answer">
+        <label>New Password</label>
+        <input type="password" id="forgot-new-password">
+        <button id="forgot-reset-btn">Reset Password</button>
+      </div>
+      <div class="client-login-error" id="forgot-error"></div>
+      <button class="client-forgot-link" id="forgot-back-link" type="button">Back to log in</button>
+    </div>
+  </div>
+</div>
+
+<div id="shop-app" style="display:none;">
 <header>
   <nav>
     <div class="cat-dropdown-wrap">
@@ -373,6 +422,7 @@
 </section>
 
 <footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div></div></footer>
+</div>
 
 <script>
   // Builds a cute cartoon body: filled color body + dark outline + big eye with highlight
@@ -1070,11 +1120,108 @@
   });
 
   // ---------- INIT ----------
-  (async function init() {
+  async function init() {
     await loadCatalog();
     applyStaticTranslations();
     renderCatRail(); renderSearchCatDropdown(); renderFeatured(); renderGrid(); renderCart();
-  })();
+  }
+
+  // ---------- CLIENT LOGIN ----------
+  async function sha256(text) {
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function showShop() {
+    document.getElementById('client-login-screen').style.display = 'none';
+    document.getElementById('shop-app').style.display = 'block';
+    init();
+  }
+
+  const savedClient = localStorage.getItem('jetfish_client_session');
+  if (savedClient) {
+    showShop();
+  } else {
+    document.getElementById('client-login-btn').addEventListener('click', async () => {
+      const username = document.getElementById('client-login-username').value.trim().toLowerCase();
+      const password = document.getElementById('client-login-password').value;
+      const errorEl = document.getElementById('client-login-error');
+      errorEl.textContent = '';
+      if (!username || !password) { errorEl.textContent = 'Please enter your login ID and password.'; return; }
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=*`, { headers: supabaseHeaders });
+        const rows = await res.json();
+        const client = rows[0];
+        const hash = await sha256(password);
+        if (client && client.password_hash === hash) {
+          localStorage.setItem('jetfish_client_session', username);
+          showShop();
+        } else {
+          errorEl.textContent = 'Incorrect login ID or password.';
+        }
+      } catch (e) {
+        errorEl.textContent = 'Something went wrong. Please try again.';
+      }
+    });
+
+    // ---------- FORGOT PASSWORD ----------
+    document.getElementById('client-forgot-link').addEventListener('click', () => {
+      document.getElementById('client-login-form').style.display = 'none';
+      document.getElementById('client-forgot-form').style.display = 'block';
+    });
+    document.getElementById('forgot-back-link').addEventListener('click', () => {
+      document.getElementById('client-forgot-form').style.display = 'none';
+      document.getElementById('forgot-question-wrap').style.display = 'none';
+      document.getElementById('client-login-form').style.display = 'block';
+      document.getElementById('forgot-error').textContent = '';
+    });
+
+    let forgotClient = null;
+    document.getElementById('forgot-lookup-btn').addEventListener('click', async () => {
+      const username = document.getElementById('forgot-username').value.trim().toLowerCase();
+      const errorEl = document.getElementById('forgot-error');
+      errorEl.textContent = '';
+      if (!username) { errorEl.textContent = 'Please enter your login ID.'; return; }
+
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=*`, { headers: supabaseHeaders });
+      const rows = await res.json();
+      forgotClient = rows[0];
+
+      if (!forgotClient) {
+        errorEl.textContent = "We couldn't find that login ID.";
+      } else if (!forgotClient.security_question) {
+        errorEl.textContent = 'No self-reset is set up for this account. Please contact us on WhatsApp (010-9881389) to reset your password.';
+      } else {
+        document.getElementById('forgot-question-text').textContent = forgotClient.security_question;
+        document.getElementById('forgot-question-wrap').style.display = 'block';
+      }
+    });
+    document.getElementById('forgot-reset-btn').addEventListener('click', async () => {
+      const answer = document.getElementById('forgot-answer').value.trim().toLowerCase();
+      const newPassword = document.getElementById('forgot-new-password').value;
+      const errorEl = document.getElementById('forgot-error');
+      errorEl.textContent = '';
+      if (!answer || !newPassword) { errorEl.textContent = 'Please fill in both fields.'; return; }
+
+      const answerHash = await sha256(answer);
+      if (answerHash !== forgotClient.security_answer_hash) {
+        errorEl.textContent = 'That answer doesn\'t match. Please try again or contact us on WhatsApp (010-9881389).';
+        return;
+      }
+      const newHash = await sha256(newPassword);
+      await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${forgotClient.id}`, {
+        method: 'PATCH', headers: { ...supabaseHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password_hash: newHash })
+      });
+      alert('Password reset! Please log in with your new password.');
+      document.getElementById('forgot-back-link').click();
+      document.getElementById('forgot-username').value = '';
+      document.getElementById('forgot-answer').value = '';
+      document.getElementById('forgot-new-password').value = '';
+    });
+  }
 </script>
 
 </body>

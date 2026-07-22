@@ -193,6 +193,11 @@
 
   /* ---------- ORDERS ---------- */
   .order-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .client-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); gap: 10px; flex-wrap: wrap; }
+  .client-row:last-child { border-bottom: none; }
+  .client-info .name { font-weight: 700; font-size: 14px; }
+  .client-info .username { font-size: 12.5px; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; }
+  .client-actions { display: flex; gap: 8px; }
   .order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .order-ref { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
   .order-company { font-size: 15px; font-weight: 700; margin-top: 4px; }
@@ -214,6 +219,7 @@
   .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
@@ -235,6 +241,7 @@
       <button class="tab-btn" data-panel="addfish">Add Fish/Image</button>
       <button class="tab-btn" data-panel="weekly">Weekly Import</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
+      <button class="tab-btn" data-panel="clients">Clients</button>
     </div>
     <div style="text-align:right; margin-top:6px;">
       <button id="admin-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:11px; text-decoration:underline; padding:2px;">Log Out</button>
@@ -370,11 +377,16 @@
 
       <div class="editor-card">
         <h3>Select Images</h3>
-        <div class="sub">Filename format: <span class="mono">{FISH_CODE}-{IMAGE_NUMBER}.{extension}</span>. Example: <span class="mono">AGL-0628-1.jpg</span></div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="save-btn" id="bulk-select-folder-btn" type="button" style="margin:0; flex:1 1 auto;">Select Folder</button>
-          <button class="back-btn" id="bulk-select-files-btn" type="button" style="margin:0; flex:1 1 auto;">Select Multiple Files</button>
+        <div class="sub">Filename format: <span class="mono">{FISH_CODE}-{IMAGE_NUMBER}.{extension}</span>. Example: <span class="mono">AGL-0628-1.jpg</span>. You can also drop a single <b>.zip</b> file containing all your photos.</div>
+        <div class="drop-zone" id="bulk-drop-zone">
+          <div style="font-weight:600; margin-bottom:4px;">Drag photos or a .zip file here</div>
+          <div style="font-size:12px; margin-bottom:10px;">or use the buttons below</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+            <button class="save-btn" id="bulk-select-folder-btn" type="button" style="margin:0; width:auto; padding:11px 18px;" onclick="event.stopPropagation()">Select Folder</button>
+            <button class="back-btn" id="bulk-select-files-btn" type="button" style="margin:0; width:auto; padding:11px 18px;" onclick="event.stopPropagation()">Select Multiple Files</button>
+          </div>
         </div>
+        <div id="bulk-zip-status" style="margin-top:10px; font-size:12.5px; color:var(--ink-soft);"></div>
         <input type="file" id="bulk-photo-input-files" accept="image/*" multiple style="display:none;">
         <input type="file" id="bulk-photo-input-folder" accept="image/*" multiple webkitdirectory style="display:none;">
       </div>
@@ -525,6 +537,31 @@ BET-0166"></textarea>
       </div>
       <div id="orders-list"><div class="loading-msg">Loading orders…</div></div>
     </section>
+
+    <!-- ================= CLIENTS ================= -->
+    <section class="panel" id="panel-clients">
+      <div class="editor-card">
+        <h3>Create Client Login</h3>
+        <div class="sub">Give a client an ID and password so they can log in to view your shop.</div>
+        <label>Client / Company Name</label>
+        <input type="text" id="client-display-name" placeholder="e.g. ABC Aquarium">
+        <label>Login ID</label>
+        <input type="text" id="client-username" placeholder="e.g. abc-aquarium">
+        <label>Password</label>
+        <input type="text" id="client-password" placeholder="Set a password">
+        <label>Security Question <span style="text-transform:none; font-weight:400; color:var(--ink-soft);">(optional — lets them self-reset)</span></label>
+        <input type="text" id="client-sq" placeholder="e.g. What's your staff's nickname?">
+        <label>Security Answer</label>
+        <input type="text" id="client-sa" placeholder="Answer to the question above">
+        <button class="save-btn" id="create-client-btn" type="button">Create Client</button>
+        <div class="result-msg" id="client-result"></div>
+      </div>
+
+      <div class="editor-card">
+        <h3>Existing Clients</h3>
+        <div id="clients-list"><div class="loading-msg">Loading clients…</div></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -589,6 +626,7 @@ BET-0166"></textarea>
       btn.classList.add('active');
       document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
       if (btn.dataset.panel === 'orders') loadOrders();
+      if (btn.dataset.panel === 'clients') loadClients();
       if (btn.dataset.panel === 'stock') showListView();
     });
   });
@@ -813,8 +851,46 @@ BET-0166"></textarea>
   // ---------- BULK IMAGES (Select Images) ----------
   document.getElementById('bulk-select-files-btn').addEventListener('click', () => document.getElementById('bulk-photo-input-files').click());
   document.getElementById('bulk-select-folder-btn').addEventListener('click', () => document.getElementById('bulk-photo-input-folder').click());
-  document.getElementById('bulk-photo-input-files').addEventListener('change', (e) => handleBulkPhotoFiles(e.target.files));
-  document.getElementById('bulk-photo-input-folder').addEventListener('change', (e) => handleBulkPhotoFiles(e.target.files));
+  document.getElementById('bulk-photo-input-files').addEventListener('change', (e) => handleDroppedItems(e.target.files));
+  document.getElementById('bulk-photo-input-folder').addEventListener('change', (e) => handleDroppedItems(e.target.files));
+
+  const bulkDropZoneEl = document.getElementById('bulk-drop-zone');
+  bulkDropZoneEl.addEventListener('click', () => document.getElementById('bulk-photo-input-files').click());
+  bulkDropZoneEl.addEventListener('dragover', (e) => { e.preventDefault(); bulkDropZoneEl.classList.add('dragover'); });
+  bulkDropZoneEl.addEventListener('dragleave', () => bulkDropZoneEl.classList.remove('dragover'));
+  bulkDropZoneEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    bulkDropZoneEl.classList.remove('dragover');
+    handleDroppedItems(e.dataTransfer.files);
+  });
+
+  async function handleDroppedItems(fileList) {
+    const rawFiles = Array.from(fileList);
+    const zipStatusEl = document.getElementById('bulk-zip-status');
+    const zipFiles = rawFiles.filter(f => f.name.toLowerCase().endsWith('.zip'));
+    const imageFiles = rawFiles.filter(f => !f.name.toLowerCase().endsWith('.zip'));
+
+    let allFiles = [...imageFiles];
+
+    for (const zipFile of zipFiles) {
+      zipStatusEl.textContent = `Extracting ${zipFile.name}…`;
+      try {
+        const zip = await JSZip.loadAsync(zipFile);
+        const entries = Object.values(zip.files).filter(f => !f.dir && VALID_EXTS.includes((f.name.split('.').pop() || '').toLowerCase()));
+        for (const entry of entries) {
+          const blob = await entry.async('blob');
+          const name = entry.name.includes('/') ? entry.name.split('/').pop() : entry.name;
+          allFiles.push(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+        }
+        zipStatusEl.textContent = `Extracted ${entries.length} photo(s) from ${zipFile.name}.`;
+      } catch (err) {
+        console.error(err);
+        zipStatusEl.textContent = `Could not read ${zipFile.name} — make sure it's a valid .zip file.`;
+      }
+    }
+
+    handleBulkPhotoFiles(allFiles);
+  }
 
   const VALID_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
   const MAX_FILE_SIZE = 8 * 1024 * 1024;
@@ -1701,6 +1777,89 @@ BET-0166"></textarea>
   });
 
   // ---------- INIT ----------
+  // ---------- CLIENTS ----------
+  async function sha256(text) {
+    const data = new TextEncoder().encode(text);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  document.getElementById('create-client-btn').addEventListener('click', async () => {
+    const displayName = document.getElementById('client-display-name').value.trim();
+    const username = document.getElementById('client-username').value.trim().toLowerCase();
+    const password = document.getElementById('client-password').value;
+    const sq = document.getElementById('client-sq').value.trim();
+    const sa = document.getElementById('client-sa').value.trim();
+    const resultEl = document.getElementById('client-result');
+
+    if (!username || !password) { resultEl.innerHTML = `<span class="err">Please fill in a Login ID and Password.</span>`; return; }
+
+    const btn = document.getElementById('create-client-btn');
+    btn.disabled = true; btn.textContent = 'Creating…';
+
+    const body = {
+      display_name: displayName || username,
+      username,
+      password_hash: await sha256(password),
+      security_question: sq || null,
+      security_answer_hash: sa ? await sha256(sa.toLowerCase()) : null
+    };
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clients`, {
+      method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' },
+      body: JSON.stringify([body])
+    });
+    btn.disabled = false; btn.textContent = 'Create Client';
+
+    if (res.ok) {
+      resultEl.innerHTML = `<span class="ok">Client "${body.display_name}" created.</span>`;
+      ['client-display-name','client-username','client-password','client-sq','client-sa'].forEach(id => document.getElementById(id).value = '');
+      loadClients();
+    } else {
+      resultEl.innerHTML = `<span class="err">Could not create client — that Login ID might already be taken.</span>`;
+    }
+  });
+
+  async function loadClients() {
+    const listEl = document.getElementById('clients-list');
+    listEl.innerHTML = `<div class="loading-msg">Loading clients…</div>`;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=created_at.desc`, { headers });
+      const clients = await res.json();
+      if (!clients.length) { listEl.innerHTML = `<div class="empty-msg">No clients yet.</div>`; return; }
+
+      listEl.innerHTML = clients.map(c => `
+        <div class="client-row">
+          <div class="client-info">
+            <div class="name">${c.display_name || c.username}</div>
+            <div class="username">${c.username}</div>
+          </div>
+          <div class="client-actions">
+            <button class="icon-btn reset-client-btn" data-id="${c.id}" data-username="${c.username}">Reset Password</button>
+            <button class="icon-btn delete-client-btn" data-id="${c.id}" style="color:var(--red);">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('.reset-client-btn').forEach(btn => btn.addEventListener('click', async () => {
+        const newPass = prompt(`New password for "${btn.dataset.username}":`);
+        if (!newPass) return;
+        await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${btn.dataset.id}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ password_hash: await sha256(newPass) })
+        });
+        showToast('Password reset — tell your client the new one');
+      }));
+      listEl.querySelectorAll('.delete-client-btn').forEach(btn => btn.addEventListener('click', async () => {
+        if (!confirm('Delete this client login? They will no longer be able to log in.')) return;
+        await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${btn.dataset.id}`, { method: 'DELETE', headers });
+        loadClients();
+      }));
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = `<div class="empty-msg">Could not load clients.</div>`;
+    }
+  }
+
   async function init() {
     await loadFish();
     populateCatFilter();
