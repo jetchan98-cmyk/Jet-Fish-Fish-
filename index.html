@@ -1077,6 +1077,7 @@
         headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
         body: JSON.stringify({
           order_ref: orderId, company, phone, items, order_total: orderTotal,
+          client_username: localStorage.getItem('jetfish_client_session') || null,
           total_types: totalTypes, total_qty: totalQty, status: 'new'
         })
       });

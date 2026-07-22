@@ -1664,7 +1664,7 @@ BET-0166"></textarea>
         <div class="order-card">
           <div class="order-card-head">
             <div>
-              <div class="order-company">${o.company}</div>
+              <div class="order-company">${o.company}${o.client_username ? ` <span class="mono" style="font-size:11.5px; font-weight:500; color:var(--brand-blue); background:var(--accent-soft); padding:2px 8px; border-radius:10px; vertical-align:middle;">${o.client_username}</span>` : ''}</div>
               <div class="order-phone">${o.phone}</div>
             </div>
             <div style="text-align:right;">
