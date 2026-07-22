@@ -43,7 +43,8 @@
     main { max-width: 1500px; padding: 28px 32px 80px; }
     .editor-card, .form-card { max-width: 640px; }
     .quick-actions, .avail-filter-toggle { max-width: 340px; }
-    #fish-card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; align-items: start; }
+    #stock-edit-view { max-width: 640px; margin: 0 auto; }
+    #fish-card-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
     .fish-card { margin-bottom: 0; }
     .toolbar { max-width: 900px; }
   }
@@ -90,6 +91,9 @@
   .stock-pager { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
   .pager-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pager-input { width: 70px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 13px; text-align: center; }
+  .pager-arrow { width: 38px; height: 38px; padding: 0; font-size: 18px; font-weight: 700; flex: 0 0 auto; }
+  .pager-num { width: 38px; height: 38px; padding: 0; font-size: 14px; font-weight: 600; flex: 0 0 auto; color: var(--ink-soft); }
+  .pager-current { width: 46px; height: 38px; font-weight: 700; font-size: 14px; background: var(--ink); color: white; border-color: var(--ink); }
   .fc-btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
@@ -150,8 +154,8 @@
   /* ---------- ADD FISH / ADD IMAGE ---------- */
   .bulk-textarea { width: 100%; min-height: 200px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none; resize: vertical; margin-bottom: 10px; }
   .bulk-hint { font-size: 12px; color: var(--ink-soft); margin-bottom: 14px; line-height: 1.6; background: #F7F8F8; border-radius: 8px; padding: 12px 14px; }
-  .import-mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-  .mode-btn { flex: 1; border: 1px solid var(--line); background: var(--panel); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
+  .import-mode-toggle { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .mode-btn { flex: 1 1 calc(50% - 4px); border: 1px solid var(--line); background: var(--panel); padding: 10px; border-radius: 8px; font-weight: 600; font-size: 13.5px; color: var(--ink-soft); }
   .mode-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
   .mode-view { display: none; }
   .mode-view.active { display: block; }
@@ -208,6 +212,9 @@
       <button class="tab-btn" data-panel="addfish">Add Fish/Image</button>
       <button class="tab-btn" data-panel="weekly">Weekly Import</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
+    </div>
+    <div style="text-align:right; margin-top:6px;">
+      <button id="admin-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:11px; text-decoration:underline; padding:2px;">Log Out</button>
     </div>
   </header>
 
@@ -340,11 +347,16 @@
 
       <div class="editor-card">
         <h3>Bulk Images</h3>
-        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg) — it'll auto-match. Not case-sensitive. You can select many at once.</div>
+        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg or AGL0628.jpg — dashes are optional). Not case-sensitive. You can select many at once.</div>
         <div class="drop-zone" id="bulk-drop-zone">
           <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
           <div style="font-size:12px;">You can select many at once</div>
           <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
+        </div>
+        <div id="bulk-photo-preview" style="margin-top:14px;"></div>
+        <div id="bulk-photo-preview-actions" style="display:none; gap:8px; margin-top:12px;">
+          <button class="save-btn" id="bulk-photo-confirm-btn" type="button" style="margin:0; flex:1;">Confirm &amp; Upload</button>
+          <button class="back-btn" id="bulk-photo-cancel-btn" type="button" style="margin:0; flex:0 0 auto; width:auto; padding:0 20px;">Cancel</button>
         </div>
         <div id="bulk-photo-log" style="margin-top:14px;"></div>
       </div>
@@ -356,6 +368,7 @@
         <button class="mode-btn active" data-mode="full">Full Product Data</button>
         <button class="mode-btn" data-mode="codes">Turn On Only</button>
         <button class="mode-btn" data-mode="turnoff">Turn Off Only</button>
+        <button class="mode-btn" data-mode="addon">Add On</button>
       </div>
 
       <!-- FULL PRODUCT DATA -->
@@ -432,6 +445,30 @@ BET-0166"></textarea>
           <div class="result-msg" id="turnoff-result"></div>
         </div>
       </div>
+
+      <!-- ADD ON -->
+      <div class="mode-view" id="mode-addon">
+        <div class="editor-card">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <h3 style="margin-bottom:2px;">Paste Fish Codes To Add On</h3>
+            <span style="font-size:11.5px; color:var(--brand-blue); font-weight:600;">One fish code per line</span>
+          </div>
+          <div class="sub">Only the codes you paste here get turned <b>ON</b>. Everything already ON stays ON — use this when new stock comes in mid-week.</div>
+          <textarea class="bulk-textarea" id="addon-textarea" style="min-height:160px;" placeholder="AGL-0628
+BET-0166"></textarea>
+        </div>
+        <div class="editor-card">
+          <h3>Preview</h3>
+          <div class="codes-stats-grid">
+            <div class="stat-box"><div class="stat-label">Codes Pasted</div><div class="stat-value" id="stat-addon-pasted">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--accent);">Will Turn On</div><div class="stat-value" style="color:var(--accent);" id="stat-addon-matched">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--brand-blue);">Already On</div><div class="stat-value" id="stat-addon-alreadyon">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unknown</div><div class="stat-value" style="color:var(--red);" id="stat-addon-unknown">0</div></div>
+          </div>
+          <button class="save-btn" id="addon-import-btn" type="button" style="margin-top:14px;">Add On Listed Fish</button>
+          <div class="result-msg" id="addon-result"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ================= ORDERS ================= -->
@@ -477,6 +514,7 @@ BET-0166"></textarea>
   function attemptLogin() {
     const pin = document.getElementById('pin-input').value;
     if (pin === ADMIN_PIN) {
+      localStorage.setItem('jetfish_admin_auth', '1');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('app').classList.add('show');
       init();
@@ -484,6 +522,18 @@ BET-0166"></textarea>
       document.getElementById('login-error').style.display = 'block';
     }
   }
+
+  // Auto-login if already authenticated in this browser
+  if (localStorage.getItem('jetfish_admin_auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.add('show');
+    init();
+  }
+
+  document.getElementById('admin-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('jetfish_admin_auth');
+    location.reload();
+  });
 
   // ---------- TABS ----------
   document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -576,7 +626,7 @@ BET-0166"></textarea>
     if (availFilter === 'on') list = list.filter(f => f.available);
     else if (availFilter === 'off') list = list.filter(f => !f.available);
     if (catFilter) list = list.filter(f => f.category === catFilter);
-    if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q));
+    if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q) || normalizeCode(f.code).includes(normalizeCode(q)));
 
     if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list.sort((a, b) => b.name.localeCompare(a.name));
@@ -644,28 +694,27 @@ BET-0166"></textarea>
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    const prevPage = stockPage - 1;
+    const nextPage = stockPage + 1;
+
     pagerEl.innerHTML = `
-      <div class="pager-row">
-        <button class="icon-btn" id="stock-page-back2" ${stockPage <= 1 ? 'disabled' : ''}>« -2</button>
-        <button class="icon-btn" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹ Prev</button>
-        <span>Page ${stockPage} of ${totalPages}</span>
-        <button class="icon-btn" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>Next ›</button>
-        <button class="icon-btn" id="stock-page-fwd2" ${stockPage >= totalPages ? 'disabled' : ''}>+2 »</button>
+      <div class="pager-row" style="justify-content:center;">
+        <button class="icon-btn pager-arrow" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹</button>
+        ${prevPage >= 1 ? `<button class="icon-btn pager-num" id="stock-page-prevnum">${prevPage}</button>` : ''}
+        <input type="number" id="stock-page-input" class="pager-input pager-current" value="${stockPage}" min="1" max="${totalPages}">
+        ${nextPage <= totalPages ? `<button class="icon-btn pager-num" id="stock-page-nextnum">${nextPage}</button>` : ''}
+        <button class="icon-btn pager-arrow" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>›</button>
       </div>
-      <div class="pager-row">
-        <span style="color:var(--ink-soft);">${totalCount} fish</span>
-        <input type="number" id="stock-page-input" class="pager-input" min="1" max="${totalPages}" placeholder="Page #">
-        <button class="icon-btn" id="stock-page-go">Go</button>
-      </div>
+      <div class="pager-row" style="justify-content:center; color:var(--ink-soft);">Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish</div>
     `;
-    document.getElementById('stock-page-back2').addEventListener('click', () => goTo(stockPage - 2));
     document.getElementById('stock-page-prev').addEventListener('click', () => goTo(stockPage - 1));
     document.getElementById('stock-page-next').addEventListener('click', () => goTo(stockPage + 1));
-    document.getElementById('stock-page-fwd2').addEventListener('click', () => goTo(stockPage + 2));
+    if (prevPage >= 1) document.getElementById('stock-page-prevnum').addEventListener('click', () => goTo(prevPage));
+    if (nextPage <= totalPages) document.getElementById('stock-page-nextnum').addEventListener('click', () => goTo(nextPage));
     const pageInput = document.getElementById('stock-page-input');
     const goToTyped = () => { const v = parseInt(pageInput.value); if (!isNaN(v)) goTo(v); };
-    document.getElementById('stock-page-go').addEventListener('click', goToTyped);
     pageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') goToTyped(); });
+    pageInput.addEventListener('blur', goToTyped);
   }
 
   async function quickToggleAvailable(code) {
@@ -699,6 +748,21 @@ BET-0166"></textarea>
     editingFish = null;
   }
 
+  // Swipe right on the Edit Fish view to go back to the Stocks list
+  (function() {
+    const editView = document.getElementById('stock-edit-view');
+    let touchStartX = 0, touchStartY = 0;
+    editView.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    editView.addEventListener('touchend', (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (dx > 80 && Math.abs(dy) < 60) showListView();
+    }, { passive: true });
+  })();
+
   // ---------- QUICK ACTIONS ----------
   const bulkDropZone = document.getElementById('bulk-drop-zone');
   const bulkPhotoInput = document.getElementById('bulk-photo-input');
@@ -708,48 +772,103 @@ BET-0166"></textarea>
   bulkDropZone.addEventListener('drop', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); handleBulkPhotoFiles(e.dataTransfer.files); });
   bulkPhotoInput.addEventListener('change', () => handleBulkPhotoFiles(bulkPhotoInput.files));
 
-  async function handleBulkPhotoFiles(fileList) {
+  let pendingBulkImages = [];
+
+  function handleBulkPhotoFiles(fileList) {
     const files = Array.from(fileList);
+    pendingBulkImages = files.map(file => {
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      const match = fishList.find(f => normalizeCode(f.code) === normalizeCode(baseName));
+      return { file, match, previewUrl: URL.createObjectURL(file) };
+    });
+    renderBulkPhotoPreview();
+  }
+
+  function renderBulkPhotoPreview() {
+    const previewEl = document.getElementById('bulk-photo-preview');
+    const actionsEl = document.getElementById('bulk-photo-preview-actions');
+    document.getElementById('bulk-photo-log').innerHTML = '';
+
+    if (!pendingBulkImages.length) { previewEl.innerHTML = ''; actionsEl.style.display = 'none'; return; }
+
+    const matchedCount = pendingBulkImages.filter(p => p.match).length;
+    previewEl.innerHTML = `
+      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">${matchedCount} of ${pendingBulkImages.length} photos matched. Nothing has been uploaded yet — review below, then confirm.</div>
+      <div class="img-gallery">
+        ${pendingBulkImages.map((p, i) => `
+          <div class="img-thumb-wrap" title="${p.match ? p.match.code + ' — ' + p.match.name : 'No match: ' + p.file.name}">
+            <img src="${p.previewUrl}" style="${p.match ? '' : 'opacity:0.4;'}">
+            <button type="button" class="img-remove-btn" data-idx="${i}">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    previewEl.querySelectorAll('.img-remove-btn').forEach(btn => btn.addEventListener('click', () => {
+      pendingBulkImages.splice(parseInt(btn.dataset.idx), 1);
+      renderBulkPhotoPreview();
+    }));
+    actionsEl.style.display = 'flex';
+  }
+
+  document.getElementById('bulk-photo-cancel-btn').addEventListener('click', () => {
+    pendingBulkImages = [];
+    document.getElementById('bulk-photo-input').value = '';
+    renderBulkPhotoPreview();
+  });
+
+  document.getElementById('bulk-photo-confirm-btn').addEventListener('click', async () => {
+    const toUpload = pendingBulkImages.filter(p => p.match);
+    if (!toUpload.length) { alert('No matched photos to upload.'); return; }
+
+    const confirmBtn = document.getElementById('bulk-photo-confirm-btn');
+    confirmBtn.disabled = true; confirmBtn.textContent = 'Uploading…';
+
     const logEl = document.getElementById('bulk-photo-log');
     logEl.innerHTML = '';
-    for (const file of files) {
+
+    for (const p of pendingBulkImages) {
       const row = document.createElement('div');
       row.className = 'photo-log-row';
-      row.innerHTML = `<span>${file.name}</span><span class="status">Uploading…</span>`;
+      row.innerHTML = `<span>${p.file.name}</span><span class="status">${p.match ? 'Uploading…' : ''}</span>`;
       logEl.appendChild(row);
 
-      const baseName = file.name.replace(/\.[^/.]+$/, '').toUpperCase();
-      const match = fishList.find(f => f.code.toUpperCase() === baseName);
-      if (!match) {
+      if (!p.match) {
         row.querySelector('.status').className = 'status err';
         row.querySelector('.status').textContent = 'No matching fish code';
         continue;
       }
       try {
-        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
-        const storagePath = `${match.code}-${Date.now()}${ext}`;
+        const ext = p.file.name.includes('.') ? p.file.name.slice(p.file.name.lastIndexOf('.')) : '.jpg';
+        const storagePath = `${p.match.code}-${Date.now()}${ext}`;
         const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
           method: 'POST',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
-          body: file
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': p.file.type || 'application/octet-stream' },
+          body: p.file
         });
         if (!uploadRes.ok) throw new Error(await uploadRes.text());
         const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
-        const newImages = [...(match.images || []), publicUrl].slice(0, 5);
-        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(match.code)}`, {
+        const newImages = [...(p.match.images || []), publicUrl].slice(0, 5);
+        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(p.match.code)}`, {
           method: 'PATCH', headers, body: JSON.stringify({ images: newImages })
         });
-        match.images = newImages;
+        p.match.images = newImages;
         row.querySelector('.status').className = 'status ok';
-        row.querySelector('.status').textContent = `Matched → ${match.code}`;
+        row.querySelector('.status').textContent = `Matched → ${p.match.code}`;
       } catch (err) {
         console.error(err);
         row.querySelector('.status').className = 'status err';
         row.querySelector('.status').textContent = 'Upload failed';
       }
     }
+
+    confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm & Upload';
+    document.getElementById('bulk-photo-preview').innerHTML = '';
+    document.getElementById('bulk-photo-preview-actions').style.display = 'none';
+    document.getElementById('bulk-photo-input').value = '';
+    pendingBulkImages = [];
     renderStockList();
-  }
+  });
+
 
   // ---------- PRICE LIST PDF ----------
   const CONTACT_PHONE = "010-9881389"; // change this to your own contact number
@@ -1256,6 +1375,68 @@ BET-0166"></textarea>
       resultEl.innerHTML = `<span class="err">Update failed. Please try again.</span>`;
     }
     btn.disabled = false; btn.textContent = 'Turn Off Listed Fish';
+  });
+
+  // ---------- WEEKLY IMPORT: ADD ON ----------
+  function analyzeAddOnInput() {
+    const raw = document.getElementById('addon-textarea').value;
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
+    const seenKeys = new Set();
+    const uniqueCodes = [];
+    lines.forEach(code => {
+      const key = normalizeCode(code);
+      if (!seenKeys.has(key)) { seenKeys.add(key); uniqueCodes.push(code); }
+    });
+
+    const byCodeUpper = {};
+    fishList.forEach(f => { byCodeUpper[normalizeCode(f.code)] = f; });
+
+    const matched = [];
+    const unknown = [];
+    uniqueCodes.forEach(code => {
+      const f = byCodeUpper[normalizeCode(code)];
+      if (f) matched.push(f); else unknown.push(code);
+    });
+
+    const willTurnOn = matched.filter(f => !f.available);
+    const alreadyOn = matched.filter(f => f.available);
+
+    return { codesPasted: lines.length, willTurnOn, alreadyOn, unknown };
+  }
+
+  function renderAddOnPreview() {
+    const r = analyzeAddOnInput();
+    document.getElementById('stat-addon-pasted').textContent = r.codesPasted;
+    document.getElementById('stat-addon-matched').textContent = r.willTurnOn.length;
+    document.getElementById('stat-addon-alreadyon').textContent = r.alreadyOn.length;
+    document.getElementById('stat-addon-unknown').textContent = r.unknown.length;
+  }
+  document.getElementById('addon-textarea').addEventListener('input', renderAddOnPreview);
+
+  document.getElementById('addon-import-btn').addEventListener('click', async () => {
+    const r = analyzeAddOnInput();
+    const resultEl = document.getElementById('addon-result');
+    if (r.codesPasted === 0) { resultEl.innerHTML = `<span class="err">Paste some fish codes first.</span>`; return; }
+    if (!r.willTurnOn.length) { resultEl.innerHTML = `<span class="err">Nothing to turn on — all listed codes are already on or unknown.</span>`; return; }
+
+    if (!confirm(`Turn ON ${r.willTurnOn.length} fish? Everything already on stays on.`)) return;
+
+    const btn = document.getElementById('addon-import-btn');
+    btn.disabled = true; btn.textContent = 'Applying…';
+    try {
+      await Promise.all(r.willTurnOn.map(f =>
+        fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(f.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ available: true })
+        })
+      ));
+      resultEl.innerHTML = `<span class="ok">${r.willTurnOn.length} fish turned ON.</span>`;
+      document.getElementById('addon-textarea').value = '';
+      await loadFish(); populateCatFilter(); renderAddOnPreview();
+    } catch (err) {
+      console.error(err);
+      resultEl.innerHTML = `<span class="err">Update failed. Please try again.</span>`;
+    }
+    btn.disabled = false; btn.textContent = 'Add On Listed Fish';
   });
 
   // ---------- ORDERS ----------

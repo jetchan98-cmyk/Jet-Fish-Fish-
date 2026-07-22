@@ -369,7 +369,6 @@
   <div class="check">✓</div>
   <h2 id="lbl-order-received">Order received</h2>
   <p id="lbl-order-received-sub">We'll confirm availability and delivery time by phone or email shortly.</p>
-  <div class="order-id" id="order-id"></div>
   <button class="confirm-done-btn" id="confirm-done-btn">Done</button>
 </section>
 
@@ -525,6 +524,10 @@
   const SUPABASE_URL = "https://ehgruwkyizekkvjmbszs.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoZ3J1d2t5aXpla2t2am1ic3pzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTE0MzYsImV4cCI6MjA5OTc4NzQzNn0.6Dt3vBlWoHE_39RfqM8bWjI9Al38lvObp18_jqunvyY";
 
+  // Telegram order notifications — see setup instructions from Claude for how to get these two values
+  const TELEGRAM_BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE";
+  const TELEGRAM_CHAT_ID = "PASTE_YOUR_CHAT_ID_HERE";
+
   const supabaseHeaders = {
     'apikey': SUPABASE_ANON_KEY,
     'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
@@ -618,7 +621,7 @@
   const searchCatDropdown = document.getElementById('search-cat-dropdown');
   function renderSearchCatDropdown() {
     let html = `<button class="search-cat-pill ${activeCategory === 'All Fish' ? 'active' : ''}" data-cat="All Fish">${t('allFish')}</button>`;
-    getCategories().forEach(cat => {
+    getCategories().slice().sort((a, b) => a.localeCompare(b)).forEach(cat => {
       html += `<button class="search-cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${cat}</button>`;
     });
     searchCatDropdown.innerHTML = html;
@@ -1033,9 +1036,21 @@
       return;
     }
 
+    // Notify the shop owner on Telegram (best-effort — order is already saved either way)
+    try {
+      const itemsText = items.map(it => `${it.code} — ${it.name} ×${it.qty}`).join('\n');
+      const message = `🐟 New Order — ${orderId}\nCompany: ${company}\nPhone: ${phone}\n\n${itemsText}\n\nTotal: RM${orderTotal.toFixed(2)}`;
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message })
+      });
+    } catch (e) {
+      console.error('Telegram notification failed (order was still saved):', e);
+    }
+
     submitBtn.disabled = false;
     submitBtn.textContent = t('submitOrder');
-    document.getElementById('order-id').textContent = 'Order ID: ' + orderId;
     checkoutSection.classList.remove('open');
     orderConfirm.classList.add('open');
     cart = []; renderCart();
