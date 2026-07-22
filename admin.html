@@ -43,7 +43,7 @@
     main { max-width: 1500px; padding: 28px 32px 80px; }
     .editor-card, .form-card { max-width: 640px; }
     .quick-actions, .avail-filter-toggle { max-width: 340px; }
-    #stock-edit-view { max-width: 640px; margin: 0 auto; }
+    #stock-edit-view, #panel-addfish, #panel-weekly { max-width: 640px; margin: 0 auto; }
     #fish-card-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
     .fish-card { margin-bottom: 0; }
     .toolbar { max-width: 900px; }
@@ -160,6 +160,27 @@
   .mode-view { display: none; }
   .mode-view.active { display: block; }
   .codes-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bulk-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  @media (min-width: 700px) { .bulk-stats-grid { grid-template-columns: repeat(5, 1fr); } }
+  .bi-filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 12px; }
+  .bi-filter-tab { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 16px; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+  .bi-filter-tab.active { background: var(--ink); border-color: var(--ink); color: white; }
+  .bi-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  .bi-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+  .bi-table th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--ink-soft); border-bottom: 1px solid var(--line); background: #F7F8F8; }
+  .bi-table td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .bi-table tr:last-child td { border-bottom: none; }
+  .bi-zh { color: var(--ink-soft); font-size: 12px; }
+  .bi-status-badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; }
+  .bi-status-badge.ready { background: var(--accent-soft); color: var(--accent); }
+  .bi-status-badge.unmatched, .bi-status-badge.invalid, .bi-status-badge.oversize { background: var(--red-soft); color: var(--red); }
+  .bi-status-badge.duplicate { background: var(--orange-soft); color: var(--orange); }
+  .bi-status-badge.existing { background: #F2F3F4; color: var(--ink-soft); }
+  .bi-show-btn { border: 1px solid #C7DBFA; background: var(--accent-soft); color: var(--brand-blue); padding: 6px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; }
+  .bi-preview-row td { background: #F7F8F8; }
+  .bi-preview-imgs { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+  .bi-preview-imgs img { width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+
   .stat-box { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
   .stat-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
   .stat-value { font-size: 20px; font-weight: 700; }
@@ -346,19 +367,42 @@
       </div>
 
       <div class="editor-card">
-        <h3>Bulk Images</h3>
-        <div class="sub">Name each photo exactly as the fish's Code (e.g. AGL-0628.jpg or AGL0628.jpg — dashes are optional). Not case-sensitive. You can select many at once.</div>
-        <div class="drop-zone" id="bulk-drop-zone">
-          <div style="font-weight:600; margin-bottom:4px;">Drag photos here, or tap to select</div>
-          <div style="font-size:12px;">You can select many at once</div>
-          <input type="file" id="bulk-photo-input" accept="image/*" multiple style="display:none;">
+        <h3>Select Images</h3>
+        <div class="sub">Filename format: <span class="mono">{FISH_CODE}-{IMAGE_NUMBER}.{extension}</span>. Example: <span class="mono">AGL-0628-1.jpg</span></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="save-btn" id="bulk-select-folder-btn" type="button" style="margin:0; flex:1 1 auto;">Select Folder</button>
+          <button class="back-btn" id="bulk-select-files-btn" type="button" style="margin:0; flex:1 1 auto;">Select Multiple Files</button>
         </div>
-        <div id="bulk-photo-preview" style="margin-top:14px;"></div>
-        <div id="bulk-photo-preview-actions" style="display:none; gap:8px; margin-top:12px;">
-          <button class="save-btn" id="bulk-photo-confirm-btn" type="button" style="margin:0; flex:1;">Confirm &amp; Upload</button>
-          <button class="back-btn" id="bulk-photo-cancel-btn" type="button" style="margin:0; flex:0 0 auto; width:auto; padding:0 20px;">Cancel</button>
+        <input type="file" id="bulk-photo-input-files" accept="image/*" multiple style="display:none;">
+        <input type="file" id="bulk-photo-input-folder" accept="image/*" multiple webkitdirectory style="display:none;">
+      </div>
+
+      <div class="editor-card" id="bulk-images-results" style="display:none;">
+        <div class="bulk-stats-grid">
+          <div class="stat-box"><div class="stat-label">Selected Files</div><div class="stat-value" id="bi-selected">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--brand-blue);">Matched Products</div><div class="stat-value" id="bi-matched">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--accent);">Ready To Upload</div><div class="stat-value" id="bi-ready">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--ink-soft);">Existing Images</div><div class="stat-value" id="bi-existing">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unmatched</div><div class="stat-value" id="bi-unmatched">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--red);">Invalid Filenames</div><div class="stat-value" id="bi-invalid">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--orange);">Duplicate Numbers</div><div class="stat-value" id="bi-duplicate">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--red);">Over 8MB</div><div class="stat-value" id="bi-oversize">0</div></div>
+          <div class="stat-box"><div class="stat-label" style="color:var(--ink-soft);">Inactive</div><div class="stat-value" id="bi-inactive">0</div></div>
         </div>
-        <div id="bulk-photo-log" style="margin-top:14px;"></div>
+
+        <div style="display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap;">
+          <input type="text" class="search-input" id="bi-search" placeholder="Search fish code or name" style="flex:1; min-width:180px;">
+          <button class="save-btn" id="bi-upload-btn" type="button" style="margin:0; width:auto; padding:13px 22px;">Upload Ready Images</button>
+        </div>
+
+        <div class="bi-filter-tabs" id="bi-filter-tabs"></div>
+
+        <div class="bi-table-wrap">
+          <table class="bi-table">
+            <thead><tr><th>Fish Code</th><th>English / Chinese</th><th>Fish Size</th><th>Images</th><th>Status</th><th>Upload</th><th>Preview</th></tr></thead>
+            <tbody id="bi-table-body"></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
@@ -764,108 +808,184 @@ BET-0166"></textarea>
   })();
 
   // ---------- QUICK ACTIONS ----------
-  const bulkDropZone = document.getElementById('bulk-drop-zone');
-  const bulkPhotoInput = document.getElementById('bulk-photo-input');
-  bulkDropZone.addEventListener('click', () => bulkPhotoInput.click());
-  bulkDropZone.addEventListener('dragover', (e) => { e.preventDefault(); bulkDropZone.classList.add('dragover'); });
-  bulkDropZone.addEventListener('dragleave', () => bulkDropZone.classList.remove('dragover'));
-  bulkDropZone.addEventListener('drop', (e) => { e.preventDefault(); bulkDropZone.classList.remove('dragover'); handleBulkPhotoFiles(e.dataTransfer.files); });
-  bulkPhotoInput.addEventListener('change', () => handleBulkPhotoFiles(bulkPhotoInput.files));
+  // ---------- BULK IMAGES (Select Images) ----------
+  document.getElementById('bulk-select-files-btn').addEventListener('click', () => document.getElementById('bulk-photo-input-files').click());
+  document.getElementById('bulk-select-folder-btn').addEventListener('click', () => document.getElementById('bulk-photo-input-folder').click());
+  document.getElementById('bulk-photo-input-files').addEventListener('change', (e) => handleBulkPhotoFiles(e.target.files));
+  document.getElementById('bulk-photo-input-folder').addEventListener('change', (e) => handleBulkPhotoFiles(e.target.files));
 
-  let pendingBulkImages = [];
+  const VALID_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  const MAX_FILE_SIZE = 8 * 1024 * 1024;
+  let biGroups = [];
+  let biFilterMode = 'all';
+
+  function parseImageFileName(filename) {
+    const dotIdx = filename.lastIndexOf('.');
+    const ext = dotIdx >= 0 ? filename.slice(dotIdx + 1).toLowerCase() : '';
+    const base = dotIdx >= 0 ? filename.slice(0, dotIdx) : filename;
+    const m = base.match(/^(.*)-(\d+)$/);
+    const code = m ? m[1] : base;
+    const number = m ? parseInt(m[2]) : 1;
+    const valid = !!code.trim() && VALID_EXTS.includes(ext);
+    return { code, number, ext, valid };
+  }
 
   function handleBulkPhotoFiles(fileList) {
-    const files = Array.from(fileList);
-    pendingBulkImages = files.map(file => {
-      const baseName = file.name.replace(/\.[^/.]+$/, '');
-      const match = fishList.find(f => normalizeCode(f.code) === normalizeCode(baseName));
-      return { file, match, previewUrl: URL.createObjectURL(file) };
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/') || VALID_EXTS.includes((f.name.split('.').pop() || '').toLowerCase()));
+    const entries = files.map(file => {
+      const parsed = parseImageFileName(file.name);
+      const normCode = normalizeCode(parsed.code);
+      const match = fishList.find(f => normalizeCode(f.code) === normCode) || null;
+      return { file, name: file.name, size: file.size, previewUrl: URL.createObjectURL(file), ...parsed, normCode, match };
     });
-    renderBulkPhotoPreview();
+
+    const byGroupKey = {};
+    entries.forEach(e => {
+      const key = e.match ? e.match.code : ('UNMATCHED:' + e.normCode);
+      if (!byGroupKey[key]) byGroupKey[key] = { fish: e.match, files: [] };
+      byGroupKey[key].files.push(e);
+    });
+
+    biGroups = Object.values(byGroupKey).map(g => {
+      const invalidFiles = g.files.filter(f => !f.valid);
+      const numberCounts = {};
+      g.files.forEach(f => { numberCounts[f.number] = (numberCounts[f.number] || 0) + 1; });
+      const hasDuplicateNumber = Object.values(numberCounts).some(c => c > 1);
+      const oversizeFiles = g.files.filter(f => f.size > MAX_FILE_SIZE);
+      const existingCount = g.fish ? (g.fish.images || []).length : 0;
+      const isFull = g.fish ? existingCount >= 5 : false;
+      const inactive = g.fish ? !g.fish.available : false;
+
+      let status;
+      if (!g.fish) status = 'unmatched';
+      else if (invalidFiles.length) status = 'invalid';
+      else if (hasDuplicateNumber) status = 'duplicate';
+      else if (oversizeFiles.length) status = 'oversize';
+      else if (isFull) status = 'existing';
+      else status = 'ready';
+
+      return { ...g, status, inactive, uploadState: 'waiting' };
+    });
+
+    biFilterMode = 'all';
+    renderBulkImagesUI();
   }
 
-  function renderBulkPhotoPreview() {
-    const previewEl = document.getElementById('bulk-photo-preview');
-    const actionsEl = document.getElementById('bulk-photo-preview-actions');
-    document.getElementById('bulk-photo-log').innerHTML = '';
+  function renderBulkImagesUI() {
+    document.getElementById('bulk-images-results').style.display = biGroups.length ? 'block' : 'none';
+    if (!biGroups.length) return;
 
-    if (!pendingBulkImages.length) { previewEl.innerHTML = ''; actionsEl.style.display = 'none'; return; }
+    const totalFiles = biGroups.reduce((s, g) => s + g.files.length, 0);
+    document.getElementById('bi-selected').textContent = totalFiles;
+    document.getElementById('bi-matched').textContent = biGroups.filter(g => g.fish).length;
+    document.getElementById('bi-ready').textContent = biGroups.filter(g => g.status === 'ready').length;
+    document.getElementById('bi-existing').textContent = biGroups.filter(g => g.status === 'existing').length;
+    document.getElementById('bi-unmatched').textContent = biGroups.filter(g => g.status === 'unmatched').length;
+    document.getElementById('bi-invalid').textContent = biGroups.reduce((s, g) => s + g.files.filter(f => !f.valid).length, 0);
+    document.getElementById('bi-duplicate').textContent = biGroups.filter(g => g.status === 'duplicate').length;
+    document.getElementById('bi-oversize').textContent = biGroups.reduce((s, g) => s + g.files.filter(f => f.size > MAX_FILE_SIZE).length, 0);
+    document.getElementById('bi-inactive').textContent = biGroups.filter(g => g.inactive).length;
 
-    const matchedCount = pendingBulkImages.filter(p => p.match).length;
-    previewEl.innerHTML = `
-      <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:10px;">${matchedCount} of ${pendingBulkImages.length} photos matched. Nothing has been uploaded yet — review below, then confirm.</div>
-      <div class="img-gallery">
-        ${pendingBulkImages.map((p, i) => `
-          <div class="img-thumb-wrap" title="${p.match ? p.match.code + ' — ' + p.match.name : 'No match: ' + p.file.name}">
-            <img src="${p.previewUrl}" style="${p.match ? '' : 'opacity:0.4;'}">
-            <button type="button" class="img-remove-btn" data-idx="${i}">✕</button>
-          </div>
-        `).join('')}
-      </div>
-    `;
-    previewEl.querySelectorAll('.img-remove-btn').forEach(btn => btn.addEventListener('click', () => {
-      pendingBulkImages.splice(parseInt(btn.dataset.idx), 1);
-      renderBulkPhotoPreview();
-    }));
-    actionsEl.style.display = 'flex';
+    const tabs = [
+      { key: 'all', label: 'All', count: biGroups.length },
+      { key: 'ready', label: 'Ready', count: biGroups.filter(g => g.status === 'ready').length },
+      { key: 'existing', label: 'Existing Images', count: biGroups.filter(g => g.status === 'existing').length },
+      { key: 'invalid', label: 'Invalid', count: biGroups.filter(g => g.status === 'invalid').length },
+      { key: 'unmatched', label: 'Unmatched', count: biGroups.filter(g => g.status === 'unmatched').length },
+      { key: 'inactive', label: 'Inactive', count: biGroups.filter(g => g.inactive).length },
+      { key: 'failed', label: 'Failed', count: biGroups.filter(g => g.uploadState === 'failed').length }
+    ];
+    document.getElementById('bi-filter-tabs').innerHTML = tabs.map(t => `<button class="bi-filter-tab ${biFilterMode === t.key ? 'active' : ''}" data-filter="${t.key}">${t.label} (${t.count})</button>`).join('');
+    document.querySelectorAll('.bi-filter-tab').forEach(btn => btn.addEventListener('click', () => { biFilterMode = btn.dataset.filter; renderBulkImagesUI(); }));
+
+    renderBiTable();
   }
 
-  document.getElementById('bulk-photo-cancel-btn').addEventListener('click', () => {
-    pendingBulkImages = [];
-    document.getElementById('bulk-photo-input').value = '';
-    renderBulkPhotoPreview();
-  });
+  function renderBiTable() {
+    const q = (document.getElementById('bi-search').value || '').trim().toLowerCase();
+    let list = biGroups.slice();
+    if (biFilterMode === 'inactive') list = list.filter(g => g.inactive);
+    else if (biFilterMode === 'failed') list = list.filter(g => g.uploadState === 'failed');
+    else if (biFilterMode !== 'all') list = list.filter(g => g.status === biFilterMode);
+    if (q) list = list.filter(g => (g.fish ? (g.fish.code + ' ' + g.fish.name).toLowerCase() : g.files[0].code.toLowerCase()).includes(q));
 
-  document.getElementById('bulk-photo-confirm-btn').addEventListener('click', async () => {
-    const toUpload = pendingBulkImages.filter(p => p.match);
-    if (!toUpload.length) { alert('No matched photos to upload.'); return; }
+    const body = document.getElementById('bi-table-body');
+    if (!list.length) { body.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--ink-soft);">No results.</td></tr>`; return; }
 
-    const confirmBtn = document.getElementById('bulk-photo-confirm-btn');
-    confirmBtn.disabled = true; confirmBtn.textContent = 'Uploading…';
+    body.innerHTML = list.map((g, i) => {
+      const code = g.fish ? g.fish.code : g.files[0].code;
+      const nameHtml = g.fish ? `${g.fish.name}${g.fish.zh ? `<div class="bi-zh">${g.fish.zh}</div>` : ''}` : '—';
+      const size = g.fish ? (g.fish.size || '—') : '—';
+      const uploadLabel = { waiting: 'Waiting', uploading: 'Uploading…', done: 'Done', failed: 'Failed' }[g.uploadState];
+      return `
+        <tr data-idx="${biGroups.indexOf(g)}">
+          <td><b>${code}</b></td>
+          <td>${nameHtml}</td>
+          <td>${size}</td>
+          <td>${g.files.length}</td>
+          <td><span class="bi-status-badge ${g.status}">${g.status}</span>${g.inactive ? ' <span class="bi-status-badge existing">inactive</span>' : ''}</td>
+          <td>${uploadLabel}</td>
+          <td><button type="button" class="bi-show-btn bi-show-toggle" data-idx="${biGroups.indexOf(g)}">Show</button></td>
+        </tr>
+        <tr class="bi-preview-row" data-preview-for="${biGroups.indexOf(g)}" style="display:none;">
+          <td colspan="7">
+            <div class="bi-preview-imgs">
+              ${g.files.map(f => `<img src="${f.previewUrl}" title="${f.name}">`).join('')}
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
 
-    const logEl = document.getElementById('bulk-photo-log');
-    logEl.innerHTML = '';
+    document.querySelectorAll('.bi-show-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const row = document.querySelector(`.bi-preview-row[data-preview-for="${btn.dataset.idx}"]`);
+        const isOpen = row.style.display !== 'none';
+        row.style.display = isOpen ? 'none' : 'table-row';
+        btn.textContent = isOpen ? 'Show' : 'Hide';
+      });
+    });
+  }
 
-    for (const p of pendingBulkImages) {
-      const row = document.createElement('div');
-      row.className = 'photo-log-row';
-      row.innerHTML = `<span>${p.file.name}</span><span class="status">${p.match ? 'Uploading…' : ''}</span>`;
-      logEl.appendChild(row);
+  document.getElementById('bi-search').addEventListener('input', renderBiTable);
 
-      if (!p.match) {
-        row.querySelector('.status').className = 'status err';
-        row.querySelector('.status').textContent = 'No matching fish code';
-        continue;
-      }
+  document.getElementById('bi-upload-btn').addEventListener('click', async () => {
+    const readyGroups = biGroups.filter(g => g.status === 'ready');
+    if (!readyGroups.length) { alert('No images are ready to upload.'); return; }
+    if (!confirm(`Upload images for ${readyGroups.length} fish now?`)) return;
+
+    const uploadBtn = document.getElementById('bi-upload-btn');
+    uploadBtn.disabled = true; uploadBtn.textContent = 'Uploading…';
+
+    for (const g of readyGroups) {
+      g.uploadState = 'uploading';
+      renderBiTable();
       try {
-        const ext = p.file.name.includes('.') ? p.file.name.slice(p.file.name.lastIndexOf('.')) : '.jpg';
-        const storagePath = `${p.match.code}-${Date.now()}${ext}`;
-        const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
-          method: 'POST',
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': p.file.type || 'application/octet-stream' },
-          body: p.file
+        let images = [...(g.fish.images || [])];
+        for (const f of g.files) {
+          if (images.length >= 5) break;
+          const ext = f.name.includes('.') ? f.name.slice(f.name.lastIndexOf('.')) : '.jpg';
+          const storagePath = `${g.fish.code}-${Date.now()}-${f.number}${ext}`;
+          const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': f.file.type || 'application/octet-stream' },
+            body: f.file
+          });
+          if (!uploadRes.ok) throw new Error(await uploadRes.text());
+          images.push(`${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`);
+        }
+        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(g.fish.code)}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ images })
         });
-        if (!uploadRes.ok) throw new Error(await uploadRes.text());
-        const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
-        const newImages = [...(p.match.images || []), publicUrl].slice(0, 5);
-        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(p.match.code)}`, {
-          method: 'PATCH', headers, body: JSON.stringify({ images: newImages })
-        });
-        p.match.images = newImages;
-        row.querySelector('.status').className = 'status ok';
-        row.querySelector('.status').textContent = `Matched → ${p.match.code}`;
+        g.fish.images = images;
+        g.uploadState = 'done';
       } catch (err) {
         console.error(err);
-        row.querySelector('.status').className = 'status err';
-        row.querySelector('.status').textContent = 'Upload failed';
+        g.uploadState = 'failed';
       }
+      renderBulkImagesUI();
     }
 
-    confirmBtn.disabled = false; confirmBtn.textContent = 'Confirm & Upload';
-    document.getElementById('bulk-photo-preview').innerHTML = '';
-    document.getElementById('bulk-photo-preview-actions').style.display = 'none';
-    document.getElementById('bulk-photo-input').value = '';
-    pendingBulkImages = [];
+    uploadBtn.disabled = false; uploadBtn.textContent = 'Upload Ready Images';
     renderStockList();
   });
 
