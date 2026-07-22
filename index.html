@@ -309,6 +309,7 @@
     </div>
     <button class="logo" id="home-btn"><span class="mark"></span>Jet Fish</button>
     <div class="nav-right">
+      <button class="lang-btn" id="client-logout-btn" title="Log out" style="font-size:12px;">Log Out</button>
       <button class="lang-btn" id="lang-toggle-btn">中文</button>
       <button class="cart-btn" id="cart-toggle">
         <span class="cart-emoji">🛒</span>
@@ -1139,89 +1140,108 @@
     init();
   }
 
-  const savedClient = localStorage.getItem('jetfish_client_session');
-  if (savedClient) {
-    showShop();
-  } else {
-    document.getElementById('client-login-btn').addEventListener('click', async () => {
-      const username = document.getElementById('client-login-username').value.trim().toLowerCase();
-      const password = document.getElementById('client-login-password').value;
-      const errorEl = document.getElementById('client-login-error');
-      errorEl.textContent = '';
-      if (!username || !password) { errorEl.textContent = 'Please enter your login ID and password.'; return; }
+  document.getElementById('client-login-btn').addEventListener('click', async () => {
+    const username = document.getElementById('client-login-username').value.trim().toLowerCase();
+    const password = document.getElementById('client-login-password').value;
+    const errorEl = document.getElementById('client-login-error');
+    errorEl.textContent = '';
+    if (!username || !password) { errorEl.textContent = 'Please enter your login ID and password.'; return; }
 
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=*`, { headers: supabaseHeaders });
-        const rows = await res.json();
-        const client = rows[0];
-        const hash = await sha256(password);
-        if (client && client.password_hash === hash) {
-          localStorage.setItem('jetfish_client_session', username);
-          showShop();
-        } else {
-          errorEl.textContent = 'Incorrect login ID or password.';
-        }
-      } catch (e) {
-        errorEl.textContent = 'Something went wrong. Please try again.';
-      }
-    });
-
-    // ---------- FORGOT PASSWORD ----------
-    document.getElementById('client-forgot-link').addEventListener('click', () => {
-      document.getElementById('client-login-form').style.display = 'none';
-      document.getElementById('client-forgot-form').style.display = 'block';
-    });
-    document.getElementById('forgot-back-link').addEventListener('click', () => {
-      document.getElementById('client-forgot-form').style.display = 'none';
-      document.getElementById('forgot-question-wrap').style.display = 'none';
-      document.getElementById('client-login-form').style.display = 'block';
-      document.getElementById('forgot-error').textContent = '';
-    });
-
-    let forgotClient = null;
-    document.getElementById('forgot-lookup-btn').addEventListener('click', async () => {
-      const username = document.getElementById('forgot-username').value.trim().toLowerCase();
-      const errorEl = document.getElementById('forgot-error');
-      errorEl.textContent = '';
-      if (!username) { errorEl.textContent = 'Please enter your login ID.'; return; }
-
+    try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=*`, { headers: supabaseHeaders });
       const rows = await res.json();
-      forgotClient = rows[0];
-
-      if (!forgotClient) {
-        errorEl.textContent = "We couldn't find that login ID.";
-      } else if (!forgotClient.security_question) {
-        errorEl.textContent = 'No self-reset is set up for this account. Please contact us on WhatsApp (010-9881389) to reset your password.';
+      const client = rows[0];
+      const hash = await sha256(password);
+      if (client && client.password_hash === hash) {
+        localStorage.setItem('jetfish_client_session', username);
+        showShop();
       } else {
-        document.getElementById('forgot-question-text').textContent = forgotClient.security_question;
-        document.getElementById('forgot-question-wrap').style.display = 'block';
+        errorEl.textContent = 'Incorrect login ID or password.';
       }
-    });
-    document.getElementById('forgot-reset-btn').addEventListener('click', async () => {
-      const answer = document.getElementById('forgot-answer').value.trim().toLowerCase();
-      const newPassword = document.getElementById('forgot-new-password').value;
-      const errorEl = document.getElementById('forgot-error');
-      errorEl.textContent = '';
-      if (!answer || !newPassword) { errorEl.textContent = 'Please fill in both fields.'; return; }
+    } catch (e) {
+      errorEl.textContent = 'Something went wrong. Please try again.';
+    }
+  });
 
-      const answerHash = await sha256(answer);
-      if (answerHash !== forgotClient.security_answer_hash) {
-        errorEl.textContent = 'That answer doesn\'t match. Please try again or contact us on WhatsApp (010-9881389).';
-        return;
-      }
-      const newHash = await sha256(newPassword);
-      await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${forgotClient.id}`, {
-        method: 'PATCH', headers: { ...supabaseHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password_hash: newHash })
-      });
-      alert('Password reset! Please log in with your new password.');
-      document.getElementById('forgot-back-link').click();
-      document.getElementById('forgot-username').value = '';
-      document.getElementById('forgot-answer').value = '';
-      document.getElementById('forgot-new-password').value = '';
+  // ---------- FORGOT PASSWORD ----------
+  document.getElementById('client-forgot-link').addEventListener('click', () => {
+    document.getElementById('client-login-form').style.display = 'none';
+    document.getElementById('client-forgot-form').style.display = 'block';
+  });
+  document.getElementById('forgot-back-link').addEventListener('click', () => {
+    document.getElementById('client-forgot-form').style.display = 'none';
+    document.getElementById('forgot-question-wrap').style.display = 'none';
+    document.getElementById('client-login-form').style.display = 'block';
+    document.getElementById('forgot-error').textContent = '';
+  });
+
+  let forgotClient = null;
+  document.getElementById('forgot-lookup-btn').addEventListener('click', async () => {
+    const username = document.getElementById('forgot-username').value.trim().toLowerCase();
+    const errorEl = document.getElementById('forgot-error');
+    errorEl.textContent = '';
+    if (!username) { errorEl.textContent = 'Please enter your login ID.'; return; }
+
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=*`, { headers: supabaseHeaders });
+    const rows = await res.json();
+    forgotClient = rows[0];
+
+    if (!forgotClient) {
+      errorEl.textContent = "We couldn't find that login ID.";
+    } else if (!forgotClient.security_question) {
+      errorEl.textContent = 'No self-reset is set up for this account. Please contact us on WhatsApp (010-9881389) to reset your password.';
+    } else {
+      document.getElementById('forgot-question-text').textContent = forgotClient.security_question;
+      document.getElementById('forgot-question-wrap').style.display = 'block';
+    }
+  });
+  document.getElementById('forgot-reset-btn').addEventListener('click', async () => {
+    const answer = document.getElementById('forgot-answer').value.trim().toLowerCase();
+    const newPassword = document.getElementById('forgot-new-password').value;
+    const errorEl = document.getElementById('forgot-error');
+    errorEl.textContent = '';
+    if (!answer || !newPassword) { errorEl.textContent = 'Please fill in both fields.'; return; }
+
+    const answerHash = await sha256(answer);
+    if (answerHash !== forgotClient.security_answer_hash) {
+      errorEl.textContent = 'That answer doesn\'t match. Please try again or contact us on WhatsApp (010-9881389).';
+      return;
+    }
+    const newHash = await sha256(newPassword);
+    await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${forgotClient.id}`, {
+      method: 'PATCH', headers: { ...supabaseHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password_hash: newHash })
     });
-  }
+    alert('Password reset! Please log in with your new password.');
+    document.getElementById('forgot-back-link').click();
+    document.getElementById('forgot-username').value = '';
+    document.getElementById('forgot-answer').value = '';
+    document.getElementById('forgot-new-password').value = '';
+  });
+
+  document.getElementById('client-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('jetfish_client_session');
+    location.reload();
+  });
+
+  // Re-check any saved session against the database — if the client was deleted
+  // or renamed since, this browser loses access and is sent back to the login screen.
+  (async function checkSavedSession() {
+    const savedUsername = localStorage.getItem('jetfish_client_session');
+    if (!savedUsername) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(savedUsername)}&select=id`, { headers: supabaseHeaders });
+      const rows = await res.json();
+      if (rows.length) {
+        showShop();
+      } else {
+        localStorage.removeItem('jetfish_client_session');
+      }
+    } catch (e) {
+      // Network hiccup — don't lock out a legitimate client over a connectivity blip
+      showShop();
+    }
+  })();
 </script>
 
 </body>
