@@ -240,8 +240,8 @@
       <button class="tab-btn active" data-panel="stock">Stocks</button>
       <button class="tab-btn" data-panel="addfish">Add Fish/Image</button>
       <button class="tab-btn" data-panel="weekly">Weekly Import</button>
-      <button class="tab-btn" data-panel="orders">Orders</button>
       <button class="tab-btn" data-panel="clients">Clients</button>
+      <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
     <div style="text-align:right; margin-top:6px;">
       <button id="admin-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:11px; text-decoration:underline; padding:2px;">Log Out</button>
@@ -1833,13 +1833,25 @@ BET-0166"></textarea>
           <div class="client-info">
             <div class="name">${c.display_name || c.username}</div>
             <div class="username">${c.username}</div>
+            <div class="fc-status-sub ${c.active ? 'on' : 'off'}" style="margin-top:4px;">${c.active ? 'ON · Can log in' : 'OFF · Access blocked'}</div>
           </div>
           <div class="client-actions">
+            <button class="fc-status-pill ${c.active ? 'on' : 'off'} toggle-client-active-btn" data-id="${c.id}">${c.active ? 'ON' : 'OFF'}</button>
             <button class="icon-btn reset-client-btn" data-id="${c.id}" data-username="${c.username}">Reset Password</button>
             <button class="icon-btn delete-client-btn" data-id="${c.id}" style="color:var(--red);">Delete</button>
           </div>
         </div>
       `).join('');
+
+      listEl.querySelectorAll('.toggle-client-active-btn').forEach(btn => btn.addEventListener('click', async () => {
+        const client = clients.find(c => String(c.id) === btn.dataset.id);
+        const newActive = !client.active;
+        await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${btn.dataset.id}`, {
+          method: 'PATCH', headers, body: JSON.stringify({ active: newActive })
+        });
+        showToast(newActive ? 'Client can now log in' : 'Client access blocked');
+        loadClients();
+      }));
 
       listEl.querySelectorAll('.reset-client-btn').forEach(btn => btn.addEventListener('click', async () => {
         const newPass = prompt(`New password for "${btn.dataset.username}":`);
