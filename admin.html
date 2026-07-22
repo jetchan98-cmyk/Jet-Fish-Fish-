@@ -41,9 +41,11 @@
   @media (min-width: 900px) {
     .tabs { max-width: 1500px; }
     main { max-width: 1500px; padding: 28px 32px 80px; }
-    .editor-card, .form-card { max-width: 640px; }
+    .editor-card, .form-card { max-width: 640px; margin-left: auto; margin-right: auto; }
     .quick-actions, .avail-filter-toggle { max-width: 340px; }
-    #stock-edit-view, #panel-addfish, #panel-weekly { max-width: 640px; margin: 0 auto; }
+    #stock-edit-view, #panel-weekly { max-width: 640px; margin: 0 auto; }
+    #bulk-images-results { max-width: 1200px; margin: 0 auto 16px; }
+    .bi-table { white-space: normal; }
     #fish-card-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
     .fish-card { margin-bottom: 0; }
     .toolbar { max-width: 900px; }
@@ -819,24 +821,37 @@ BET-0166"></textarea>
   let biGroups = [];
   let biFilterMode = 'all';
 
-  function parseImageFileName(filename) {
+  function matchFileToFish(filename) {
     const dotIdx = filename.lastIndexOf('.');
     const ext = dotIdx >= 0 ? filename.slice(dotIdx + 1).toLowerCase() : '';
     const base = dotIdx >= 0 ? filename.slice(0, dotIdx) : filename;
+    const validExt = VALID_EXTS.includes(ext);
+
+    // Try 1: the whole filename (minus extension) IS the fish code — e.g. "CIC-0023.jpg" or "cic0023.jpg"
+    const fullNorm = normalizeCode(base);
+    let fish = fishList.find(f => normalizeCode(f.code) === fullNorm);
+    if (fish) return { code: fish.code, number: 1, ext, valid: validExt, match: fish };
+
+    // Try 2: strip a trailing "-N" as an explicit image number suffix — e.g. "AGL-0628-2.jpg"
     const m = base.match(/^(.*)-(\d+)$/);
-    const code = m ? m[1] : base;
-    const number = m ? parseInt(m[2]) : 1;
-    const valid = !!code.trim() && VALID_EXTS.includes(ext);
-    return { code, number, ext, valid };
+    if (m) {
+      const remainderNorm = normalizeCode(m[1]);
+      fish = fishList.find(f => normalizeCode(f.code) === remainderNorm);
+      if (fish) return { code: fish.code, number: parseInt(m[2]), ext, valid: validExt, match: fish };
+    }
+
+    // No match either way — show the raw parsed code for reference
+    const fallbackCode = m ? m[1] : base;
+    const fallbackNumber = m ? parseInt(m[2]) : 1;
+    return { code: fallbackCode, number: fallbackNumber, ext, valid: validExt && !!fallbackCode.trim(), match: null };
   }
 
   function handleBulkPhotoFiles(fileList) {
     const files = Array.from(fileList).filter(f => f.type.startsWith('image/') || VALID_EXTS.includes((f.name.split('.').pop() || '').toLowerCase()));
     const entries = files.map(file => {
-      const parsed = parseImageFileName(file.name);
+      const parsed = matchFileToFish(file.name);
       const normCode = normalizeCode(parsed.code);
-      const match = fishList.find(f => normalizeCode(f.code) === normCode) || null;
-      return { file, name: file.name, size: file.size, previewUrl: URL.createObjectURL(file), ...parsed, normCode, match };
+      return { file, name: file.name, size: file.size, previewUrl: URL.createObjectURL(file), ...parsed, normCode };
     });
 
     const byGroupKey = {};

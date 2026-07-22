@@ -1038,8 +1038,10 @@
 
     // Notify the shop owner on Telegram (best-effort — order is already saved either way)
     try {
-      const itemsText = items.map(it => `${it.code} — ${it.name} ×${it.qty}`).join('\n');
-      const message = `🐟 New Order — ${orderId}\nCompany: ${company}\nPhone: ${phone}\n\n${itemsText}\n\nTotal: RM${orderTotal.toFixed(2)}`;
+      const intlPhone = '60' + phone.replace(/-/g, '').replace(/^0/, '');
+      const itemsText = items.map(it => `\n• ${it.name}\nCode: ${it.code}       x${it.qty}\n`).join('');
+      const submittedStr = new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+      const message = `🆕 NEW ORDER\n\n🏢 Company\n${company}\n\n📱 Phone\n${intlPhone}\n\n🐟 Items\n${itemsText}\nTotal RM${orderTotal.toFixed(2)}\n\n🕒 Submitted\n${submittedStr}`;
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
