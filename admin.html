@@ -1097,6 +1097,7 @@ BET-0166"></textarea>
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     // Embed the custom Chinese-capable font (subset built specifically for your fish list)
     doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
@@ -1116,9 +1117,16 @@ BET-0166"></textarea>
       f.size || '', tiersToPriceString(f.tiers)
     ]);
 
+    // Date/contact block drawn once, directly above the table — page 1 only
+    doc.setFont('NotoSansSC');
+    doc.setFontSize(10);
+    doc.text(`Date: ${today}`, pageWidth / 2, 26, { align: 'center' });
+    doc.text(`Jet: ${CONTACT_PHONE}`, pageWidth / 2, 40, { align: 'center' });
+    doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 54, { align: 'center' });
+
     doc.autoTable({
-      startY: 76,
-      margin: { top: 76 },
+      startY: 66,
+      showHead: 'firstPage', // column titles (No./Group/Code/Fish/Size/Price) appear only on page 1, matching your original
       head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
       body: rows,
       styles: { font: 'NotoSansSC', fontSize: 8, cellPadding: 4 },
@@ -1128,15 +1136,18 @@ BET-0166"></textarea>
         1: { cellWidth: 48 },
         2: { cellWidth: 62, overflow: 'visible' }, // keep Code on one line
         4: { cellWidth: 45 }
-      },
-      didDrawPage: () => {
-        doc.setFont('NotoSansSC');
-        doc.setFontSize(10);
-        doc.text(`Date: ${today}`, pageWidth / 2, 26, { align: 'center' });
-        doc.text(`Jet: ${CONTACT_PHONE}`, pageWidth / 2, 40, { align: 'center' });
-        doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 54, { align: 'center' });
       }
     });
+
+    // Page numbers — these DO repeat on every page, matching your original
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFont('NotoSansSC');
+      doc.setFontSize(9);
+      doc.setTextColor(60);
+      doc.text(`${p}`, pageWidth - 40, pageHeight - 20);
+    }
 
     doc.save(`Jet-Fish-Price-List-${today.replace(/\//g, '-')}.pdf`);
   });
