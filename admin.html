@@ -1118,24 +1118,27 @@ BET-0166"></textarea>
     ]);
 
     // Date/contact block drawn once, directly above the table — page 1 only
+    // (same font size as body text, matching the real file exactly)
     doc.setFont('NotoSansSC');
-    doc.setFontSize(10);
+    doc.setFontSize(8);
     doc.text(`Date: ${today}`, pageWidth / 2, 26, { align: 'center' });
-    doc.text(`Jet: ${CONTACT_PHONE}`, pageWidth / 2, 40, { align: 'center' });
-    doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 54, { align: 'center' });
+    doc.text(`Jet: ${CONTACT_PHONE}`, pageWidth / 2, 38, { align: 'center' });
+    doc.text('PM for photos & videos / 图片视频请私讯', pageWidth / 2, 50, { align: 'center' });
 
     doc.autoTable({
-      startY: 66,
+      startY: 60,
       showHead: 'firstPage', // column titles (No./Group/Code/Fish/Size/Price) appear only on page 1, matching your original
       head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
       body: rows,
-      styles: { font: 'NotoSansSC', fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [20, 24, 26], font: 'NotoSansSC' },
+      styles: { font: 'NotoSansSC', fontSize: 8, cellPadding: 4, halign: 'left' },
+      headStyles: { fillColor: [20, 24, 26], font: 'NotoSansSC', fontSize: 7 },
+      // Column widths match the exact proportions measured from your real Excel file
       columnStyles: {
-        0: { cellWidth: 28 },
-        1: { cellWidth: 48 },
-        2: { cellWidth: 62, overflow: 'visible' }, // keep Code on one line
-        4: { cellWidth: 45 }
+        0: { cellWidth: 20, halign: 'left' },  // No.   ~4.0%
+        1: { cellWidth: 34 },                  // Group ~6.7%
+        2: { cellWidth: 49, overflow: 'visible' }, // Code ~9.6%, kept on one line
+        4: { cellWidth: 38 },                  // Size  ~7.3%
+        5: { cellWidth: 154 }                  // Price ~29.9% — was far too narrow before
       }
     });
 
