@@ -673,11 +673,16 @@
   // ---------- SEARCH BAR CATEGORY DROPDOWN ----------
   const searchCatDropdown = document.getElementById('search-cat-dropdown');
   function renderSearchCatDropdown() {
-    let html = `<button class="search-cat-pill ${activeCategory === 'All Fish' ? 'active' : ''}" data-cat="All Fish">${t('allFish')}</button>`;
-    getCategories().slice().sort((a, b) => a.localeCompare(b)).forEach(cat => {
-      html += `<button class="search-cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${cat}</button>`;
+    const items = ['All Fish', ...getCategories().slice().sort((a, b) => a.localeCompare(b))];
+    let html = '';
+    items.forEach(cat => {
+      const label = cat === 'All Fish' ? t('allFish') : cat;
+      html += `<button class="search-cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${label}</button>`;
     });
     searchCatDropdown.innerHTML = html;
+    const rows = Math.ceil(items.length / 2);
+    searchCatDropdown.style.gridTemplateRows = `repeat(${rows}, auto)`;
+    searchCatDropdown.style.gridAutoFlow = 'column';
     searchCatDropdown.querySelectorAll('.search-cat-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         activeCategory = btn.dataset.cat;
@@ -780,8 +785,13 @@
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(card.dataset.id); } });
     });
   }
-  searchInput.addEventListener('input', renderGrid);
-  searchInput.addEventListener('focus', () => searchCatDropdown.classList.add('open'));
+  searchInput.addEventListener('input', () => {
+    renderGrid();
+    if (searchInput.value.trim() !== '') searchCatDropdown.classList.remove('open');
+  });
+  searchInput.addEventListener('focus', () => {
+    if (searchInput.value.trim() === '') searchCatDropdown.classList.add('open');
+  });
   document.addEventListener('click', (e) => {
     if (!searchCatDropdown.contains(e.target) && e.target !== searchInput) searchCatDropdown.classList.remove('open');
   });
