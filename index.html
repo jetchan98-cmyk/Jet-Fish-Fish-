@@ -3,6 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Some mobile browsers (notably iOS Safari) keep whatever pinch-zoom level
+  // was set before a refresh, ignoring initial-scale. Briefly forcing the
+  // viewport to a fixed scale, then restoring normal pinch-zoom, resets it.
+  (function () {
+    var viewport = document.querySelector('meta[name=viewport]');
+    if (!viewport) return;
+    var original = viewport.getAttribute('content');
+    viewport.setAttribute('content', original + ', maximum-scale=1.0, user-scalable=no');
+    setTimeout(function () {
+      viewport.setAttribute('content', original);
+    }, 300);
+  })();
+</script>
 <title>Jet Fish — Ornamental Fish</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
