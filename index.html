@@ -1186,6 +1186,14 @@
           return;
         }
         localStorage.setItem('jetfish_client_session', username);
+        // Record the login — best-effort, doesn't block getting into the shop
+        fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${client.id}`, {
+          method: 'PATCH', headers: supabaseHeaders, body: JSON.stringify({ last_login: new Date().toISOString() })
+        }).catch(() => {});
+        fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+          method: 'POST', headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
+          body: JSON.stringify([{ action: 'Client Login', code: null, details: `${client.display_name || username} (${username})` }])
+        }).catch(() => {});
         showShop();
       } else {
         errorEl.textContent = 'Incorrect login ID or password.';
