@@ -42,7 +42,8 @@
     .tabs { max-width: 1500px; }
     main { max-width: 1500px; padding: 28px 32px 80px; }
     .editor-card, .form-card { max-width: 640px; margin-left: auto; margin-right: auto; }
-    .quick-actions, .avail-filter-toggle { max-width: 340px; }
+    .quick-actions { max-width: 480px; }
+    .avail-filter-toggle { max-width: 340px; }
     #stock-edit-view, #panel-weekly { max-width: 640px; margin: 0 auto; }
     #bulk-images-results { max-width: 1200px; margin: 0 auto 16px; }
     .bi-table { white-space: normal; }
@@ -95,10 +96,9 @@
   .fc-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
   .stock-pager { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
   .pager-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .pager-input { width: 70px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 13px; text-align: center; }
   .pager-arrow { width: 38px; height: 38px; padding: 0; font-size: 18px; font-weight: 700; flex: 0 0 auto; }
   .pager-num { width: 38px; height: 38px; padding: 0; font-size: 14px; font-weight: 600; flex: 0 0 auto; color: var(--ink-soft); }
-  .pager-current { width: 46px; height: 38px; font-weight: 700; font-size: 14px; background: var(--ink); color: white; border-color: var(--ink); }
+  .pager-current { width: 46px; height: 38px; font-weight: 700; font-size: 14px; background: var(--ink); color: white; border: 1px solid var(--ink); border-radius: 7px; }
   .fc-btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
@@ -244,6 +244,7 @@
       <button class="tab-btn" data-panel="weekly">Weekly Import</button>
       <button class="tab-btn" data-panel="clients">Clients</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
+      <button class="tab-btn" data-panel="history">History</button>
     </div>
     <div style="text-align:right; margin-top:6px;">
       <button id="admin-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:11px; text-decoration:underline; padding:2px;">Log Out</button>
@@ -256,8 +257,19 @@
 
       <!-- LIST VIEW -->
       <div id="stock-list-view">
-        <div class="quick-actions" style="grid-template-columns: 1fr;">
+        <div class="quick-actions" style="grid-template-columns: 1fr 1fr;">
           <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
+          <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
+        </div>
+
+        <div class="editor-card" id="available-codes-panel" style="display:none;">
+          <h3>Available Fish Codes</h3>
+          <div class="sub">Every fish currently toggled ON, as plain text — one code per line.</div>
+          <textarea class="bulk-textarea" id="available-codes-output" readonly style="min-height:200px;"></textarea>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="save-btn" id="copy-available-codes-btn" type="button" style="margin:0; flex:1;">Copy to Clipboard</button>
+            <button class="back-btn" id="close-available-codes-btn" type="button" style="margin:0; width:auto; padding:0 20px;">Close</button>
+          </div>
         </div>
 
         <div class="avail-filter-toggle">
@@ -565,6 +577,15 @@ BET-0166"></textarea>
         <div id="clients-list"><div class="loading-msg">Loading clients…</div></div>
       </div>
     </section>
+
+    <!-- ================= HISTORY ================= -->
+    <section class="panel" id="panel-history">
+      <div class="toolbar">
+        <input type="text" class="search-input" id="history-search" placeholder="Search by fish code...">
+        <button class="icon-btn" id="refresh-history-btn" style="flex:0 0 auto;">↻ Refresh</button>
+      </div>
+      <div id="history-list"><div class="loading-msg">Loading history…</div></div>
+    </section>
   </main>
 </div>
 
@@ -630,6 +651,7 @@ BET-0166"></textarea>
       document.getElementById('panel-' + btn.dataset.panel).classList.add('active');
       if (btn.dataset.panel === 'orders') loadOrders();
       if (btn.dataset.panel === 'clients') loadClients();
+      if (btn.dataset.panel === 'history') loadHistory();
       if (btn.dataset.panel === 'stock') showListView();
     });
   });
@@ -703,7 +725,20 @@ BET-0166"></textarea>
   });
 
   let availFilter = 'all';
+  // ---------- ACTIVITY LOG ----------
+  async function logActivity(action, code, details) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
+        method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' },
+        body: JSON.stringify([{ action, code: code || null, details: details || null }])
+      });
+    } catch (e) {
+      console.error('Could not log activity:', e); // never block the actual action over this
+    }
+  }
+
   let stockPage = 1;
+  let showAllStock = false;
   const STOCK_PAGE_SIZE = 50;
   function renderStockList() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
@@ -729,9 +764,10 @@ BET-0166"></textarea>
     const listEl = document.getElementById('fish-card-list');
     if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; renderStockPager(0, 0); return; }
 
-    const totalPages = Math.max(1, Math.ceil(list.length / STOCK_PAGE_SIZE));
+    const pageSize = showAllStock ? list.length || 1 : STOCK_PAGE_SIZE;
+    const totalPages = showAllStock ? 1 : Math.max(1, Math.ceil(list.length / pageSize));
     if (stockPage > totalPages) stockPage = totalPages;
-    const pageList = list.slice((stockPage - 1) * STOCK_PAGE_SIZE, stockPage * STOCK_PAGE_SIZE);
+    const pageList = showAllStock ? list : list.slice((stockPage - 1) * pageSize, stockPage * pageSize);
 
     listEl.innerHTML = pageList.map(f => {
       const thumb = f.images && f.images[0]
@@ -788,22 +824,27 @@ BET-0166"></textarea>
 
     pagerEl.innerHTML = `
       <div class="pager-row" style="justify-content:center;">
-        <button class="icon-btn pager-arrow" id="stock-page-prev" ${stockPage <= 1 ? 'disabled' : ''}>‹</button>
-        ${prevPage >= 1 ? `<button class="icon-btn pager-num" id="stock-page-prevnum">${prevPage}</button>` : ''}
-        <input type="number" id="stock-page-input" class="pager-input pager-current" value="${stockPage}" min="1" max="${totalPages}">
-        ${nextPage <= totalPages ? `<button class="icon-btn pager-num" id="stock-page-nextnum">${nextPage}</button>` : ''}
-        <button class="icon-btn pager-arrow" id="stock-page-next" ${stockPage >= totalPages ? 'disabled' : ''}>›</button>
+        <button class="icon-btn pager-arrow" id="stock-page-prev" ${stockPage <= 1 || showAllStock ? 'disabled' : ''}>‹</button>
+        ${!showAllStock && prevPage >= 1 ? `<button class="icon-btn pager-num" id="stock-page-prevnum">${prevPage}</button>` : ''}
+        <span class="pager-current" style="display:inline-flex; align-items:center; justify-content:center;">${stockPage}</span>
+        ${!showAllStock && nextPage <= totalPages ? `<button class="icon-btn pager-num" id="stock-page-nextnum">${nextPage}</button>` : ''}
+        <button class="icon-btn pager-arrow" id="stock-page-next" ${stockPage >= totalPages || showAllStock ? 'disabled' : ''}>›</button>
       </div>
-      <div class="pager-row" style="justify-content:center; color:var(--ink-soft);">Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish</div>
+      <div class="pager-row" style="justify-content:center; color:var(--ink-soft);">${showAllStock ? `Showing all ${totalCount} fish` : `Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish`}</div>
+      <div class="pager-row" style="justify-content:center;">
+        <button class="icon-btn" id="stock-show-all-btn">${showAllStock ? 'Show 50 Per Page' : 'Show All On One Page'}</button>
+      </div>
     `;
     document.getElementById('stock-page-prev').addEventListener('click', () => goTo(stockPage - 1));
     document.getElementById('stock-page-next').addEventListener('click', () => goTo(stockPage + 1));
-    if (prevPage >= 1) document.getElementById('stock-page-prevnum').addEventListener('click', () => goTo(prevPage));
-    if (nextPage <= totalPages) document.getElementById('stock-page-nextnum').addEventListener('click', () => goTo(nextPage));
-    const pageInput = document.getElementById('stock-page-input');
-    const goToTyped = () => { const v = parseInt(pageInput.value); if (!isNaN(v)) goTo(v); };
-    pageInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') goToTyped(); });
-    pageInput.addEventListener('blur', goToTyped);
+    if (!showAllStock && prevPage >= 1) document.getElementById('stock-page-prevnum').addEventListener('click', () => goTo(prevPage));
+    if (!showAllStock && nextPage <= totalPages) document.getElementById('stock-page-nextnum').addEventListener('click', () => goTo(nextPage));
+    document.getElementById('stock-show-all-btn').addEventListener('click', () => {
+      showAllStock = !showAllStock;
+      stockPage = 1;
+      renderStockList();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }
 
   async function quickToggleAvailable(code) {
@@ -814,6 +855,7 @@ BET-0166"></textarea>
     await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
       method: 'PATCH', headers, body: JSON.stringify({ available: f.available, featured: f.featured })
     });
+    logActivity(f.available ? 'Turned ON' : 'Turned OFF', code, f.name);
     renderStockList();
     showToast(f.available ? 'Now visible to customers' : 'Hidden from customers');
   }
@@ -826,6 +868,7 @@ BET-0166"></textarea>
     await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
       method: 'PATCH', headers, body: JSON.stringify({ featured: f.featured, available: f.available })
     });
+    logActivity(f.featured ? 'Added to Featured' : 'Removed from Featured', code, f.name);
     renderStockList();
     showToast(f.featured ? 'Added to Featured' : 'Removed from Featured');
   }
@@ -1110,6 +1153,26 @@ BET-0166"></textarea>
     return sorted.map(t => `${t.qty}xRM${formatPriceNum(t.price)}`).join(' / ');
   }
 
+  document.getElementById('qa-available-codes').addEventListener('click', () => {
+    const codes = fishList.filter(f => f.available).map(f => f.code).sort();
+    document.getElementById('available-codes-output').value = codes.join('\n');
+    document.getElementById('available-codes-panel').style.display = 'block';
+  });
+  document.getElementById('close-available-codes-btn').addEventListener('click', () => {
+    document.getElementById('available-codes-panel').style.display = 'none';
+  });
+  document.getElementById('copy-available-codes-btn').addEventListener('click', async () => {
+    const textarea = document.getElementById('available-codes-output');
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      showToast('Copied to clipboard');
+    } catch (e) {
+      textarea.select();
+      document.execCommand('copy');
+      showToast('Copied to clipboard');
+    }
+  });
+
   document.getElementById('qa-price-pdf').addEventListener('click', () => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -1349,11 +1412,15 @@ BET-0166"></textarea>
     const catSelect = document.getElementById('ed-category-select');
     const category = catSelect.value === '__new__' ? document.getElementById('ed-category-new').value.trim() : catSelect.value;
 
+    const originalFish = fishList.find(f => f.code === editingFish.code);
+    const oldPrice = originalFish ? parseFloat(originalFish.price) : null;
+    const newPrice = editingFish.tiers[0] ? parseFloat(editingFish.tiers[0].price) : 0;
+
     const body = {
       name: document.getElementById('ed-name').value.trim(),
       zh: document.getElementById('ed-zh').value.trim(),
       category, size: document.getElementById('ed-size').value.trim(),
-      price: editingFish.tiers[0] ? parseFloat(editingFish.tiers[0].price) : 0,
+      price: newPrice,
       tiers: editingFish.tiers,
       images: editingFish.images,
       offer_price: editingFish.offer_price,
@@ -1367,6 +1434,12 @@ BET-0166"></textarea>
     await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
     saveBtn.disabled = false; saveBtn.textContent = 'Save Product';
 
+    if (oldPrice !== null && oldPrice !== newPrice) {
+      logActivity('Price changed', editingFish.code, `${body.name}: RM${oldPrice.toFixed(2)} → RM${newPrice.toFixed(2)}`);
+    } else {
+      logActivity('Edited', editingFish.code, body.name);
+    }
+
     await loadFish(); populateCatFilter(); showListView(); renderStockList();
     showToast('Saved — live on site now');
   });
@@ -1375,7 +1448,9 @@ BET-0166"></textarea>
 
   document.getElementById('delete-fish-btn').addEventListener('click', async () => {
     if (!confirm('Delete this fish permanently? This cannot be undone.')) return;
+    const deletedName = editingFish.name;
     await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'DELETE', headers });
+    logActivity('Deleted', editingFish.code, deletedName);
     await loadFish(); populateCatFilter(); showListView(); renderStockList();
     showToast('Deleted');
   });
@@ -1401,6 +1476,7 @@ BET-0166"></textarea>
     });
     if (res.ok) {
       resultEl.innerHTML = `<span class="ok">Added "${name}" — now live on your site.</span>`;
+      logActivity('Added fish', code, `${name} — RM${price.toFixed(2)}`);
       ['add-code','add-name','add-zh','add-size','add-price'].forEach(id => document.getElementById(id).value = '');
       document.getElementById('add-category-new').value = '';
       await loadFish(); populateCatFilter(); populateAddCategorySelect();
@@ -1449,6 +1525,7 @@ BET-0166"></textarea>
       });
       if (!res.ok) throw new Error(await res.text());
       resultEl.innerHTML = `<span class="ok">Imported ${rows.length} fish successfully.</span> New fish are set to "not available" until toggled on.`;
+      logActivity('Full Product Import', null, `${rows.length} rows imported`);
       document.getElementById('bulk-textarea').value = '';
       await loadFish(); populateCatFilter();
     } catch (err) {
@@ -1548,6 +1625,7 @@ BET-0166"></textarea>
         })
       ));
       resultEl.innerHTML = `<span class="ok">Weekly update applied — ${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF.</span>`;
+      logActivity('Weekly Update (Turn On Only)', null, `${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF`);
       document.getElementById('codes-textarea').value = '';
       await loadFish(); populateCatFilter(); renderCodesPreview();
     } catch (err) {
@@ -1610,6 +1688,7 @@ BET-0166"></textarea>
         })
       ));
       resultEl.innerHTML = `<span class="ok">${r.willTurnOff.length} fish turned OFF.</span>`;
+      logActivity('Turn Off Only', null, `${r.willTurnOff.length} fish turned OFF: ${r.willTurnOff.map(f => f.code).join(', ')}`);
       document.getElementById('turnoff-textarea').value = '';
       await loadFish(); populateCatFilter(); renderTurnOffPreview();
     } catch (err) {
@@ -1672,6 +1751,7 @@ BET-0166"></textarea>
         })
       ));
       resultEl.innerHTML = `<span class="ok">${r.willTurnOn.length} fish turned ON.</span>`;
+      logActivity('Add On', null, `${r.willTurnOn.length} fish turned ON: ${r.willTurnOn.map(f => f.code).join(', ')}`);
       document.getElementById('addon-textarea').value = '';
       await loadFish(); populateCatFilter(); renderAddOnPreview();
     } catch (err) {
@@ -1902,6 +1982,43 @@ BET-0166"></textarea>
       listEl.innerHTML = `<div class="empty-msg">Could not load clients.</div>`;
     }
   }
+
+  // ---------- HISTORY ----------
+  let historyEntries = [];
+  async function loadHistory() {
+    const listEl = document.getElementById('history-list');
+    listEl.innerHTML = `<div class="loading-msg">Loading history…</div>`;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=300`, { headers });
+      historyEntries = await res.json();
+      renderHistoryList();
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = `<div class="empty-msg">Could not load history.</div>`;
+    }
+  }
+
+  function renderHistoryList() {
+    const q = document.getElementById('history-search').value.trim().toLowerCase();
+    let list = historyEntries;
+    if (q) list = list.filter(h => (h.code || '').toLowerCase().includes(q) || (h.details || '').toLowerCase().includes(q));
+
+    const listEl = document.getElementById('history-list');
+    if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No history yet.</div>`; return; }
+
+    listEl.innerHTML = list.map(h => `
+      <div class="client-row">
+        <div class="client-info">
+          <div class="name">${h.action}${h.code ? ` <span class="mono" style="color:var(--brand-blue); font-weight:600;">${h.code}</span>` : ''}</div>
+          ${h.details ? `<div class="username" style="color:var(--ink);">${h.details}</div>` : ''}
+        </div>
+        <div style="text-align:right; color:var(--ink-soft); font-size:11.5px; flex-shrink:0;">${new Date(h.created_at).toLocaleString()}</div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('history-search').addEventListener('input', renderHistoryList);
+  document.getElementById('refresh-history-btn').addEventListener('click', loadHistory);
 
   async function init() {
     await loadFish();
