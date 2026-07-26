@@ -89,7 +89,7 @@
   .fc-status-sub.off { color: var(--ink-soft); }
   .fc-price-line { font-size: 12.5px; color: var(--ink); }
   .fc-bottom-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-  .fc-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .fc-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
   .stock-pager { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; padding: 12px 4px; font-size: 13px; color: var(--ink-soft); }
   .pager-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pager-input { width: 70px; border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; font-size: 13px; text-align: center; }
@@ -99,6 +99,8 @@
   .fc-btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
+  .fc-btn.featured { color: var(--ink-soft); }
+  .fc-btn.featured.active { background: #FDF3E3; color: #92620A; border-color: #F5D3B8; }
   .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
   .loading-msg { text-align: center; padding: 40px 0; color: var(--ink-soft); font-size: 13.5px; }
 
@@ -751,6 +753,7 @@ BET-0166"></textarea>
         <div class="fc-bottom-row">
           <div class="fc-price-line">${tierSummaryCompact(f.tiers)}</div>
           <div class="fc-actions">
+            <button class="fc-btn featured ${f.featured ? 'active' : ''} toggle-featured-btn" data-code="${f.code}">${f.featured ? '★ Featured' : '☆ Featured'}</button>
             <button class="fc-btn edit edit-fish-btn" data-code="${f.code}">Edit</button>
             <button class="fc-btn offer offer-fish-btn" data-code="${f.code}">${hasOffer ? 'Edit Offer' : 'Add Offer'}</button>
           </div>
@@ -759,6 +762,7 @@ BET-0166"></textarea>
     }).join('');
 
     listEl.querySelectorAll('.toggle-avail-btn').forEach(btn => btn.addEventListener('click', () => quickToggleAvailable(btn.dataset.code)));
+    listEl.querySelectorAll('.toggle-featured-btn').forEach(btn => btn.addEventListener('click', () => quickToggleFeatured(btn.dataset.code)));
     listEl.querySelectorAll('.edit-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'details')));
     listEl.querySelectorAll('.offer-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'offer')));
     renderStockPager(list.length, totalPages);
@@ -813,6 +817,18 @@ BET-0166"></textarea>
     });
     renderStockList();
     showToast(f.available ? 'Now visible to customers' : 'Hidden from customers');
+  }
+
+  async function quickToggleFeatured(code) {
+    const f = fishList.find(f => f.code === code);
+    if (!f) return;
+    f.featured = !f.featured;
+    if (f.featured) f.available = true; // a featured fish must be available
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ featured: f.featured, available: f.available })
+    });
+    renderStockList();
+    showToast(f.featured ? 'Added to Featured' : 'Removed from Featured');
   }
 
   document.getElementById('stock-search').addEventListener('input', () => { stockPage = 1; renderStockList(); });
