@@ -81,7 +81,10 @@
   .fc-name { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
   .fc-zh { font-size: 12.5px; color: var(--ink-soft); }
   .fc-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
+  .fc-top-right { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
   .fc-status-pill { flex-shrink: 0; border: none; padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: 700; }
+  .fc-star-btn { border: 1px solid var(--line); background: var(--panel); width: 32px; height: 32px; border-radius: 50%; font-size: 16px; color: var(--ink-soft); line-height: 1; }
+  .fc-star-btn.active { background: #FDF3E3; color: #92620A; border-color: #F5D3B8; }
   .fc-status-pill.on { background: var(--accent-soft); color: var(--accent); }
   .fc-status-pill.off { background: #F2F3F4; color: var(--ink-soft); }
   .fc-status-sub { font-size: 11.5px; margin-top: 8px; }
@@ -98,9 +101,6 @@
   .pager-current { width: 46px; height: 38px; font-weight: 700; font-size: 14px; background: var(--ink); color: white; border-color: var(--ink); }
   .fc-btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
-  .fc-btn.offer { color: var(--orange); border-color: #F5D3B8; }
-  .fc-btn.featured { color: var(--ink-soft); }
-  .fc-btn.featured.active { background: #FDF3E3; color: #92620A; border-color: #F5D3B8; }
   .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
   .loading-msg { text-align: center; padding: 40px 0; color: var(--ink-soft); font-size: 13.5px; }
 
@@ -737,7 +737,6 @@ BET-0166"></textarea>
       const thumb = f.images && f.images[0]
         ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
         : `<div class="fc-thumb-placeholder">🐟</div>`;
-      const hasOffer = f.offer_price !== null && f.offer_price !== undefined;
       const missingImg = !f.images || !f.images.length;
       return `
       <div class="fish-card" data-code="${f.code}">
@@ -747,15 +746,16 @@ BET-0166"></textarea>
             <div class="fc-name"><span class="mono" style="color:var(--ink-soft); font-weight:600;">${f.code}</span> — ${f.name}${f.zh ? ' ' + f.zh : ''}</div>
             <div class="fc-meta">${f.size || '—'}</div>
           </div>
-          <button class="fc-status-pill ${f.available ? 'on' : 'off'} toggle-avail-btn" data-code="${f.code}">${f.available ? 'ON' : 'OFF'}</button>
+          <div class="fc-top-right">
+            <button class="fc-status-pill ${f.available ? 'on' : 'off'} toggle-avail-btn" data-code="${f.code}">${f.available ? 'ON' : 'OFF'}</button>
+            <button class="fc-star-btn ${f.featured ? 'active' : ''} toggle-featured-btn" data-code="${f.code}" title="Featured">${f.featured ? '★' : '☆'}</button>
+          </div>
         </div>
         <div class="fc-status-sub ${f.available ? 'on' : 'off'}">${f.available ? 'ON · Visible to customers' : 'OFF · Hidden from customers'}</div>
         <div class="fc-bottom-row">
           <div class="fc-price-line">${tierSummaryCompact(f.tiers)}</div>
           <div class="fc-actions">
-            <button class="fc-btn featured ${f.featured ? 'active' : ''} toggle-featured-btn" data-code="${f.code}">${f.featured ? '★ Featured' : '☆ Featured'}</button>
             <button class="fc-btn edit edit-fish-btn" data-code="${f.code}">Edit</button>
-            <button class="fc-btn offer offer-fish-btn" data-code="${f.code}">${hasOffer ? 'Edit Offer' : 'Add Offer'}</button>
           </div>
         </div>
       </div>`;
@@ -764,7 +764,6 @@ BET-0166"></textarea>
     listEl.querySelectorAll('.toggle-avail-btn').forEach(btn => btn.addEventListener('click', () => quickToggleAvailable(btn.dataset.code)));
     listEl.querySelectorAll('.toggle-featured-btn').forEach(btn => btn.addEventListener('click', () => quickToggleFeatured(btn.dataset.code)));
     listEl.querySelectorAll('.edit-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'details')));
-    listEl.querySelectorAll('.offer-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'offer')));
     renderStockPager(list.length, totalPages);
   }
 

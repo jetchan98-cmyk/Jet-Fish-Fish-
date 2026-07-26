@@ -96,7 +96,7 @@
     border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; max-width: 80vw; max-height: 420px; overflow-y: auto;
     display: none; z-index: 70; padding: 10px;
   }
-  .cat-dropdown-menu.open { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .cat-dropdown-menu.open { display: block; }
   .cat-dropdown-menu .cat-pill { display: block; width: 100%; text-align: left; border: none; background: none; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cat-dropdown-menu .cat-pill:hover { background: #F2F3F4; color: var(--ink); }
   .cat-dropdown-menu .cat-pill.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -668,9 +668,6 @@
       html += `<button class="cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${label}</button>`;
     });
     catDropdownMenu.innerHTML = html;
-    const rows = Math.ceil(items.length / 2);
-    catDropdownMenu.style.gridTemplateRows = `repeat(${rows}, auto)`;
-    catDropdownMenu.style.gridAutoFlow = 'column';
     catDropdownBtn.classList.toggle('active', activeCategory !== 'All Fish');
     catDropdownMenu.querySelectorAll('.cat-pill').forEach(btn => {
       btn.addEventListener('click', () => {
