@@ -1116,9 +1116,10 @@
     }
 
     // Log to activity history (best-effort — order is already saved either way)
+    const loggedInAs = localStorage.getItem('jetfish_client_session');
     fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST', headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
-      body: JSON.stringify([{ action: 'New Order', code: null, details: `${company} — ${totalTypes} fish types, ${totalQty} qty, RM${orderTotal.toFixed(2)}` }])
+      body: JSON.stringify([{ action: 'New Order', code: loggedInAs || null, details: `${company}${loggedInAs ? ' (' + loggedInAs + ')' : ''} — ${totalTypes} fish types, ${totalQty} qty, RM${orderTotal.toFixed(2)}` }])
     }).catch(() => {});
 
     // Notify the shop owner on Telegram (best-effort — order is already saved either way)
