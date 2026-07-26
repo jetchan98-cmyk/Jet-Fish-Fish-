@@ -277,6 +277,7 @@
             <option value="img-yes">With Image</option>
             <option value="img-no">No Image</option>
             <option value="offer">Offer Fish</option>
+            <option value="featured">Featured Fish</option>
           </select>
         </div>
         <div id="fish-card-list"><div class="loading-msg">Loading stock…</div></div>
@@ -330,7 +331,7 @@
           </div>
           <div class="status-row">
             <div class="status-check-row">
-              <span class="label-text">Hot Fish</span>
+              <span class="label-text">Featured</span>
               <input type="checkbox" class="big-checkbox" id="ed-featured">
             </div>
           </div>
@@ -721,6 +722,7 @@ BET-0166"></textarea>
     else if (sortMode === 'img-yes') list = list.filter(f => f.images && f.images.length > 0);
     else if (sortMode === 'img-no') list = list.filter(f => !f.images || !f.images.length);
     else if (sortMode === 'offer') list = list.filter(f => f.offer_price !== null && f.offer_price !== undefined);
+    else if (sortMode === 'featured') list = list.filter(f => f.featured);
 
     const listEl = document.getElementById('fish-card-list');
     if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; renderStockPager(0, 0); return; }
