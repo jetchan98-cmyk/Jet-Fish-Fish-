@@ -533,6 +533,14 @@ BET-0166"></textarea>
           <button class="save-btn" id="turnoff-import-btn" type="button" style="margin-top:14px;">Turn Off Listed Fish</button>
           <div class="result-msg" id="turnoff-result"></div>
         </div>
+        <div class="editor-card" id="turnoff-lists-wrap" style="display:none;">
+          <h3>Will Turn Off <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(currently ON)</span></h3>
+          <div id="turnoff-matched-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Already Off</h3>
+          <div id="turnoff-alreadyoff-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Unknown Codes</h3>
+          <div id="turnoff-unknown-list" style="font-size:13px;"></div>
+        </div>
       </div>
 
       <!-- ADD ON -->
@@ -1708,6 +1716,22 @@ BET-0166"></textarea>
     document.getElementById('stat-off-matched').textContent = r.willTurnOff.length;
     document.getElementById('stat-off-alreadyoff').textContent = r.alreadyOff.length;
     document.getElementById('stat-off-unknown').textContent = r.unknown.length;
+
+    const listsWrap = document.getElementById('turnoff-lists-wrap');
+    if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
+    listsWrap.style.display = 'block';
+
+    document.getElementById('turnoff-matched-list').innerHTML = r.willTurnOff.length
+      ? r.willTurnOff.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--orange); font-weight:600;">Will turn OFF</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('turnoff-alreadyoff-list').innerHTML = r.alreadyOff.length
+      ? r.alreadyOff.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--ink-soft); font-weight:600;">Already OFF</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('turnoff-unknown-list').innerHTML = r.unknown.length
+      ? r.unknown.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">No match found</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
   }
   document.getElementById('turnoff-textarea').addEventListener('input', renderTurnOffPreview);
 
