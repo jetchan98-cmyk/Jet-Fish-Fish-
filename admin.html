@@ -55,7 +55,7 @@
     .editor-card, .form-card { max-width: 640px; margin-left: auto; margin-right: auto; }
     .quick-actions { max-width: 480px; }
     .avail-filter-toggle { max-width: 340px; }
-    #stock-edit-view, #panel-weekly { max-width: 640px; margin: 0 auto; }
+    #stock-edit-view, #panel-fishdata, #panel-toggle { max-width: 640px; margin: 0 auto; }
     #bulk-images-results { max-width: 1200px; margin: 0 auto 16px; }
     .bi-table { white-space: normal; }
     #fish-card-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; align-items: start; }
@@ -253,11 +253,13 @@
       <button class="tab-btn active" data-panel="stock">Stocks</button>
       <button class="tab-btn" data-panel="orders">Orders</button>
       <div class="more-menu-wrap">
-        <button class="tab-btn" id="more-menu-btn">More ▾</button>
+        <button class="tab-btn" id="more-menu-btn" style="font-size:18px; line-height:1;">☰</button>
         <div class="more-menu-dropdown" id="more-menu-dropdown">
-          <button class="more-menu-item" data-panel="addfish">Add Fish/Image</button>
-          <button class="more-menu-item" data-panel="weekly">Weekly Import</button>
-          <button class="more-menu-item" data-panel="clients">Clients</button>
+          <button class="more-menu-item" data-panel="newfish">Add New Fish</button>
+          <button class="more-menu-item" data-panel="newimages">Add New Images</button>
+          <button class="more-menu-item" data-panel="fishdata">Add New Fish Data</button>
+          <button class="more-menu-item" data-panel="toggle">Turn On / Off Fish and Add On</button>
+          <button class="more-menu-item" data-panel="clients">Customers ID</button>
           <button class="more-menu-item" data-panel="history">History</button>
         </div>
       </div>
@@ -391,7 +393,7 @@
     </section>
 
     <!-- ================= ADD FISH / IMAGE ================= -->
-    <section class="panel" id="panel-addfish">
+    <section class="panel" id="panel-newfish">
       <div class="editor-card">
         <h3>Add Single Fish</h3>
         <label>Code</label><input type="text" id="add-code" placeholder="e.g. AGL-0700">
@@ -405,7 +407,10 @@
         <button class="save-btn" id="add-fish-btn" type="button" style="margin-top:6px;">Add Fish</button>
         <div class="result-msg" id="add-result"></div>
       </div>
+    </section>
 
+    <!-- ================= ADD NEW IMAGES ================= -->
+    <section class="panel" id="panel-newimages">
       <div class="editor-card">
         <h3>Select Images</h3>
         <div class="sub">Filename format: <span class="mono">{FISH_CODE}-{IMAGE_NUMBER}.{extension}</span>. Example: <span class="mono">AGL-0628-1.jpg</span>. You can also drop a single <b>.zip</b> file containing all your photos.</div>
@@ -451,33 +456,32 @@
       </div>
     </section>
 
-    <!-- ================= WEEKLY IMPORT ================= -->
-    <section class="panel" id="panel-weekly">
+    <!-- ================= ADD NEW FISH DATA ================= -->
+    <section class="panel" id="panel-fishdata">
+      <div class="editor-card">
+        <h3>Weekly Import</h3>
+        <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
+        <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
+Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
+        <div class="bulk-hint">
+          Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
+          Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stocks.
+        </div>
+        <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
+        <div class="result-msg" id="bulk-result"></div>
+      </div>
+    </section>
+
+    <!-- ================= TURN ON/OFF FISH AND ADD ON ================= -->
+    <section class="panel" id="panel-toggle">
       <div class="import-mode-toggle">
-        <button class="mode-btn active" data-mode="full">Full Product Data</button>
-        <button class="mode-btn" data-mode="codes">Turn On Only</button>
+        <button class="mode-btn active" data-mode="codes">Turn On Only</button>
         <button class="mode-btn" data-mode="turnoff">Turn Off Only</button>
         <button class="mode-btn" data-mode="addon">Add On</button>
       </div>
 
-      <!-- FULL PRODUCT DATA -->
-      <div class="mode-view active" id="mode-full">
-        <div class="editor-card">
-          <h3>Weekly Import</h3>
-          <div class="sub">Paste your fish list straight from Excel/Google Sheets to add many at once.</div>
-          <textarea class="bulk-textarea" id="bulk-textarea" placeholder="Group	Code	Fish	Size	Price	ImageFile
-Angel	AGL-0022	Black Angel 黑鲳	4-5cm	1xRM3 / 50xRM2.50	AGL-0022.jpg"></textarea>
-          <div class="bulk-hint">
-            Paste rows copied directly from your spreadsheet (tab-separated): <b>Group, Code, Fish, Size, Price, ImageFile</b>.<br>
-            Existing Codes get updated; new Codes get added as <b>not available</b> until toggled on in Stocks.
-          </div>
-          <button class="save-btn" id="bulk-import-btn" type="button">Import</button>
-          <div class="result-msg" id="bulk-result"></div>
-        </div>
-      </div>
-
       <!-- FISH CODES ONLY -->
-      <div class="mode-view" id="mode-codes">
+      <div class="mode-view active" id="mode-codes">
         <div class="editor-card">
           <div style="display:flex; justify-content:space-between; align-items:baseline;">
             <h3 style="margin-bottom:2px;">Paste Fish Codes</h3>
