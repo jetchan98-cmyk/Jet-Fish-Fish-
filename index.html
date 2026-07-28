@@ -96,6 +96,13 @@
     display: none; z-index: 70; padding: 10px;
   }
   .cat-dropdown-menu.open { display: block; }
+  .main-menu-item { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; border: none; background: none; padding: 11px 10px; border-radius: 6px; font-size: 14px; font-weight: 600; color: var(--ink); border-bottom: 1px solid var(--line); }
+  .main-menu-item:last-child { border-bottom: none; }
+  .main-menu-item:hover { background: #F2F3F4; }
+  .menu-arrow { color: var(--ink-soft); font-size: 12px; transition: transform 0.15s ease; }
+  .menu-arrow.open { transform: rotate(90deg); }
+  .cat-submenu { display: none; padding: 4px 0 6px 10px; border-bottom: 1px solid var(--line); }
+  .cat-submenu.open { display: block; }
   .cat-dropdown-menu .cat-pill { display: block; width: 100%; text-align: left; border: none; background: none; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cat-dropdown-menu .cat-pill:hover { background: #F2F3F4; color: var(--ink); }
   .cat-dropdown-menu .cat-pill.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
@@ -336,11 +343,15 @@
       <button class="cat-dropdown-btn" id="cat-dropdown-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
-      <div class="cat-dropdown-menu" id="cat-dropdown-menu"></div>
+      <div class="cat-dropdown-menu" id="cat-dropdown-menu">
+        <button class="main-menu-item" id="menu-category-btn">📁 Category <span class="menu-arrow">▸</span></button>
+        <div class="cat-submenu" id="cat-submenu"></div>
+        <button class="main-menu-item" id="menu-order-history-btn">📋 Order History</button>
+        <button class="main-menu-item" id="menu-logout-btn">🚪 Log Out</button>
+      </div>
     </div>
     <button class="logo" id="home-btn"><span class="mark"></span>Jet Fish</button>
     <div class="nav-right">
-      <button class="lang-btn" id="order-history-btn" title="Order History">📋</button>
       <button class="lang-btn" id="lang-toggle-btn">中文</button>
       <button class="cart-btn" id="cart-toggle">
         <span class="cart-emoji">🛒</span>
@@ -458,7 +469,7 @@
   <button class="confirm-done-btn" id="confirm-done-btn">Done</button>
 </section>
 
-<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div><button id="client-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:12px; text-decoration:underline; padding:0;">Log Out</button></div></footer>
+<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div></div></footer>
 
 <div id="photo-lightbox">
   <button id="lightbox-close">✕</button>
@@ -701,9 +712,10 @@
       const label = cat === 'All Fish' ? t('allFish') : cat;
       html += `<button class="cat-pill ${activeCategory === cat ? 'active' : ''}" data-cat="${cat}">${label}</button>`;
     });
-    catDropdownMenu.innerHTML = html;
+    const catSubmenu = document.getElementById('cat-submenu');
+    catSubmenu.innerHTML = html;
     catDropdownBtn.classList.toggle('active', activeCategory !== 'All Fish');
-    catDropdownMenu.querySelectorAll('.cat-pill').forEach(btn => {
+    catSubmenu.querySelectorAll('.cat-pill').forEach(btn => {
       btn.addEventListener('click', () => {
         activeCategory = btn.dataset.cat;
         renderCatRail(); renderGrid();
@@ -714,6 +726,19 @@
   catDropdownBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     catDropdownMenu.classList.toggle('open');
+  });
+  document.getElementById('menu-category-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('cat-submenu').classList.toggle('open');
+    document.querySelector('#menu-category-btn .menu-arrow').classList.toggle('open');
+  });
+  document.getElementById('menu-order-history-btn').addEventListener('click', () => {
+    catDropdownMenu.classList.remove('open');
+    openOrderHistory();
+  });
+  document.getElementById('menu-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('jetfish_client_session');
+    location.reload();
   });
   document.addEventListener('click', (e) => {
     if (!catDropdownMenu.contains(e.target) && e.target !== catDropdownBtn) catDropdownMenu.classList.remove('open');
@@ -928,7 +953,6 @@
     overlay.classList.remove('open');
     document.getElementById('order-history-drawer').classList.remove('open');
   }
-  document.getElementById('order-history-btn').addEventListener('click', openOrderHistory);
   document.getElementById('order-history-close').addEventListener('click', closeOrderHistory);
 
   overlay.addEventListener('click', () => { closeCart(); closeOrderHistory(); });
@@ -1375,11 +1399,6 @@
     document.getElementById('forgot-username').value = '';
     document.getElementById('forgot-answer').value = '';
     document.getElementById('forgot-new-password').value = '';
-  });
-
-  document.getElementById('client-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('jetfish_client_session');
-    location.reload();
   });
 
   // Re-check any saved session against the database — if the client was deleted
