@@ -2,21 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-  // Some mobile browsers (notably iOS Safari) keep whatever pinch-zoom level
-  // was set before a refresh, ignoring initial-scale. Briefly forcing the
-  // viewport to a fixed scale, then restoring normal pinch-zoom, resets it.
-  (function () {
-    var viewport = document.querySelector('meta[name=viewport]');
-    if (!viewport) return;
-    var original = viewport.getAttribute('content');
-    viewport.setAttribute('content', original + ', maximum-scale=1.0, user-scalable=no');
-    setTimeout(function () {
-      viewport.setAttribute('content', original);
-    }, 300);
-  })();
-</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Jet Fish — Ornamental Fish</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -147,7 +133,8 @@
     align-items: center; justify-content: center; overflow: auto;
   }
   #photo-lightbox.open { display: flex; }
-  #photo-lightbox img { max-width: 96vw; max-height: 96vh; object-fit: contain; touch-action: pinch-zoom; }
+  #photo-lightbox img { max-width: 96vw; max-height: 96vh; object-fit: contain; transition: max-width 0.2s ease, max-height 0.2s ease; cursor: zoom-in; }
+  #photo-lightbox img.zoomed { max-width: 230vw; max-height: 230vh; cursor: zoom-out; }
   #lightbox-close {
     position: fixed; top: 16px; right: 16px; width: 40px; height: 40px; border-radius: 50%;
     background: rgba(255,255,255,0.15); color: white; border: none; font-size: 18px; z-index: 201;
@@ -1051,15 +1038,22 @@
   }
   function openLightbox(src) {
     if (!src) return;
-    document.getElementById('lightbox-img').src = src;
+    const img = document.getElementById('lightbox-img');
+    img.src = src;
+    img.classList.remove('zoomed');
     document.getElementById('photo-lightbox').classList.add('open');
   }
   function closeLightbox() {
     document.getElementById('photo-lightbox').classList.remove('open');
+    document.getElementById('lightbox-img').classList.remove('zoomed');
   }
   document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
   document.getElementById('photo-lightbox').addEventListener('click', (e) => {
     if (e.target.id === 'photo-lightbox') closeLightbox();
+  });
+  document.getElementById('lightbox-img').addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.target.classList.toggle('zoomed');
   });
 
   function closeDetail() {
