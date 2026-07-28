@@ -92,7 +92,7 @@
   .cat-dropdown-btn.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
   .cat-dropdown-menu {
     position: absolute; top: calc(100% + 8px); left: 0; background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; max-width: 80vw; max-height: 420px; overflow-y: auto;
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; max-width: 80vw; max-height: 80vh; overflow-y: auto;
     display: none; z-index: 70; padding: 10px;
   }
   .cat-dropdown-menu.open { display: block; }
@@ -344,10 +344,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
       <div class="cat-dropdown-menu" id="cat-dropdown-menu">
-        <button class="main-menu-item" id="menu-category-btn">📁 Category <span class="menu-arrow">▸</span></button>
+        <button class="main-menu-item" id="menu-category-btn"><span id="lbl-menu-category">📁 Category</span> <span class="menu-arrow">▸</span></button>
         <div class="cat-submenu" id="cat-submenu"></div>
-        <button class="main-menu-item" id="menu-order-history-btn">📋 Order History</button>
-        <button class="main-menu-item" id="menu-logout-btn">🚪 Log Out</button>
+        <button class="main-menu-item" id="menu-order-history-btn"><span id="lbl-menu-order-history">📋 Order History</span></button>
+        <button class="main-menu-item" id="menu-logout-btn"><span id="lbl-menu-logout">🚪 Log Out</span></button>
       </div>
     </div>
     <button class="logo" id="home-btn"><span class="mark"></span>Jet Fish</button>
@@ -432,7 +432,7 @@
 </div>
 
 <div class="cart-drawer" id="order-history-drawer">
-  <div class="cart-header"><h3>Order History</h3><button class="close-btn" id="order-history-close">✕</button></div>
+  <div class="cart-header"><h3 id="lbl-order-history-title">Order History</h3><button class="close-btn" id="order-history-close">✕</button></div>
   <div class="cart-items" id="order-history-items"></div>
 </div>
 
@@ -494,7 +494,11 @@
       orderReceived: 'Order received', orderReceivedSub: "We've got your order and will contact you shortly to confirm.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
-      addToCart: 'Add to cart', allFish: 'All Fish'
+      addToCart: 'Add to cart', allFish: 'All Fish',
+      menuCategory: '📁 Category', menuOrderHistory: '📋 Order History', menuLogout: '🚪 Log Out',
+      orderHistoryTitle: 'Order History', orderHistoryEmpty: "You haven't placed any orders yet.",
+      orderHistoryLoading: 'Loading…', orderHistoryFailed: 'Could not load order history.',
+      statusPending: 'Pending', statusConfirmed: 'Confirmed'
     },
     zh: {
       searchPlaceholder: '搜索鱼名或编号', cart: '购物车', categories: '分类',
@@ -508,13 +512,21 @@
       orderReceived: '订单已收到', orderReceivedSub: '我们已收到您的订单，将尽快与您联系确认。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
-      addToCart: '加入购物车', allFish: '全部鱼类'
+      addToCart: '加入购物车', allFish: '全部鱼类',
+      menuCategory: '📁 分类', menuOrderHistory: '📋 订单记录', menuLogout: '🚪 登出',
+      orderHistoryTitle: '订单记录', orderHistoryEmpty: '您还没有下过任何订单。',
+      orderHistoryLoading: '加载中…', orderHistoryFailed: '无法加载订单记录。',
+      statusPending: '待处理', statusConfirmed: '已确认'
     }
   };
   function t(key) { return i18n[lang][key] || i18n.en[key] || key; }
 
   function applyStaticTranslations() {
     document.getElementById('search-input').placeholder = t('searchPlaceholder');
+    document.getElementById('lbl-menu-category').textContent = t('menuCategory');
+    document.getElementById('lbl-menu-order-history').textContent = t('menuOrderHistory');
+    document.getElementById('lbl-menu-logout').textContent = t('menuLogout');
+    document.getElementById('lbl-order-history-title').textContent = t('orderHistoryTitle');
     document.getElementById('lbl-curated').textContent = t('curated');
     document.getElementById('lbl-featured').textContent = t('featured');
     document.getElementById('grid-eyebrow').textContent = t('fullCatalog');
@@ -959,27 +971,27 @@
 
   async function loadOrderHistory() {
     const listEl = document.getElementById('order-history-items');
-    listEl.innerHTML = `<div class="cart-empty">Loading…</div>`;
+    listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryLoading')}</div>`;
     const username = localStorage.getItem('jetfish_client_session');
-    if (!username) { listEl.innerHTML = `<div class="cart-empty">No order history.</div>`; return; }
+    if (!username) { listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryEmpty')}</div>`; return; }
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?client_username=eq.${encodeURIComponent(username)}&select=*&order=created_at.desc`, { headers: supabaseHeaders });
       const orders = await res.json();
-      if (!orders.length) { listEl.innerHTML = `<div class="cart-empty">You haven't placed any orders yet.</div>`; return; }
+      if (!orders.length) { listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryEmpty')}</div>`; return; }
       listEl.innerHTML = orders.map(o => `
         <div class="order-history-card">
           <div class="order-history-head">
             <span class="order-history-date">${new Date(o.created_at).toLocaleDateString()}</span>
-            <span class="order-history-status ${o.status}">${o.status === 'done' ? 'Confirmed' : 'Pending'}</span>
+            <span class="order-history-status ${o.status}">${o.status === 'done' ? t('statusConfirmed') : t('statusPending')}</span>
           </div>
           <div class="order-history-items">
-            ${o.items.map(it => `<div class="order-history-item-row"><span>${it.name}${it.zh ? ' ' + it.zh : ''}</span><span>×${it.qty}</span></div>`).join('')}
+            ${o.items.map(it => `<div class="order-history-item-row"><span>${lang === 'zh' && it.zh ? it.zh : it.name}</span><span>×${it.qty}</span></div>`).join('')}
           </div>
         </div>
       `).join('');
     } catch (e) {
       console.error(e);
-      listEl.innerHTML = `<div class="cart-empty">Could not load order history.</div>`;
+      listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryFailed')}</div>`;
     }
   }
 
