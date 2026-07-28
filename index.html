@@ -68,7 +68,6 @@
     .nav-right { gap: 6px; }
     .cat-dropdown-btn { width: 34px; height: 34px; }
     .lang-btn { padding: 7px 9px; font-size: 11px; }
-    #client-logout-btn { padding: 7px 8px; font-size: 10px; }
     .cart-btn { padding: 7px 9px; font-size: 12px; gap: 4px; }
     .search-bar { padding: 8px 14px; }
   }
@@ -224,6 +223,13 @@
   .close-btn { background: none; border: none; font-size: 18px; color: var(--ink-soft); }
   .cart-items { flex: 1; overflow-y: auto; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
   .cart-empty { color: var(--ink-soft); font-size: 14px; text-align: center; margin-top: 40px; }
+  .order-history-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .order-history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .order-history-date { font-size: 12.5px; color: var(--ink-soft); font-weight: 500; }
+  .order-history-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; }
+  .order-history-status.new { background: #FDF3E3; color: #92620A; }
+  .order-history-status.done { background: var(--accent-soft); color: var(--accent); }
+  .order-history-item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
   .cart-item { display: flex; gap: 12px; align-items: center; }
   .cart-item .ci-icon { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #F2F3F4; }
   .cart-item .ci-icon svg { width: 55%; height: 55%; }
@@ -334,7 +340,7 @@
     </div>
     <button class="logo" id="home-btn"><span class="mark"></span>Jet Fish</button>
     <div class="nav-right">
-      <button class="lang-btn" id="client-logout-btn" title="Log out" style="font-size:12px;">Log Out</button>
+      <button class="lang-btn" id="order-history-btn" title="Order History">📋</button>
       <button class="lang-btn" id="lang-toggle-btn">中文</button>
       <button class="cart-btn" id="cart-toggle">
         <span class="cart-emoji">🛒</span>
@@ -414,6 +420,11 @@
   </div>
 </div>
 
+<div class="cart-drawer" id="order-history-drawer">
+  <div class="cart-header"><h3>Order History</h3><button class="close-btn" id="order-history-close">✕</button></div>
+  <div class="cart-items" id="order-history-items"></div>
+</div>
+
 <section id="checkout">
   <div class="confirm-header">
     <button class="confirm-back-btn" id="confirm-back-btn">‹</button>
@@ -447,7 +458,7 @@
   <button class="confirm-done-btn" id="confirm-done-btn">Done</button>
 </section>
 
-<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div></div></footer>
+<footer><div class="footer-row"><div>© 2026 Jet Fish</div><div>Sales: 010-9881389</div><button id="client-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:12px; text-decoration:underline; padding:0;">Log Out</button></div></footer>
 
 <div id="photo-lightbox">
   <button id="lightbox-close">✕</button>
@@ -599,7 +610,15 @@
 
   let products = [];
   let activeCategory = 'All Fish';
+  function cartStorageKey() {
+    const username = localStorage.getItem('jetfish_client_session') || 'guest';
+    return 'jetfish_cart_' + username;
+  }
   let cart = [];
+  try {
+    const savedCart = localStorage.getItem(cartStorageKey());
+    if (savedCart) cart = JSON.parse(savedCart);
+  } catch (e) { cart = []; }
 
   // ---------- LIVE STOCK FROM SUPABASE ----------
   const SUPABASE_URL = "https://ehgruwkyizekkvjmbszs.supabase.co";
@@ -856,6 +875,7 @@
   const cartCountEl = document.getElementById('cart-count');
   const checkoutBtn = document.getElementById('checkout-btn');
   function renderCart() {
+    try { localStorage.setItem(cartStorageKey(), JSON.stringify(cart)); } catch (e) {}
     cartCountEl.textContent = cart.length;
     checkoutBtn.disabled = cart.length === 0;
     if (cart.length === 0) { cartItemsEl.innerHTML = `<div class="cart-empty">${t('cartEmpty')}<br>${t('cartEmptySub')}</div>`; return; }
@@ -898,7 +918,46 @@
   function closeCart() { overlay.classList.remove('open'); cartDrawer.classList.remove('open'); }
   document.getElementById('cart-toggle').addEventListener('click', openCart);
   document.getElementById('cart-close').addEventListener('click', closeCart);
-  overlay.addEventListener('click', closeCart);
+
+  function openOrderHistory() {
+    overlay.classList.add('open');
+    document.getElementById('order-history-drawer').classList.add('open');
+    loadOrderHistory();
+  }
+  function closeOrderHistory() {
+    overlay.classList.remove('open');
+    document.getElementById('order-history-drawer').classList.remove('open');
+  }
+  document.getElementById('order-history-btn').addEventListener('click', openOrderHistory);
+  document.getElementById('order-history-close').addEventListener('click', closeOrderHistory);
+
+  overlay.addEventListener('click', () => { closeCart(); closeOrderHistory(); });
+
+  async function loadOrderHistory() {
+    const listEl = document.getElementById('order-history-items');
+    listEl.innerHTML = `<div class="cart-empty">Loading…</div>`;
+    const username = localStorage.getItem('jetfish_client_session');
+    if (!username) { listEl.innerHTML = `<div class="cart-empty">No order history.</div>`; return; }
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?client_username=eq.${encodeURIComponent(username)}&select=*&order=created_at.desc`, { headers: supabaseHeaders });
+      const orders = await res.json();
+      if (!orders.length) { listEl.innerHTML = `<div class="cart-empty">You haven't placed any orders yet.</div>`; return; }
+      listEl.innerHTML = orders.map(o => `
+        <div class="order-history-card">
+          <div class="order-history-head">
+            <span class="order-history-date">${new Date(o.created_at).toLocaleDateString()}</span>
+            <span class="order-history-status ${o.status}">${o.status === 'done' ? 'Confirmed' : 'Pending'}</span>
+          </div>
+          <div class="order-history-items">
+            ${o.items.map(it => `<div class="order-history-item-row"><span>${it.name}${it.zh ? ' ' + it.zh : ''}</span><span>×${it.qty}</span></div>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      console.error(e);
+      listEl.innerHTML = `<div class="cart-empty">Could not load order history.</div>`;
+    }
+  }
 
   // ---------- PRODUCT DETAIL MODAL ----------
   const detailOverlay = document.getElementById('detail-overlay');
