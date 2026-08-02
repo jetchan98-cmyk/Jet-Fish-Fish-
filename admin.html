@@ -51,6 +51,7 @@
   main { max-width: 700px; margin: 0 auto; padding: 20px 16px 80px; }
   @media (min-width: 900px) {
     .tabs { max-width: 1500px; }
+    .more-menu-dropdown { left: 0; right: auto; }
     main { max-width: 1500px; padding: 28px 32px 80px; }
     .editor-card, .form-card { max-width: 640px; margin-left: auto; margin-right: auto; }
     .quick-actions { max-width: 480px; }
@@ -604,6 +605,12 @@ BET-0166"></textarea>
 
       <div class="editor-card">
         <h3>Existing Clients</h3>
+        <select class="cat-filter" id="clients-sort" style="margin-bottom:14px;">
+          <option value="recent">Last Login (Most Recent)</option>
+          <option value="oldest">Last Login (Oldest)</option>
+          <option value="never">Never Logged In First</option>
+          <option value="name">Name A–Z</option>
+        </select>
         <div id="clients-list"><div class="loading-msg">Loading clients…</div></div>
       </div>
     </section>
@@ -1006,7 +1013,7 @@ BET-0166"></textarea>
     handleBulkPhotoFiles(allFiles);
   }
 
-  const VALID_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+  const VALID_EXTS = ['jpg', 'jpeg', 'jfif', 'jpe', 'pjpeg', 'pjp', 'png', 'webp', 'gif'];
   const MAX_FILE_SIZE = 8 * 1024 * 1024;
   let biGroups = [];
   let biFilterMode = 'all';
@@ -2005,15 +2012,34 @@ BET-0166"></textarea>
     }
   });
 
+  let allClients = [];
   async function loadClients() {
     const listEl = document.getElementById('clients-list');
     listEl.innerHTML = `<div class="loading-msg">Loading clients…</div>`;
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=created_at.desc`, { headers });
-      const clients = await res.json();
-      if (!clients.length) { listEl.innerHTML = `<div class="empty-msg">No clients yet.</div>`; return; }
+      allClients = await res.json();
+      renderClientsList();
+    } catch (err) {
+      console.error(err);
+      listEl.innerHTML = `<div class="empty-msg">Could not load clients.</div>`;
+    }
+  }
 
-      listEl.innerHTML = clients.map(c => `
+  function renderClientsList() {
+    const listEl = document.getElementById('clients-list');
+    if (!allClients.length) { listEl.innerHTML = `<div class="empty-msg">No clients yet.</div>`; return; }
+
+    const sortMode = document.getElementById('clients-sort').value;
+    const clients = allClients.slice().sort((a, b) => {
+      if (sortMode === 'name') return (a.display_name || a.username).localeCompare(b.display_name || b.username);
+      if (sortMode === 'never') return (a.last_login ? 1 : 0) - (b.last_login ? 1 : 0);
+      const aTime = a.last_login ? new Date(a.last_login).getTime() : 0;
+      const bTime = b.last_login ? new Date(b.last_login).getTime() : 0;
+      return sortMode === 'oldest' ? aTime - bTime : bTime - aTime;
+    });
+
+    listEl.innerHTML = clients.map(c => `
         <div class="client-row">
           <div class="client-info">
             <div class="name">${c.display_name || c.username}</div>
@@ -2052,11 +2078,8 @@ BET-0166"></textarea>
         await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${btn.dataset.id}`, { method: 'DELETE', headers });
         loadClients();
       }));
-    } catch (err) {
-      console.error(err);
-      listEl.innerHTML = `<div class="empty-msg">Could not load clients.</div>`;
-    }
   }
+  document.getElementById('clients-sort').addEventListener('change', renderClientsList);
 
   // ---------- HISTORY ----------
   let historyEntries = [];
