@@ -511,7 +511,9 @@ BAB-9042"></textarea>
           <h3>Matched Products <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn ON)</span></h3>
           <div id="codes-matched-list" style="font-size:13px; margin-bottom:16px;"></div>
           <h3>Products To Deactivate <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn OFF)</span></h3>
-          <div id="codes-deactivate-list" style="font-size:13px;"></div>
+          <div id="codes-deactivate-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Unknown Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(no matching fish found)</span></h3>
+          <div id="codes-unknown-list" style="font-size:13px;"></div>
         </div>
       </div>
 
@@ -1652,6 +1654,10 @@ BET-0166"></textarea>
     document.getElementById('codes-deactivate-list').innerHTML = r.turnOff.length
       ? r.turnOff.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--orange); font-weight:600;">Will turn OFF</span></div>`).join('')
       : `<div style="color:var(--ink-soft);">Nothing to deactivate.</div>`;
+
+    document.getElementById('codes-unknown-list').innerHTML = r.unknown.length
+      ? r.unknown.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">No match found</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
   }
 
   document.getElementById('codes-textarea').addEventListener('input', renderCodesPreview);
