@@ -100,8 +100,16 @@
   .section-head .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
   .section-head h2 { font-size: 22px; }
 
-  .feat-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+  .feat-scroll-wrap { position: relative; }
+  .feat-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; scroll-behavior: smooth; }
   .feat-scroll::-webkit-scrollbar { display: none; }
+  .feat-nav-btn {
+    position: absolute; top: 40%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--panel); box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    font-size: 18px; color: var(--ink); z-index: 5; display: flex; align-items: center; justify-content: center;
+  }
+  .feat-nav-prev { left: -6px; }
+  .feat-nav-next { right: -6px; }
   .feat-scroll .product-card { min-width: 190px; max-width: 190px; flex-shrink: 0; }
 
   .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -360,7 +368,11 @@
     <div class="section-head">
       <div><div class="eyebrow" id="lbl-curated">Curated selection</div><h2 id="lbl-featured">Featured</h2></div>
     </div>
-    <div class="feat-scroll" id="feat-scroll"></div>
+    <div class="feat-scroll-wrap">
+      <button class="feat-nav-btn feat-nav-prev" id="feat-prev-btn">‹</button>
+      <div class="feat-scroll" id="feat-scroll"></div>
+      <button class="feat-nav-btn feat-nav-next" id="feat-next-btn">›</button>
+    </div>
   </section>
 
   <section class="section" id="all-fish-section">
@@ -805,6 +817,12 @@
   }
 
   const featScroll = document.getElementById('feat-scroll');
+  document.getElementById('feat-prev-btn').addEventListener('click', () => {
+    featScroll.scrollBy({ left: -420, behavior: 'smooth' });
+  });
+  document.getElementById('feat-next-btn').addEventListener('click', () => {
+    featScroll.scrollBy({ left: 420, behavior: 'smooth' });
+  });
   let cachedFeaturedIds = null;
   function renderFeatured() {
     const explicit = products.filter(p => p.feat && p.available);
