@@ -379,9 +379,12 @@
           </div>
           <div id="img-required-msg-wrap"></div>
           <div class="img-gallery" id="img-gallery"></div>
-          <button class="upload-img-btn" id="upload-img-btn" type="button">Upload Image</button>
-          <input type="file" id="img-file-input" accept="image/*" style="display:none;">
-          <div class="upload-hint">JPG, JPEG, PNG, or WEBP. Max 8MB per image.</div>
+          <div class="drop-zone" id="edit-img-drop-zone">
+            <div style="font-weight:600; margin-bottom:4px;">Drag a photo here, or tap to select</div>
+            <div style="font-size:12px;">You can drop more than one at once</div>
+          </div>
+          <input type="file" id="img-file-input" accept="image/*" multiple style="display:none;">
+          <div class="upload-hint">JPG, JPEG, PNG, WEBP, or JFIF. Max 8MB per image.</div>
         </div>
 
         <div class="danger-zone">
@@ -1446,26 +1449,43 @@ BET-0166"></textarea>
       renderImageGallery();
     }));
 
-    document.getElementById('upload-img-btn').style.display = editingFish.images.length >= 5 ? 'none' : 'block';
+    document.getElementById('edit-img-drop-zone').style.display = editingFish.images.length >= 5 ? 'none' : 'block';
   }
 
-  document.getElementById('upload-img-btn').addEventListener('click', () => document.getElementById('img-file-input').click());
-  document.getElementById('img-file-input').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const btn = document.getElementById('upload-img-btn');
-    btn.disabled = true; btn.textContent = 'Uploading…';
-    try {
-      const url = await uploadImageFile(file, editingFish.code);
-      editingFish.images.push(url);
-      renderImageGallery();
-    } catch (err) {
-      console.error(err);
-      alert('Photo upload failed. Please try again.');
-    }
-    btn.disabled = false; btn.textContent = 'Upload Image';
-    e.target.value = '';
+  const editImgDropZone = document.getElementById('edit-img-drop-zone');
+  const editImgFileInput = document.getElementById('img-file-input');
+  editImgDropZone.addEventListener('click', () => editImgFileInput.click());
+  editImgDropZone.addEventListener('dragover', (e) => { e.preventDefault(); editImgDropZone.classList.add('dragover'); });
+  editImgDropZone.addEventListener('dragleave', () => editImgDropZone.classList.remove('dragover'));
+  editImgDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    editImgDropZone.classList.remove('dragover');
+    handleEditImageFiles(e.dataTransfer.files);
   });
+  editImgFileInput.addEventListener('change', () => {
+    handleEditImageFiles(editImgFileInput.files);
+    editImgFileInput.value = '';
+  });
+
+  async function handleEditImageFiles(fileList) {
+    const files = Array.from(fileList);
+    editImgDropZone.style.pointerEvents = 'none';
+    const originalText = editImgDropZone.innerHTML;
+    for (const file of files) {
+      if (editingFish.images.length >= 5) break;
+      editImgDropZone.innerHTML = `<div style="font-weight:600;">Uploading…</div>`;
+      try {
+        const url = await uploadImageFile(file, editingFish.code);
+        editingFish.images.push(url);
+        renderImageGallery();
+      } catch (err) {
+        console.error(err);
+        alert(`Could not upload "${file.name}". Please try again.`);
+      }
+    }
+    editImgDropZone.style.pointerEvents = '';
+    if (editingFish.images.length < 5) editImgDropZone.innerHTML = originalText;
+  }
 
   // ---------- SAVE / DELETE ----------
   document.getElementById('save-product-btn').addEventListener('click', async () => {
