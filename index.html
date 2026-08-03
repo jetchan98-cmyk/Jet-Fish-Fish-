@@ -45,11 +45,11 @@
   .search-wrap { padding: 4px 20px 14px; max-width: 1180px; margin: 0 auto; position: relative; }
   .search-cat-dropdown {
     display: none; position: absolute; top: calc(100% - 6px); left: 20px; right: 20px; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 10px;
-    z-index: 65; max-width: 1140px; margin: 0 auto; gap: 8px;
+    border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 8px;
+    z-index: 65; max-width: 1140px; margin: 0 auto; gap: 6px; max-height: 220px; overflow-y: auto;
   }
   .search-cat-dropdown.open { display: grid; grid-template-columns: 1fr 1fr; }
-  .search-cat-pill { border: 1px solid var(--line); background: var(--bg); padding: 8px 14px; border-radius: 16px; font-size: 13px; font-weight: 500; color: var(--ink); }
+  .search-cat-pill { border: 1px solid var(--line); background: var(--bg); padding: 6px 12px; border-radius: 14px; font-size: 12px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
   .search-cat-pill.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
   @media (max-width: 600px) {
     nav { padding: 10px 12px 6px; gap: 8px; }
@@ -368,7 +368,7 @@
 </header>
 
 <main>
-  <section class="section">
+  <section class="section" id="featured-section">
     <div class="section-head">
       <div><div class="eyebrow" id="lbl-curated">Curated selection</div><h2 id="lbl-featured">Featured</h2></div>
     </div>
@@ -867,6 +867,7 @@
   const searchInput = document.getElementById('search-input');
   function renderGrid() {
     const q = searchInput.value.trim().toLowerCase();
+    document.getElementById('featured-section').style.display = q ? 'none' : '';
     let list = products.filter(p => p.available);
     if (activeCategory !== 'All Fish') list = list.filter(p => p.category === activeCategory);
     if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));
