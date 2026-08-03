@@ -38,7 +38,7 @@
   .more-menu-wrap { position: relative; flex: 1; }
   .more-menu-wrap .tab-btn { width: 100%; }
   .more-menu-dropdown {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0; background: var(--panel); border: 1px solid var(--line);
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--panel); border: 1px solid var(--line);
     border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 80; min-width: 180px; overflow: hidden;
   }
   .more-menu-dropdown.open { display: block; }
@@ -51,7 +51,6 @@
   main { max-width: 700px; margin: 0 auto; padding: 20px 16px 80px; }
   @media (min-width: 900px) {
     .tabs { max-width: 1500px; }
-    .more-menu-dropdown { left: 0; right: auto; }
     main { max-width: 1500px; padding: 28px 32px 80px; }
     .editor-card, .form-card { max-width: 640px; margin-left: auto; margin-right: auto; }
     .quick-actions { max-width: 480px; }
@@ -251,8 +250,6 @@
 <div id="app">
   <header>
     <div class="tabs">
-      <button class="tab-btn active" data-panel="stock">Stocks</button>
-      <button class="tab-btn" data-panel="orders">Orders</button>
       <div class="more-menu-wrap">
         <button class="tab-btn" id="more-menu-btn" style="font-size:18px; line-height:1;">☰</button>
         <div class="more-menu-dropdown" id="more-menu-dropdown">
@@ -264,6 +261,8 @@
           <button class="more-menu-item" data-panel="history">History</button>
         </div>
       </div>
+      <button class="tab-btn active" data-panel="stock">Stocks</button>
+      <button class="tab-btn" data-panel="orders">Orders</button>
     </div>
     <div style="text-align:right; margin-top:6px;">
       <button id="admin-logout-btn" style="border:none; background:none; color:var(--ink-soft); font-size:11px; text-decoration:underline; padding:2px;">Log Out</button>
