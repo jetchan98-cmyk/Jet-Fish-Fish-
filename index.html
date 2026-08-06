@@ -882,6 +882,7 @@
     else if (sortMode === 'price-asc') list = list.slice().sort((a, b) => a.price - b.price);
     else if (sortMode === 'name-asc') list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list = list.slice().sort((a, b) => b.name.localeCompare(a.name));
+    else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
     if (list.length) {
       grid.innerHTML = list.map(productCard).join('');
