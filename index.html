@@ -131,12 +131,14 @@
     pointer-events: none; padding: 20px; box-sizing: border-box;
   }
   .detail-modal {
-    position: relative; width: 92%; max-width: 420px; max-height: 86vh; overflow-y: auto; background: var(--panel);
+    position: relative; width: 92%; max-width: 420px; max-height: 86vh; background: var(--panel);
     border-radius: 14px; opacity: 0; transform: scale(0.96); pointer-events: none;
-    transition: opacity 0.18s ease, transform 0.18s ease;
+    transition: opacity 0.18s ease, transform 0.18s ease; overflow: hidden;
+    display: flex; flex-direction: column;
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   }
   .detail-modal.open { opacity: 1; pointer-events: auto; transform: scale(1); }
+  .detail-modal-scroll { overflow-y: auto; flex: 1 1 auto; -webkit-overflow-scrolling: touch; }
   .detail-close {
     position: absolute; top: 14px; right: 14px; z-index: 2; background: white; border: none; border-radius: 50%;
     width: 34px; height: 34px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); font-size: 15px;
@@ -408,6 +410,7 @@
 <div class="detail-modal-wrap" id="detail-modal-wrap">
 <div class="detail-modal" id="detail-modal">
   <button class="close-btn detail-close" id="detail-close">✕</button>
+  <div class="detail-modal-scroll" id="detail-modal-scroll">
   <div class="detail-image" id="detail-image"></div>
   <div class="detail-body">
     <div class="detail-name" id="detail-name"></div>
@@ -433,6 +436,7 @@
     </div>
 
     <button class="add-to-cart-btn" id="detail-add-btn">Add to Cart</button>
+  </div>
   </div>
 </div>
 </div>
@@ -1183,6 +1187,9 @@
   }
   function updateDetailQtyDisplay() {
     document.getElementById('detail-qty-input').value = detailQty;
+    updateDetailQtyVisuals();
+  }
+  function updateDetailQtyVisuals() {
     if (!detailProduct) return;
     const p = detailProduct;
     const tiers = getTiers(p);
@@ -1216,10 +1223,14 @@
   detailQtyInput.addEventListener('input', () => {
     // Strip anything that isn't a digit (no decimals), cap at 5 digits
     let digitsOnly = detailQtyInput.value.replace(/[^0-9]/g, '').slice(0, 5);
-    detailQtyInput.value = digitsOnly;
+    if (digitsOnly !== detailQtyInput.value) detailQtyInput.value = digitsOnly;
     const val = parseInt(digitsOnly);
-    detailQty = (!isNaN(val) && val > 0) ? val : detailQty;
-    updateDetailQtyDisplay();
+    if (!isNaN(val) && val > 0) {
+      detailQty = val;
+      updateDetailQtyVisuals();
+    }
+    // If the field is empty (user is mid-retyping), leave it empty and don't
+    // touch detailQty yet — blur/Add-to-cart will fall back to a valid value.
   });
   detailQtyInput.addEventListener('blur', () => {
     const val = parseInt(detailQtyInput.value);
