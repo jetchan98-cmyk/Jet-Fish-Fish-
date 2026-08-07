@@ -887,32 +887,49 @@
     const list = currentGridList;
     const q = searchInput.value.trim().toLowerCase();
     const loadingMoreEl = document.getElementById('grid-loading-more');
+    loadingMoreEl.style.display = 'none';
     if (list.length) {
       const visible = list.slice(0, gridBatchSize);
       grid.innerHTML = visible.map(productCard).join('');
-      loadingMoreEl.style.display = 'none';
+      renderedCount = visible.length;
     } else if (q) {
       grid.innerHTML = `<div class="empty-state"><h3>${t('noResults')}</h3></div>`;
+      renderedCount = 0;
     } else {
       grid.innerHTML = `<div class="empty-state"><h3>${t('noStock')}</h3><p>${t('noStockSub')}</p></div>`;
+      renderedCount = 0;
     }
     attachAddListeners(grid);
+  }
+  let renderedCount = 0;
+  function appendGridBatch() {
+    const list = currentGridList;
+    const nextItems = list.slice(renderedCount, gridBatchSize);
+    if (!nextItems.length) { document.getElementById('grid-loading-more').style.display = 'none'; return; }
+    grid.insertAdjacentHTML('beforeend', nextItems.map(productCard).join(''));
+    attachAddListeners(grid);
+    renderedCount = Math.min(gridBatchSize, list.length);
+    document.getElementById('grid-loading-more').style.display = 'none';
   }
 
   // Infinite scroll — automatically loads the next batch when the sentinel near
   // the bottom of the grid comes into view, no tap needed (like Shopee).
+  // Only the NEW cards are appended (not a full rebuild), so already-rendered
+  // cards above are never touched mid-scroll — that full-rebuild was what
+  // caused the "have to tap slightly lower" issue after loading more.
   const gridSentinel = document.getElementById('grid-sentinel');
   const gridScrollObserver = new IntersectionObserver((entries) => {
     if (!entries[0].isIntersecting) return;
     if (gridBatchSize >= currentGridList.length) return;
     document.getElementById('grid-loading-more').style.display = 'block';
     gridBatchSize += 40;
-    renderGridBatch();
+    appendGridBatch();
   }, { rootMargin: '600px' });
   gridScrollObserver.observe(gridSentinel);
 
   function attachAddListeners(container) {
-    container.querySelectorAll('.product-card').forEach(card => {
+    container.querySelectorAll('.product-card:not([data-bound])').forEach(card => {
+      card.dataset.bound = '1';
       card.addEventListener('click', () => openDetail(card.dataset.id));
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(card.dataset.id); } });
     });
