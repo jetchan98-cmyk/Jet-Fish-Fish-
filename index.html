@@ -485,16 +485,6 @@
 </div>
 
 <script>
-  // Extra safety net: some older/odd mobile browsers still allow double-tap-to-zoom
-  // even with the viewport meta and touch-action CSS both set against it.
-  (function () {
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', function (e) {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 350) e.preventDefault();
-      lastTouchEnd = now;
-    }, { passive: false });
-  })();
 
   // Builds a cute cartoon body: filled color body + dark outline + big eye with highlight
   // ---------- LANGUAGE / TRANSLATIONS ----------
