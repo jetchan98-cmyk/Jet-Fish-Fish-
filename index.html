@@ -393,6 +393,8 @@
       </select>
     </div>
     <div class="product-grid" id="product-grid"><div class="loading-msg">Loading current stock…</div></div>
+    <div id="grid-sentinel" style="height:1px;"></div>
+    <div id="grid-loading-more" style="display:none; text-align:center; padding:16px 0; color:var(--ink-soft); font-size:13px;"><span id="lbl-loading-more">Loading more…</span></div>
   </section>
 </main>
 
@@ -510,7 +512,7 @@
       orderReceived: 'Order received', orderReceivedSub: "We've got your order and will contact you shortly to confirm.",
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
-      addToCart: 'Add to cart', allFish: 'All Fish',
+      addToCart: 'Add to cart', allFish: 'All Fish', loadingMore: 'Loading more…',
       menuCategory: '📁 Category', menuOrderHistory: '📋 Order History', menuLogout: '🚪 Log Out',
       orderHistoryTitle: 'Order History', orderHistoryEmpty: "You haven't placed any orders yet.",
       orderHistoryLoading: 'Loading…', orderHistoryFailed: 'Could not load order history.',
@@ -528,7 +530,7 @@
       orderReceived: '订单已收到', orderReceivedSub: '我们已收到您的订单，将尽快与您联系确认。',
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
-      addToCart: '加入购物车', allFish: '全部鱼类',
+      addToCart: '加入购物车', allFish: '全部鱼类', loadingMore: '加载更多中…',
       menuCategory: '📁 分类', menuOrderHistory: '📋 订单记录', menuLogout: '🚪 登出',
       orderHistoryTitle: '订单记录', orderHistoryEmpty: '您还没有下过任何订单。',
       orderHistoryLoading: '加载中…', orderHistoryFailed: '无法加载订单记录。',
@@ -543,6 +545,7 @@
     document.getElementById('lbl-menu-order-history').textContent = t('menuOrderHistory');
     document.getElementById('lbl-menu-logout').textContent = t('menuLogout');
     document.getElementById('lbl-order-history-title').textContent = t('orderHistoryTitle');
+    document.getElementById('lbl-loading-more').textContent = t('loadingMore');
     document.getElementById('lbl-curated').textContent = t('curated');
     document.getElementById('lbl-featured').textContent = t('featured');
     document.getElementById('grid-eyebrow').textContent = t('fullCatalog');
@@ -871,6 +874,8 @@
   const grid = document.getElementById('product-grid');
   const gridTitle = document.getElementById('grid-title');
   const searchInput = document.getElementById('search-input');
+  let gridBatchSize = 40;
+  let currentGridList = [];
   function renderGrid() {
     const q = searchInput.value.trim().toLowerCase();
     document.getElementById('featured-section').style.display = q ? 'none' : '';
@@ -884,8 +889,18 @@
     else if (sortMode === 'name-desc') list = list.slice().sort((a, b) => b.name.localeCompare(a.name));
     else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
+    currentGridList = list;
+    gridBatchSize = 40;
+    renderGridBatch();
+  }
+  function renderGridBatch() {
+    const list = currentGridList;
+    const q = searchInput.value.trim().toLowerCase();
+    const loadingMoreEl = document.getElementById('grid-loading-more');
     if (list.length) {
-      grid.innerHTML = list.map(productCard).join('');
+      const visible = list.slice(0, gridBatchSize);
+      grid.innerHTML = visible.map(productCard).join('');
+      loadingMoreEl.style.display = 'none';
     } else if (q) {
       grid.innerHTML = `<div class="empty-state"><h3>${t('noResults')}</h3></div>`;
     } else {
@@ -893,6 +908,19 @@
     }
     attachAddListeners(grid);
   }
+
+  // Infinite scroll — automatically loads the next batch when the sentinel near
+  // the bottom of the grid comes into view, no tap needed (like Shopee).
+  const gridSentinel = document.getElementById('grid-sentinel');
+  const gridScrollObserver = new IntersectionObserver((entries) => {
+    if (!entries[0].isIntersecting) return;
+    if (gridBatchSize >= currentGridList.length) return;
+    document.getElementById('grid-loading-more').style.display = 'block';
+    gridBatchSize += 40;
+    renderGridBatch();
+  }, { rootMargin: '600px' });
+  gridScrollObserver.observe(gridSentinel);
+
   function attachAddListeners(container) {
     container.querySelectorAll('.product-card').forEach(card => {
       card.addEventListener('click', () => openDetail(card.dataset.id));
