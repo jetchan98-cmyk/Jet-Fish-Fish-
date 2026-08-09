@@ -1305,7 +1305,7 @@ BET-0166"></textarea>
     const gapX = 10, gapY = 12;
     const cellW = (pageWidth - marginX * 2 - gapX * (cols - 1)) / cols;
     const cellH = (pageHeight - marginTop - marginBottom - gapY * (rows - 1)) / rows;
-    const photoSize = Math.min(cellW - 8, cellH - 46);
+    const photoSize = Math.min(cellW - 8, cellH - 58);
 
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
@@ -1345,16 +1345,16 @@ BET-0166"></textarea>
       doc.rect(photoX, y, photoSize, photoSize);
 
       // Text block below photo
-      let textY = y + photoSize + 11;
+      let textY = y + photoSize + 10;
       doc.setFont('NotoSansSC'); doc.setFontSize(7.5); doc.setTextColor(20, 24, 26);
       const nameLine = f.zh ? `${f.name} ${f.zh}` : f.name;
       const nameWrapped = doc.splitTextToSize(nameLine, cellW);
       doc.text(nameWrapped.slice(0, 2), x, textY);
-      textY += nameWrapped.slice(0, 2).length * 9;
+      textY += nameWrapped.slice(0, 2).length * 8.5;
 
       doc.setFontSize(6.8); doc.setTextColor(110);
       doc.text(`${f.code}  ·  ${f.size || '—'}`, x, textY);
-      textY += 9;
+      textY += 8.5;
 
       doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(20, 24, 26);
       doc.text(tierSummaryCompact(f.tiers), x, textY);
