@@ -1344,19 +1344,15 @@ BET-0166"></textarea>
       doc.setDrawColor(225, 226, 228);
       doc.rect(photoX, y, photoSize, photoSize);
 
-      // Text block below photo
-      let textY = y + photoSize + 10;
-      doc.setFont('NotoSansSC'); doc.setFontSize(7.5); doc.setTextColor(20, 24, 26);
-      const nameLine = f.zh ? `${f.name} ${f.zh}` : f.name;
-      const nameWrapped = doc.splitTextToSize(nameLine, cellW);
-      doc.text(nameWrapped.slice(0, 2), x, textY);
-      textY += nameWrapped.slice(0, 2).length * 8.5;
-
-      doc.setFontSize(6.8); doc.setTextColor(110);
-      doc.text(`${f.code}  ·  ${f.size || '—'}`, x, textY);
-      textY += 8.5;
-
+      // Text block below photo — simple: "Code — Name 中文" then the price line
+      let textY = y + photoSize + 11;
       doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(20, 24, 26);
+      const nameLine = `${f.code} — ${f.name}${f.zh ? ' ' + f.zh : ''}`;
+      const nameWrapped = doc.splitTextToSize(nameLine, cellW);
+      doc.text(nameWrapped.slice(0, 3), x, textY);
+      textY += nameWrapped.slice(0, 3).length * 8.5;
+
+      doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(60, 60, 60);
       doc.text(tierSummaryCompact(f.tiers), x, textY);
     });
 
