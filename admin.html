@@ -279,6 +279,16 @@
           <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
           <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
         </div>
+        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+          <button class="qa-btn qa-outline" id="qa-photo-catalog-pdf">Photo Catalog PDF</button>
+        </div>
+        <div class="editor-card" id="photo-catalog-progress-panel" style="display:none;">
+          <h3 style="margin:0 0 10px;">Building Photo Catalog…</h3>
+          <div style="background:#F2F3F4; border-radius:8px; height:10px; overflow:hidden;">
+            <div id="photo-catalog-progress-bar" style="background:var(--brand-blue); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div id="photo-catalog-progress-text" style="font-size:12.5px; color:var(--ink-soft); margin-top:8px;">Loading photos…</div>
+        </div>
 
         <div class="editor-card" id="available-codes-panel" style="display:none;">
           <h3>Available Fish Codes</h3>
@@ -1234,6 +1244,130 @@ BET-0166"></textarea>
       document.execCommand('copy');
       showToast('Copied to clipboard');
     }
+  });
+
+  async function imageUrlToDataURL(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  document.getElementById('qa-photo-catalog-pdf').addEventListener('click', async () => {
+    const btn = document.getElementById('qa-photo-catalog-pdf');
+    const progressPanel = document.getElementById('photo-catalog-progress-panel');
+    const progressBar = document.getElementById('photo-catalog-progress-bar');
+    const progressText = document.getElementById('photo-catalog-progress-text');
+    btn.disabled = true;
+    progressPanel.style.display = 'block';
+    progressBar.style.width = '0%';
+
+    const available = fishList.filter(f => f.available).slice().sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      return a.code.localeCompare(b.code);
+    });
+
+    // Pre-load every photo as a data URL (jsPDF needs actual image data, not just a URL)
+    const photoData = {};
+    for (let i = 0; i < available.length; i++) {
+      const f = available[i];
+      progressText.textContent = `Loading photos… ${i + 1}/${available.length}`;
+      progressBar.style.width = `${Math.round(((i + 1) / available.length) * 70)}%`;
+      if (f.images && f.images[0]) {
+        try {
+          photoData[f.code] = await imageUrlToDataURL(f.images[0]);
+        } catch (e) {
+          photoData[f.code] = null; // will show as "No Photo" placeholder
+        }
+      } else {
+        photoData[f.code] = null;
+      }
+    }
+
+    progressText.textContent = 'Building PDF…';
+    progressBar.style.width = '85%';
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
+    doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
+    doc.setFont('NotoSansSC');
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 25, marginTop = 40, marginBottom = 30;
+    const cols = 4, rows = 5, perPage = cols * rows;
+    const gapX = 10, gapY = 12;
+    const cellW = (pageWidth - marginX * 2 - gapX * (cols - 1)) / cols;
+    const cellH = (pageHeight - marginTop - marginBottom - gapY * (rows - 1)) / rows;
+    const photoSize = Math.min(cellW - 8, cellH - 46);
+
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+
+    available.forEach((f, i) => {
+      const pageIndex = Math.floor(i / perPage);
+      const posInPage = i % perPage;
+      if (posInPage === 0) {
+        if (pageIndex > 0) doc.addPage();
+        doc.setFont('NotoSansSC'); doc.setFontSize(9); doc.setTextColor(90);
+        doc.text(`Jet Fish Photo Catalog — ${today}`, marginX, 26);
+      }
+      const col = posInPage % cols;
+      const row = Math.floor(posInPage / cols);
+      const x = marginX + col * (cellW + gapX);
+      const y = marginTop + row * (cellH + gapY);
+
+      // Photo (or placeholder box if none available)
+      const photoX = x + (cellW - photoSize) / 2;
+      if (photoData[f.code]) {
+        try {
+          const mimeMatch = photoData[f.code].match(/^data:image\/(\w+);/);
+          let fmt = mimeMatch ? mimeMatch[1].toUpperCase() : 'JPEG';
+          if (fmt === 'JPG') fmt = 'JPEG';
+          if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG'; // jsPDF's safe fallback set
+          doc.addImage(photoData[f.code], fmt, photoX, y, photoSize, photoSize, undefined, 'FAST');
+        } catch (e) {
+          doc.setFillColor(240, 241, 242);
+          doc.rect(photoX, y, photoSize, photoSize, 'F');
+        }
+      } else {
+        doc.setFillColor(240, 241, 242);
+        doc.rect(photoX, y, photoSize, photoSize, 'F');
+        doc.setFont('NotoSansSC'); doc.setFontSize(7); doc.setTextColor(160);
+        doc.text('No Photo', photoX + photoSize / 2, y + photoSize / 2, { align: 'center' });
+      }
+      doc.setDrawColor(225, 226, 228);
+      doc.rect(photoX, y, photoSize, photoSize);
+
+      // Text block below photo
+      let textY = y + photoSize + 11;
+      doc.setFont('NotoSansSC'); doc.setFontSize(7.5); doc.setTextColor(20, 24, 26);
+      const nameLine = f.zh ? `${f.name} ${f.zh}` : f.name;
+      const nameWrapped = doc.splitTextToSize(nameLine, cellW);
+      doc.text(nameWrapped.slice(0, 2), x, textY);
+      textY += nameWrapped.slice(0, 2).length * 9;
+
+      doc.setFontSize(6.8); doc.setTextColor(110);
+      doc.text(`${f.code}  ·  ${f.size || '—'}`, x, textY);
+      textY += 9;
+
+      doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(20, 24, 26);
+      doc.text(tierSummaryCompact(f.tiers), x, textY);
+    });
+
+    progressBar.style.width = '100%';
+    progressText.textContent = 'Done — downloading…';
+    doc.save(`Jet-Fish-Photo-Catalog-${today.replace(/\//g, '-')}.pdf`);
+
+    setTimeout(() => {
+      progressPanel.style.display = 'none';
+      btn.disabled = false;
+    }, 600);
   });
 
   document.getElementById('qa-price-pdf').addEventListener('click', () => {
