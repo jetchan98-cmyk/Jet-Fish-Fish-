@@ -1246,15 +1246,70 @@ BET-0166"></textarea>
     }
   });
 
+  // Manual word-wrap that estimates width by counting characters (CJK counted
+  // as ~2x a Latin character) instead of using the font's own width metrics —
+  // works around the custom font's broken Latin glyph widths.
+  function manualWrapText(text, maxUnitsPerLine, maxLines) {
+    function unitsOf(str) {
+      let u = 0;
+      for (const ch of str) u += /[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch) ? 2 : 1;
+      return u;
+    }
+    const words = text.split(' ');
+    const lines = [];
+    let current = '';
+    let currentUnits = 0;
+    for (const word of words) {
+      const wordUnits = unitsOf(word);
+      const sepUnits = current ? 1 : 0;
+      if (current && currentUnits + sepUnits + wordUnits > maxUnitsPerLine) {
+        lines.push(current);
+        if (lines.length >= maxLines) { current = ''; break; }
+        current = word;
+        currentUnits = wordUnits;
+      } else {
+        current = current ? current + ' ' + word : word;
+        currentUnits += sepUnits + wordUnits;
+      }
+    }
+    if (current && lines.length < maxLines) lines.push(current);
+    if (lines.length >= maxLines && current === '') {
+      lines[maxLines - 1] = lines[maxLines - 1].replace(/.{1,2}$/, '…');
+    }
+    return lines.slice(0, maxLines);
+  }
+
   async function imageUrlToDataURL(url) {
     const res = await fetch(url);
     if (!res.ok) throw new Error('fetch failed');
     const blob = await res.blob();
-    return await new Promise((resolve, reject) => {
+    const rawDataUrl = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
       reader.readAsDataURL(blob);
+    });
+
+    // Resize to a max of 300px and re-compress as JPEG — photos are only ever
+    // displayed at ~120px in this catalog, so embedding full camera-resolution
+    // originals (often several MB each) is what was blowing the file size up
+    // to 100+ MB. This alone should cut it down to a few MB total.
+    return await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 300;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // in case of transparent PNGs
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.72));
+      };
+      img.onerror = () => resolve(rawDataUrl); // fall back to the original if resizing fails
+      img.src = rawDataUrl;
     });
   }
 
@@ -1344,13 +1399,17 @@ BET-0166"></textarea>
       doc.setDrawColor(225, 226, 228);
       doc.rect(photoX, y, photoSize, photoSize);
 
-      // Text block below photo — simple: "Code — Name 中文" then the price line
+      // Text block below photo — simple: "Code - Name 中文" then the price line
+      // NOTE: doc.splitTextToSize() relies on the font's own width metrics, which
+      // are broken for Latin characters in this custom font (wraps almost every
+      // character onto its own line). Wrapping manually by character count avoids
+      // that entirely, at the cost of being a rougher (but reliable) estimate.
       let textY = y + photoSize + 11;
       doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(20, 24, 26);
       const nameLine = `${f.code} - ${f.name}${f.zh ? ' ' + f.zh : ''}`;
-      const nameWrapped = doc.splitTextToSize(nameLine, cellW);
-      doc.text(nameWrapped.slice(0, 3), x, textY);
-      textY += nameWrapped.slice(0, 3).length * 8.5;
+      const nameWrapped = manualWrapText(nameLine, cellW / 3.9, 3);
+      doc.text(nameWrapped, x, textY);
+      textY += nameWrapped.length * 8.5;
 
       doc.setFont('NotoSansSC'); doc.setFontSize(7.3); doc.setTextColor(60, 60, 60);
       doc.text(tierSummaryCompact(f.tiers), x, textY);
