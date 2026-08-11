@@ -1430,7 +1430,7 @@ BET-0166"></textarea>
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const marginX = 25, marginTop = 40, marginBottom = 30;
-    const cols = 4, rows = 5, perPage = cols * rows;
+    const cols = 4, rows = 4, perPage = cols * rows;
     const gapX = 10, gapY = 12;
     const cellW = (pageWidth - marginX * 2 - gapX * (cols - 1)) / cols;
     const cellH = (pageHeight - marginTop - marginBottom - gapY * (rows - 1)) / rows;
@@ -1476,15 +1476,18 @@ BET-0166"></textarea>
       // Text block below photo: "Code - Name 中文" then the price line.
       // Drawn via pdfDrawText/pdfWrapText so English and Chinese each use a font
       // that can actually render them — see the notes on CJK_COVERAGE above.
+      // Centered under the photo (which is itself centered in the cell) so the
+      // text sits directly beneath the fish rather than off to the left.
+      const centerX = photoX + photoSize / 2;
       let textY = y + photoSize + 11;
       doc.setTextColor(20, 24, 26);
       const nameLine = `${f.code} - ${f.name}${f.zh ? ' ' + f.zh : ''}`;
-      const nameWrapped = pdfWrapText(doc, nameLine, cellW, 7.3, 3);
-      nameWrapped.forEach((ln, k) => pdfDrawText(doc, ln, x, textY + k * 8.5, 7.3));
+      const nameWrapped = pdfWrapText(doc, nameLine, photoSize, 7.3, 3);
+      nameWrapped.forEach((ln, k) => pdfDrawText(doc, ln, centerX, textY + k * 8.5, 7.3, 'center'));
       textY += nameWrapped.length * 8.5;
 
       doc.setTextColor(60, 60, 60);
-      pdfDrawText(doc, tierSummaryCompact(f.tiers), x, textY, 7.3);
+      pdfDrawText(doc, tierSummaryCompact(f.tiers), centerX, textY, 7.3, 'center');
     });
 
     progressBar.style.width = '100%';
@@ -1520,7 +1523,7 @@ BET-0166"></textarea>
     // width and pre-wrap it ourselves at the real mixed-font width, so autoTable
     // (which is measuring in helvetica) never re-wraps or overflows it.
     const FISH_COL = 3;
-    const FISH_COL_W = pageWidth - 80 - (20 + 34 + 49 + 38 + 154);
+    const FISH_COL_W = pageWidth - 80 - (26 + 34 + 49 + 38 + 154);
     const FISH_TEXT_W = FISH_COL_W - 8; // minus left+right cell padding
 
     const rows = available.map((f, i) => [
@@ -1549,7 +1552,7 @@ BET-0166"></textarea>
       headStyles: { fillColor: [20, 24, 26], font: 'helvetica', fontSize: 7 },
       // Column widths match the exact proportions measured from your real Excel file
       columnStyles: {
-        0: { cellWidth: 20, halign: 'left' },  // No.   ~4.0%
+        0: { cellWidth: 26, halign: 'left' },  // No.   — widened so 3-digit rows stay on one line
         1: { cellWidth: 34 },                  // Group ~6.7%
         2: { cellWidth: 49, overflow: 'visible' }, // Code ~9.6%, kept on one line
         3: { cellWidth: FISH_COL_W },          // Fish  — pinned so we can pre-wrap it
