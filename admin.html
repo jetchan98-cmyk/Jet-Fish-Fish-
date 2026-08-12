@@ -1476,7 +1476,7 @@ BET-0166"></textarea>
     // Each fish sits in its own rounded, bordered card. Reserve a fixed text area at
     // the bottom for the full name + price; the photo fills the space above it.
     const cellPad = 9;
-    const TEXT_AREA_H = 74;
+    const TEXT_AREA_H = 92;   // more room so the name (largest), code and price can be bigger
     const photoSize = Math.min(cellW - cellPad * 2, cellH - cellPad * 2 - TEXT_AREA_H);
 
     // Premium palette
@@ -1490,7 +1490,7 @@ BET-0166"></textarea>
     function drawPageHeader() {
       // Title left, date right, with an accent rule beneath — clean letterhead feel.
       doc.setTextColor(INK[0], INK[1], INK[2]);
-      pdfDrawText(doc, 'Jet Fish Shop', marginX, 30, 15);
+      pdfDrawText(doc, 'Jet Fish', marginX, 30, 15);
       doc.setTextColor(120, 126, 132);
       pdfDrawText(doc, 'Photo Catalog', marginX, 44, 9.5);
       doc.setTextColor(120, 126, 132);
@@ -1555,18 +1555,20 @@ BET-0166"></textarea>
       let cursorY = textTop;
       if (codeStr) {
         doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
-        pdfDrawText(doc, codeStr, centerX, cursorY + 8, 8.5, 'center');
-        cursorY += 12;
+        const codeSize = pdfFitOneLine(doc, codeStr, textW, 11.5, 8);
+        pdfDrawText(doc, codeStr, centerX, cursorY + codeSize, codeSize, 'center');
+        cursorY += codeSize + 5;
       }
 
-      // Price anchored to the bottom, emphasised (larger, accent colour) — it's what
-      // customers look for. Fitted so multi-tier prices stay inside the card.
-      const priceMaxH = Math.min((textBottom - cursorY) * 0.5, 26);
-      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 10.5, 7);
+      // Price anchored to the bottom, emphasised (bigger, accent colour). Fitted so
+      // multi-tier prices stay inside the card.
+      const priceMaxH = Math.min((textBottom - cursorY) * 0.45, 30);
+      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 13, 8);
       const priceH = priceBlock.lines.length * priceBlock.lineH;
 
-      // Full name between the code and the price — every word kept (font shrinks to fit).
-      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 4, 9.5, 6);
+      // Fish NAME — the largest text, filling the space between code and price. Every
+      // word kept (font shrinks to fit) but short names show nice and big.
+      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 5, 15.5, 7);
       doc.setTextColor(INK[0], INK[1], INK[2]);
       let ny = cursorY + nameBlock.size;
       nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ny, nameBlock.size, 'center'); ny += nameBlock.lineH; });
@@ -1585,7 +1587,7 @@ BET-0166"></textarea>
       doc.setLineWidth(0.6);
       doc.line(marginX, fy - 10, pageWidth - marginX, fy - 10);
       doc.setTextColor(90, 96, 102);
-      pdfDrawText(doc, `Jet Fish Shop  ·  Jet: ${CONTACT_PHONE}`, marginX, fy, 8.5);
+      pdfDrawText(doc, `Jet Fish  ·  Jet: ${CONTACT_PHONE}`, marginX, fy, 8.5);
       doc.setTextColor(150, 155, 160);
       pdfDrawText(doc, `Page ${p} / ${totalPages}`, pageWidth - marginX, fy, 8.5, 'right');
     }
