@@ -1356,6 +1356,34 @@ BET-0166"></textarea>
     return size;
   }
 
+  // Truncate `text` (at a FIXED size) so it fits maxWidth on one line, appending an
+  // ellipsis. Used by the price list so every cell shares one uniform font size and
+  // long names get "…" rather than being shrunk to a tiny, cramped size.
+  function pdfTruncateToWidth(doc, text, maxWidth, size) {
+    const s = String(text == null ? '' : text);
+    if (pdfTextWidth(doc, s, size) <= maxWidth) return s;
+    const chars = Array.from(s);
+    let out = '';
+    for (let i = 0; i < chars.length; i++) {
+      if (pdfTextWidth(doc, out + chars[i] + '…', size) > maxWidth) break;
+      out += chars[i];
+    }
+    return (out.trimEnd() || chars[0] || '') + '…';
+  }
+
+  // Fit a whole text BLOCK (wrapped over multiple lines, nothing dropped) into a box
+  // of maxWidth × availHeight. Shrinks the font until every line fits vertically, so
+  // no words go missing. Used by the photo catalog. Returns { size, lines, lineH }.
+  function pdfFitBlock(doc, text, maxWidth, availHeight, maxSize, minSize) {
+    for (let size = maxSize; size >= minSize; size -= 0.5) {
+      const lineH = size * 1.2;
+      const lines = pdfWrapText(doc, text, maxWidth, size, 999);
+      if (lines.length * lineH <= availHeight) return { size, lines, lineH };
+    }
+    const size = minSize, lineH = size * 1.2;
+    return { size, lines: pdfWrapText(doc, text, maxWidth, size, 999), lineH };
+  }
+
   // Call once a PDF is finished: tells you if any Chinese character in your data
   // is missing from the embedded font subset (those characters get skipped).
   function reportMissingChars() {
@@ -1445,7 +1473,11 @@ BET-0166"></textarea>
     const gapX = 10, gapY = 12;
     const cellW = (pageWidth - marginX * 2 - gapX * (cols - 1)) / cols;
     const cellH = (pageHeight - marginTop - marginBottom - gapY * (rows - 1)) / rows;
-    const photoSize = Math.min(cellW - 8, cellH - 58);
+    // Each fish sits in its own bordered box. Reserve a fixed text area at the bottom
+    // of the box for name + price; the photo fills the space above it.
+    const cellPad = 5;
+    const TEXT_AREA_H = 66;                       // room for the full name + price line
+    const photoSize = Math.min(cellW - cellPad * 2, cellH - cellPad * 2 - TEXT_AREA_H);
 
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
@@ -1462,59 +1494,67 @@ BET-0166"></textarea>
       const x = marginX + col * (cellW + gapX);
       const y = marginTop + row * (cellH + gapY);
 
-      // Photo (or placeholder box if none available)
+      // Bordered box around the whole cell — keeps each fish's photo, name and price
+      // together and visually separated from its neighbours (like your Excel cells).
+      doc.setDrawColor(200, 203, 206);
+      doc.setLineWidth(0.6);
+      doc.rect(x, y, cellW, cellH);
+
+      // Photo centred at the top of the box.
       const photoX = x + (cellW - photoSize) / 2;
+      const photoY = y + cellPad;
       if (photoData[f.code]) {
         try {
           const mimeMatch = photoData[f.code].match(/^data:image\/(\w+);/);
           let fmt = mimeMatch ? mimeMatch[1].toUpperCase() : 'JPEG';
           if (fmt === 'JPG') fmt = 'JPEG';
           if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG'; // jsPDF's safe fallback set
-          doc.addImage(photoData[f.code], fmt, photoX, y, photoSize, photoSize, undefined, 'FAST');
+          doc.addImage(photoData[f.code], fmt, photoX, photoY, photoSize, photoSize, undefined, 'FAST');
         } catch (e) {
           doc.setFillColor(240, 241, 242);
-          doc.rect(photoX, y, photoSize, photoSize, 'F');
+          doc.rect(photoX, photoY, photoSize, photoSize, 'F');
         }
       } else {
         doc.setFillColor(240, 241, 242);
-        doc.rect(photoX, y, photoSize, photoSize, 'F');
+        doc.rect(photoX, photoY, photoSize, photoSize, 'F');
         doc.setTextColor(160);
-        pdfDrawText(doc, 'No Photo', photoX + photoSize / 2, y + photoSize / 2, 7, 'center');
+        pdfDrawText(doc, 'No Photo', photoX + photoSize / 2, photoY + photoSize / 2, 7, 'center');
       }
       doc.setDrawColor(225, 226, 228);
-      doc.rect(photoX, y, photoSize, photoSize);
+      doc.setLineWidth(0.4);
+      doc.rect(photoX, photoY, photoSize, photoSize);
 
-      // Text block below photo: name then price, centred under the photo.
-      // Both are constrained to the photo width so a fish with several price tiers
-      // never spills sideways into the fish next to it. The name takes at most 2
-      // lines; the price fits on one line if it can (shrinking a little), otherwise
-      // wraps to a 2nd line — so 3- and 4-tier prices stay inside their own cell.
-      const centerX = photoX + photoSize / 2;
+      // Text area = everything below the photo, inside the box. The FULL name (no
+      // words dropped) and the price are fitted into this fixed area by shrinking the
+      // font until they fit — so nothing is ever truncated or overlaps the next fish.
+      const textX = x + cellPad;
+      const textW = cellW - cellPad * 2;
+      const centerX = x + cellW / 2;
+      const textTop = photoY + photoSize + 4;
+      const textBottom = y + cellH - cellPad;
+      const availH = textBottom - textTop;
+
       const nameLine = `${f.code} - ${f.name}${f.zh ? ' ' + f.zh : ''}`;
-      const NAME_SIZE = 9, NAME_LH = 10.5, PRICE_SIZE = 9.5, PRICE_MIN = 7, PRICE_LH = 9.5;
-
-      // Work out the price layout first, so we know how many lines it needs and can
-      // keep the whole text block inside the cell (never overlapping the row below).
       const priceStr = tierSummaryCompact(f.tiers);
-      const priceFit = pdfFitOneLine(doc, priceStr, photoSize, PRICE_SIZE, PRICE_MIN);
-      const priceOneLine = pdfTextWidth(doc, priceStr, priceFit) <= photoSize;
-      const priceLines = priceOneLine ? [priceStr] : pdfWrapText(doc, priceStr, photoSize, PRICE_SIZE, 3);
-      // If the price needs 2+ lines (3–4 tiers), give the name only 1 line so the
-      // block still fits; otherwise the name may use up to 2 lines.
-      const nameMaxLines = priceLines.length >= 2 ? 1 : 2;
 
-      let textY = y + photoSize + 13;
+      // Fit the price first and anchor it to the BOTTOM of the text area, then fit the
+      // full name into whatever height remains above it. This guarantees both stay
+      // inside the box: the price never drops below the border, the name never
+      // overlaps the price, and no words are dropped (font shrinks instead).
+      const priceMaxH = Math.min(availH * 0.55, 24);
+      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 9, 6);
+      const priceH = priceBlock.lines.length * priceBlock.lineH;
+      const nameBlock = pdfFitBlock(doc, nameLine, textW, availH - priceH - 3, 8.5, 5.5);
+
+      // Name from the top of the text area.
       doc.setTextColor(20, 24, 26);
-      const nameWrapped = pdfWrapText(doc, nameLine, photoSize, NAME_SIZE, nameMaxLines);
-      nameWrapped.forEach((ln, k) => pdfDrawText(doc, ln, centerX, textY + k * NAME_LH, NAME_SIZE, 'center'));
-      textY += nameWrapped.length * NAME_LH + 3;
+      let ty = textTop + nameBlock.size;
+      nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ty, nameBlock.size, 'center'); ty += nameBlock.lineH; });
 
+      // Price anchored to the bottom of the text area (inside the box border).
       doc.setTextColor(60, 60, 60);
-      if (priceOneLine) {
-        pdfDrawText(doc, priceStr, centerX, textY, priceFit, 'center');
-      } else {
-        priceLines.forEach((ln, k) => pdfDrawText(doc, ln, centerX, textY + k * PRICE_LH, PRICE_SIZE, 'center'));
-      }
+      let py = textBottom - priceH + priceBlock.size;
+      priceBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, py, priceBlock.size, 'center'); py += priceBlock.lineH; });
     });
 
     progressBar.style.width = '100%';
@@ -1546,26 +1586,20 @@ BET-0166"></textarea>
       return a.code.localeCompare(b.code);
     });
 
-    // The Fish column is the only one holding both English and Chinese. Pin its
-    // width so we control it, and draw every name on ONE line — long names are
-    // shrunk just enough to fit (see pdfFitOneLine in didDrawCell) rather than
-    // wrapping onto a second line.
+    // ONE uniform font size for the entire table — no per-cell shrinking, so every
+    // fish reads at the same size. Columns are sized so Code, Size and Price always
+    // fit on one line; only long Fish names get an ellipsis ("…") at that same size.
     const FISH_COL = 3, PRICE_COL = 5, CODE_COL = 2, GROUP_COL = 1;
-    // Widen Code so 4-char-prefix codes fit, and Price so multi-tier prices fit on
-    // one line. Fish takes the remaining room.
-    const NO_W = 26, GROUP_W = 56, CODE_W = 56, SIZE_W = 34, PRICE_W = 128;
+    const NO_W = 24, GROUP_W = 58, CODE_W = 58, SIZE_W = 48, PRICE_W = 124;
     const FISH_COL_W = pageWidth - 80 - (NO_W + GROUP_W + CODE_W + SIZE_W + PRICE_W);
     const FISH_TEXT_W = FISH_COL_W - 8; // minus left+right cell padding
-    const PRICE_TEXT_W = PRICE_W - 8;
-    const CODE_TEXT_W = CODE_W - 8;
     const GROUP_TEXT_W = GROUP_W - 8;
-    const BODY_SIZE = 11;                       // bigger body text (was 8)
-    const FISH_MAX_SIZE = BODY_SIZE, FISH_MIN_SIZE = 6.5;
-    const PRICE_MIN_SIZE = 7, CODE_MIN_SIZE = 7.5, GROUP_MIN_SIZE = 6.5;
+    const CODE_TEXT_W = CODE_W - 8;
+    const BODY_SIZE = 9.5;              // uniform size for every body cell
 
     const rows = available.map((f, i) => [
       i + 1, f.category, f.code,
-      f.zh ? `${f.name} ${f.zh}` : f.name,   // single string, drawn on one line below
+      f.zh ? `${f.name} ${f.zh}` : f.name,   // hand-drawn one line (with … if too long)
       f.size || '', tiersToPriceString(f.tiers)
     ]);
 
@@ -1575,38 +1609,44 @@ BET-0166"></textarea>
     pdfDrawText(doc, `Jet: ${CONTACT_PHONE}`, pageWidth / 2, 38, 8, 'center');
     pdfDrawText(doc, 'PM for photos & videos / 图片视频请私讯', pageWidth / 2, 50, 8, 'center');
 
-    // 28 fish rows per page. Row height is fixed so the words are large and every
-    // page looks identical (Excel-style). We paginate manually in chunks of 28, so
-    // rowH must be small enough that 28 body rows + the header fit on one page.
+    // 28 fish rows per page. Fixed row height keeps every page identical (Excel-style)
+    // and guarantees exactly 28 per page. We paginate manually in chunks of 28.
     const ROWS_PER_PAGE = 28;
     const startY = 58, marginBottom = 22;
-    // header + 28 rows = 29 slots; shave a hair off so it never spills to a 2nd page
     const rowH = Math.floor(((pageHeight - startY - marginBottom) / (ROWS_PER_PAGE + 1)) * 10) / 10 - 0.3;
 
     const sharedOpts = {
       startY,
       margin: { top: startY, bottom: marginBottom, left: 40, right: 40 },
-      theme: 'grid',                            // draws borders on every cell, like Excel gridlines
+      theme: 'grid',                            // borders on every cell, like Excel gridlines
       styles: {
         font: 'helvetica', fontSize: BODY_SIZE,
         cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
         halign: 'left', valign: 'middle',
+        overflow: 'hidden',                     // never wrap — Size/Group etc. stay one line
         minCellHeight: rowH, lineWidth: 0.5, lineColor: [200, 203, 206]
       },
       headStyles: {
         fillColor: [20, 24, 26], textColor: [255, 255, 255],
-        font: 'helvetica', fontSize: BODY_SIZE - 1, valign: 'middle',
+        font: 'helvetica', fontSize: BODY_SIZE, valign: 'middle',
         minCellHeight: rowH, lineWidth: 0.5, lineColor: [20, 24, 26]
       },
       alternateRowStyles: { fillColor: [244, 246, 247] }, // subtle zebra for easier scanning
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const c = data.column.index;
-        // For the hand-drawn columns, stash the real value and give autoTable a
-        // short one-line placeholder so it reserves a single-line (fixed) row
-        // height instead of wrapping the long value and making the row tall.
-        if (c === FISH_COL || c === PRICE_COL || c === CODE_COL || c === GROUP_COL) {
+        // Fish/Code/Group are hand-drawn (Fish holds Chinese; all three may be long).
+        // Stash the real value and give autoTable a one-char placeholder so it keeps
+        // the row a single fixed line high instead of wrapping.
+        if (c === FISH_COL || c === CODE_COL || c === GROUP_COL) {
           data.cell.__oneLine = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
+          data.cell.text = ['.'];
+        }
+        // Price is hand-drawn too, but never truncated — a price must show in full.
+        // It uses the uniform size unless a rare 3-tier price would overflow, in
+        // which case only that one price shrinks a little (digits must never be cut).
+        if (c === PRICE_COL) {
+          data.cell.__price = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
           data.cell.text = ['.'];
         }
       },
@@ -1621,31 +1661,40 @@ BET-0166"></textarea>
       willDrawCell: (data) => {
         if (data.section !== 'body') return;
         const c = data.column.index;
-        // Blank the placeholder so autoTable draws nothing; we draw the real value
-        // in didDrawCell.
-        if (c === FISH_COL || c === PRICE_COL || c === CODE_COL || c === GROUP_COL) {
-          data.cell.text = [];
-        }
+        if (c === FISH_COL || c === CODE_COL || c === GROUP_COL) data.cell.text = [];
+        if (c === PRICE_COL) data.cell.text = [];
       },
       didDrawCell: (data) => {
         if (data.section !== 'body') return;
         const c = data.column.index;
-        if (c !== FISH_COL && c !== PRICE_COL && c !== CODE_COL && c !== GROUP_COL) return;
+        const k = doc.internal.scaleFactor;
+        // Price: draw in full, shrink only if it would otherwise overflow.
+        if (c === PRICE_COL) {
+          const price = data.cell.__price;
+          if (price == null || price === '') return;
+          data.cell.text = [price];
+          const pos = data.cell.getTextPos();
+          const size = pdfFitOneLine(doc, price, PRICE_W - 8, BODY_SIZE, 6.5);
+          const ty = data.cell.y + data.cell.height / 2 + (size / k) * 0.5;
+          const tc = data.cell.styles.textColor;
+          if (Array.isArray(tc)) doc.setTextColor(tc[0], tc[1], tc[2]); else doc.setTextColor(tc);
+          pdfDrawText(doc, price, pos.x, ty, size);
+          return;
+        }
+        if (c !== FISH_COL && c !== CODE_COL && c !== GROUP_COL) return;
         const full = data.cell.__oneLine;
         if (full == null || full === '') return;
         data.cell.text = [full];
         const pos = data.cell.getTextPos();
-        const k = doc.internal.scaleFactor;
-        let maxW, minS;
-        if (c === FISH_COL) { maxW = FISH_TEXT_W; minS = FISH_MIN_SIZE; }
-        else if (c === PRICE_COL) { maxW = PRICE_TEXT_W; minS = PRICE_MIN_SIZE; }
-        else if (c === GROUP_COL) { maxW = GROUP_TEXT_W; minS = GROUP_MIN_SIZE; }
-        else { maxW = CODE_TEXT_W; minS = CODE_MIN_SIZE; }
-        const size = pdfFitOneLine(doc, full, maxW, BODY_SIZE, minS);
-        const ty = data.cell.y + data.cell.height / 2 + (size / k) * 0.5; // vertical centre
+        // Same uniform BODY_SIZE for all — only truncate with "…" if it overflows.
+        let maxW = FISH_TEXT_W;
+        if (c === CODE_COL) maxW = CODE_TEXT_W;
+        else if (c === GROUP_COL) maxW = GROUP_TEXT_W;
+        const shown = pdfTruncateToWidth(doc, full, maxW, BODY_SIZE);
+        const ty = data.cell.y + data.cell.height / 2 + (BODY_SIZE / k) * 0.5; // vertical centre
         const tc = data.cell.styles.textColor;
         if (Array.isArray(tc)) doc.setTextColor(tc[0], tc[1], tc[2]); else doc.setTextColor(tc);
-        pdfDrawText(doc, full, pos.x, ty, size);
+        pdfDrawText(doc, shown, pos.x, ty, BODY_SIZE);
       }
     };
 
