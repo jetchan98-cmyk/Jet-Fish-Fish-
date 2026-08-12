@@ -1581,6 +1581,7 @@ BET-0166"></textarea>
       const codeStr = f.code || '';
       const nameStr = `${f.name || ''}${f.zh ? ' ' + f.zh : ''}`.trim();
       const priceStr = tierSummaryCompact(f.tiers);
+      const sizeStr = f.size ? `Size: ${f.size}` : '';
 
       // Code line — accent colour, its own line, so it reads like a product SKU.
       let cursorY = textTop;
@@ -1597,12 +1598,23 @@ BET-0166"></textarea>
       const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 12, 8);
       const priceH = priceBlock.lines.length * priceBlock.lineH;
 
-      // Fish NAME — the largest text, filling the space between code and price. Every
-      // word kept (font shrinks to fit) but short names show nice and big.
-      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 5, 13, 7);
+      // Size line — small muted line sitting just above the price (bottom-aligned
+      // across all cards). Reserve its height so the name never overlaps it.
+      const SIZE_SIZE = 8.5;
+      const sizeH = sizeStr ? SIZE_SIZE + 3 : 0;
+
+      // Fish NAME — the largest text, filling the space between code and the size/price.
+      // Every word kept (font shrinks to fit) but short names show nice and big.
+      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - sizeH - 5, 13, 7);
       doc.setTextColor(INK[0], INK[1], INK[2]);
       let ny = cursorY + nameBlock.size;
       nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ny, nameBlock.size, 'center'); ny += nameBlock.lineH; });
+
+      // Size line, just above the price.
+      if (sizeStr) {
+        doc.setTextColor(120, 126, 132);
+        pdfDrawText(doc, sizeStr, centerX, textBottom - priceH - 3, SIZE_SIZE, 'center');
+      }
 
       doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
       let py = textBottom - priceH + priceBlock.size;
