@@ -1415,8 +1415,40 @@ BET-0166"></textarea>
     return { size, lines: pdfWrapText(doc, text, maxWidth, size, 999), lineH };
   }
 
-  // Call once a PDF is finished: tells you if any Chinese character in your data
-  // is missing from the embedded font subset (those characters get skipped).
+  // Lay out a set of labelled fields ("Code: …", "Name: …", …) as a left-aligned
+  // block that fits maxWidth × availHeight. The value wraps under its label (hanging
+  // indent) and Chinese never splits; the whole block shrinks until it fits.
+  // fields: [{ label, value, color }]. Returns { size, lineH, built } or null.
+  function pdfLayoutFields(doc, fields, maxWidth, availHeight, maxSize, minSize) {
+    for (let size = maxSize; size >= minSize; size -= 0.5) {
+      const lineH = size * 1.28;
+      let total = 0, ok = true;
+      const built = [];
+      for (const fld of fields) {
+        if (!fld.value) continue;
+        const prefix = fld.label + ': ';
+        const prefixW = pdfTextWidth(doc, prefix, size);
+        const valueW = maxWidth - prefixW;
+        if (valueW < size) { ok = false; break; }
+        const lines = pdfWrapText(doc, fld.value, valueW, size, 999);
+        if (pdfMaxLineWidth(doc, lines, size) > valueW + 0.5) { ok = false; break; }
+        built.push({ fld, prefix, prefixW, lines });
+        total += lines.length * lineH;
+      }
+      if (ok && total <= availHeight) return { size, lineH, built };
+    }
+    // Fallback: build at min size (may slightly overflow rather than drop anything).
+    const size = minSize, lineH = size * 1.28;
+    const built = [];
+    for (const fld of fields) {
+      if (!fld.value) continue;
+      const prefix = fld.label + ': ';
+      const prefixW = pdfTextWidth(doc, prefix, size);
+      built.push({ fld, prefix, prefixW, lines: pdfWrapText(doc, fld.value, maxWidth - prefixW, size, 999) });
+    }
+    return { size, lineH, built };
+  }
+
   function reportMissingChars() {
     if (!pdfMissingChars.size) return;
     const list = Array.from(pdfMissingChars).join(' ');
@@ -1573,52 +1605,39 @@ BET-0166"></textarea>
       doc.rect(photoX, photoY, photoSize, photoSize);
 
       // Text area below the photo.
+      const textX = x + cellPad;
       const textW = cellW - cellPad * 2;
-      const centerX = x + cellW / 2;
-      const textTop = photoY + photoSize + 8;
+      const textTop = photoY + photoSize + 9;
       const textBottom = y + cellH - cellPad;
 
       const codeStr = f.code || '';
       const nameStr = `${f.name || ''}${f.zh ? ' ' + f.zh : ''}`.trim();
+      const sizeStr = f.size || '';
       const priceStr = tierSummaryCompact(f.tiers);
-      const sizeStr = f.size ? `Size: ${f.size}` : '';
 
-      // Code line — accent colour, its own line, so it reads like a product SKU.
-      let cursorY = textTop;
-      if (codeStr) {
-        doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
-        const codeSize = pdfFitOneLine(doc, codeStr, textW, 11.5, 8);
-        pdfDrawText(doc, codeStr, centerX, cursorY + codeSize, codeSize, 'center');
-        cursorY += codeSize + 5;
-      }
+      const LABEL = [120, 126, 132];
+      const fields = [
+        { label: 'Code', value: codeStr, color: ACCENT },
+        { label: 'Name', value: nameStr, color: INK },
+        { label: 'Size', value: sizeStr, color: INK },
+        { label: 'Price', value: priceStr, color: ACCENT },
+      ];
 
-      // Price anchored to the bottom, emphasised (bigger, accent colour). Fitted so
-      // multi-tier prices stay inside the card.
-      const priceMaxH = Math.min((textBottom - cursorY) * 0.45, 30);
-      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 12, 8);
-      const priceH = priceBlock.lines.length * priceBlock.lineH;
-
-      // Size line — small muted line sitting just above the price (bottom-aligned
-      // across all cards). Reserve its height so the name never overlaps it.
-      const SIZE_SIZE = 8.5;
-      const sizeH = sizeStr ? SIZE_SIZE + 3 : 0;
-
-      // Fish NAME — the largest text, filling the space between code and the size/price.
-      // Every word kept (font shrinks to fit) but short names show nice and big.
-      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - sizeH - 5, 13, 7);
-      doc.setTextColor(INK[0], INK[1], INK[2]);
-      let ny = cursorY + nameBlock.size;
-      nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ny, nameBlock.size, 'center'); ny += nameBlock.lineH; });
-
-      // Size line, just above the price.
-      if (sizeStr) {
-        doc.setTextColor(120, 126, 132);
-        pdfDrawText(doc, sizeStr, centerX, textBottom - priceH - 3, SIZE_SIZE, 'center');
-      }
-
-      doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
-      let py = textBottom - priceH + priceBlock.size;
-      priceBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, py, priceBlock.size, 'center'); py += priceBlock.lineH; });
+      // Labelled spec block: Code / Name / Size / Price, left-aligned, fitted to card.
+      const layout = pdfLayoutFields(doc, fields, textW, textBottom - textTop, 10.5, 6);
+      let fy = textTop + layout.size;
+      layout.built.forEach((b) => {
+        doc.setTextColor(LABEL[0], LABEL[1], LABEL[2]);
+        pdfDrawText(doc, b.prefix, textX, fy, layout.size);
+        const vc = b.fld.color;
+        doc.setTextColor(vc[0], vc[1], vc[2]);
+        if (b.lines[0]) pdfDrawText(doc, b.lines[0], textX + b.prefixW, fy, layout.size);
+        for (let kk = 1; kk < b.lines.length; kk++) {
+          fy += layout.lineH;
+          pdfDrawText(doc, b.lines[kk], textX + b.prefixW, fy, layout.size);
+        }
+        fy += layout.lineH;
+      });
     });
 
     // Footer on EVERY page: your shop name + phone (ownership stamp) and page numbers.
