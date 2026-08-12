@@ -1590,7 +1590,24 @@ BET-0166"></textarea>
           let fmt = mimeMatch ? mimeMatch[1].toUpperCase() : 'JPEG';
           if (fmt === 'JPG') fmt = 'JPEG';
           if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG';
-          doc.addImage(photoData[f.code], fmt, photoX, photoY, photoSize, photoSize, undefined, 'FAST');
+          // Preserve the photo's real proportions. Forcing a non-square photo into a
+          // square box (the old code) stretched it — a portrait shot got pulled wide,
+          // making the fish look fatter than it is. Instead, scale to FIT inside the
+          // square (no distortion, no cropping) and centre it.
+          let dw = photoSize, dh = photoSize;
+          try {
+            const props = doc.getImageProperties(photoData[f.code]);
+            if (props && props.width && props.height) {
+              const ar = props.width / props.height;
+              if (ar >= 1) { dh = photoSize / ar; } else { dw = photoSize * ar; }
+            }
+          } catch (e) { /* fall back to square if properties can't be read */ }
+          const dx = photoX + (photoSize - dw) / 2;
+          const dy = photoY + (photoSize - dh) / 2;
+          // Light backing so the letterbox area around a non-square photo looks tidy.
+          doc.setFillColor(248, 249, 250);
+          doc.rect(photoX, photoY, photoSize, photoSize, 'F');
+          doc.addImage(photoData[f.code], fmt, dx, dy, dw, dh, undefined, 'FAST');
         } catch (e) {
           doc.setFillColor(240, 241, 242);
           doc.rect(photoX, photoY, photoSize, photoSize, 'F');
