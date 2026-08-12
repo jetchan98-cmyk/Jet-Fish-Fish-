@@ -1468,39 +1468,56 @@ BET-0166"></textarea>
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const marginX = 25, marginTop = 40, marginBottom = 30;
-    const cols = 4, rows = 4, perPage = cols * rows;
-    const gapX = 10, gapY = 12;
+    const marginX = 28, marginTop = 56, marginBottom = 46;  // top leaves room for title, bottom for footer
+    const cols = 3, rows = 3, perPage = cols * rows;         // 3×3 = 9 fish per page (bigger cells)
+    const gapX = 14, gapY = 16;
     const cellW = (pageWidth - marginX * 2 - gapX * (cols - 1)) / cols;
     const cellH = (pageHeight - marginTop - marginBottom - gapY * (rows - 1)) / rows;
-    // Each fish sits in its own bordered box. Reserve a fixed text area at the bottom
-    // of the box for name + price; the photo fills the space above it.
-    const cellPad = 5;
-    const TEXT_AREA_H = 66;                       // room for the full name + price line
+    // Each fish sits in its own rounded, bordered card. Reserve a fixed text area at
+    // the bottom for the full name + price; the photo fills the space above it.
+    const cellPad = 9;
+    const TEXT_AREA_H = 74;
     const photoSize = Math.min(cellW - cellPad * 2, cellH - cellPad * 2 - TEXT_AREA_H);
+
+    // Premium palette
+    const INK = [26, 30, 34];         // near-black for names
+    const ACCENT = [17, 78, 148];     // deep blue for code + price (brand-ish)
+    const BORDER = [70, 78, 88];      // visible dark-slate card border
+    const HAIRLINE = [206, 210, 214]; // light rules
 
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
+    function drawPageHeader() {
+      // Title left, date right, with an accent rule beneath — clean letterhead feel.
+      doc.setTextColor(INK[0], INK[1], INK[2]);
+      pdfDrawText(doc, 'Jet Fish Shop', marginX, 30, 15);
+      doc.setTextColor(120, 126, 132);
+      pdfDrawText(doc, 'Photo Catalog', marginX, 44, 9.5);
+      doc.setTextColor(120, 126, 132);
+      pdfDrawText(doc, today, pageWidth - marginX, 44, 9.5, 'right');
+      doc.setDrawColor(ACCENT[0], ACCENT[1], ACCENT[2]);
+      doc.setLineWidth(1.4);
+      doc.line(marginX, 49, pageWidth - marginX, 49);
+    }
+
     available.forEach((f, i) => {
-      const pageIndex = Math.floor(i / perPage);
       const posInPage = i % perPage;
       if (posInPage === 0) {
-        if (pageIndex > 0) doc.addPage();
-        doc.setTextColor(90);
-        pdfDrawText(doc, `Jet Fish Photo Catalog - ${today}`, marginX, 26, 9);
+        if (i > 0) doc.addPage();
+        drawPageHeader();
       }
       const col = posInPage % cols;
       const row = Math.floor(posInPage / cols);
       const x = marginX + col * (cellW + gapX);
       const y = marginTop + row * (cellH + gapY);
 
-      // Bordered box around the whole cell — keeps each fish's photo, name and price
-      // together and visually separated from its neighbours (like your Excel cells).
-      doc.setDrawColor(200, 203, 206);
-      doc.setLineWidth(0.6);
-      doc.rect(x, y, cellW, cellH);
+      // Rounded card with a thicker, clearly visible border.
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(BORDER[0], BORDER[1], BORDER[2]);
+      doc.setLineWidth(1.3);
+      doc.roundedRect(x, y, cellW, cellH, 6, 6, 'FD');
 
-      // Photo centred at the top of the box.
+      // Photo centred at the top of the card.
       const photoX = x + (cellW - photoSize) / 2;
       const photoY = y + cellPad;
       if (photoData[f.code]) {
@@ -1508,7 +1525,7 @@ BET-0166"></textarea>
           const mimeMatch = photoData[f.code].match(/^data:image\/(\w+);/);
           let fmt = mimeMatch ? mimeMatch[1].toUpperCase() : 'JPEG';
           if (fmt === 'JPG') fmt = 'JPEG';
-          if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG'; // jsPDF's safe fallback set
+          if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG';
           doc.addImage(photoData[f.code], fmt, photoX, photoY, photoSize, photoSize, undefined, 'FAST');
         } catch (e) {
           doc.setFillColor(240, 241, 242);
@@ -1518,44 +1535,60 @@ BET-0166"></textarea>
         doc.setFillColor(240, 241, 242);
         doc.rect(photoX, photoY, photoSize, photoSize, 'F');
         doc.setTextColor(160);
-        pdfDrawText(doc, 'No Photo', photoX + photoSize / 2, photoY + photoSize / 2, 7, 'center');
+        pdfDrawText(doc, 'No Photo', photoX + photoSize / 2, photoY + photoSize / 2, 8, 'center');
       }
-      doc.setDrawColor(225, 226, 228);
-      doc.setLineWidth(0.4);
+      doc.setDrawColor(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]);
+      doc.setLineWidth(0.5);
       doc.rect(photoX, photoY, photoSize, photoSize);
 
-      // Text area = everything below the photo, inside the box. The FULL name (no
-      // words dropped) and the price are fitted into this fixed area by shrinking the
-      // font until they fit — so nothing is ever truncated or overlaps the next fish.
-      const textX = x + cellPad;
+      // Text area below the photo.
       const textW = cellW - cellPad * 2;
       const centerX = x + cellW / 2;
-      const textTop = photoY + photoSize + 4;
+      const textTop = photoY + photoSize + 8;
       const textBottom = y + cellH - cellPad;
-      const availH = textBottom - textTop;
 
-      const nameLine = `${f.code} - ${f.name}${f.zh ? ' ' + f.zh : ''}`;
+      const codeStr = f.code || '';
+      const nameStr = `${f.name || ''}${f.zh ? ' ' + f.zh : ''}`.trim();
       const priceStr = tierSummaryCompact(f.tiers);
 
-      // Fit the price first and anchor it to the BOTTOM of the text area, then fit the
-      // full name into whatever height remains above it. This guarantees both stay
-      // inside the box: the price never drops below the border, the name never
-      // overlaps the price, and no words are dropped (font shrinks instead).
-      const priceMaxH = Math.min(availH * 0.55, 24);
-      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 9, 6);
+      // Code line — accent colour, its own line, so it reads like a product SKU.
+      let cursorY = textTop;
+      if (codeStr) {
+        doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
+        pdfDrawText(doc, codeStr, centerX, cursorY + 8, 8.5, 'center');
+        cursorY += 12;
+      }
+
+      // Price anchored to the bottom, emphasised (larger, accent colour) — it's what
+      // customers look for. Fitted so multi-tier prices stay inside the card.
+      const priceMaxH = Math.min((textBottom - cursorY) * 0.5, 26);
+      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 10.5, 7);
       const priceH = priceBlock.lines.length * priceBlock.lineH;
-      const nameBlock = pdfFitBlock(doc, nameLine, textW, availH - priceH - 3, 8.5, 5.5);
 
-      // Name from the top of the text area.
-      doc.setTextColor(20, 24, 26);
-      let ty = textTop + nameBlock.size;
-      nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ty, nameBlock.size, 'center'); ty += nameBlock.lineH; });
+      // Full name between the code and the price — every word kept (font shrinks to fit).
+      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 4, 9.5, 6);
+      doc.setTextColor(INK[0], INK[1], INK[2]);
+      let ny = cursorY + nameBlock.size;
+      nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ny, nameBlock.size, 'center'); ny += nameBlock.lineH; });
 
-      // Price anchored to the bottom of the text area (inside the box border).
-      doc.setTextColor(60, 60, 60);
+      doc.setTextColor(ACCENT[0], ACCENT[1], ACCENT[2]);
       let py = textBottom - priceH + priceBlock.size;
       priceBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, py, priceBlock.size, 'center'); py += priceBlock.lineH; });
     });
+
+    // Footer on EVERY page: your shop name + phone (ownership stamp) and page numbers.
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      const fy = pageHeight - 26;
+      doc.setDrawColor(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]);
+      doc.setLineWidth(0.6);
+      doc.line(marginX, fy - 10, pageWidth - marginX, fy - 10);
+      doc.setTextColor(90, 96, 102);
+      pdfDrawText(doc, `Jet Fish Shop  ·  Jet: ${CONTACT_PHONE}`, marginX, fy, 8.5);
+      doc.setTextColor(150, 155, 160);
+      pdfDrawText(doc, `Page ${p} / ${totalPages}`, pageWidth - marginX, fy, 8.5, 'right');
+    }
 
     progressBar.style.width = '100%';
     progressText.textContent = 'Done — downloading…';
