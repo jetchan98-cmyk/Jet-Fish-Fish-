@@ -1467,25 +1467,26 @@ BET-0166"></textarea>
       reader.readAsDataURL(blob);
     });
 
-    // Center-CROP to a square, then scale to 300px. Cropping (instead of squashing)
-    // is what keeps the fish's real proportions AND fills the whole catalog box with
-    // no ugly white bars. We take the largest centred square from the photo — the
-    // fish is almost always in the middle, so this trims only the outer edges.
+    // Resize to a max of 300px and re-compress as JPEG — photos are only ever
+    // displayed at ~120px in this catalog, so embedding full camera-resolution
+    // originals (often several MB each) is what was blowing the file size up.
+    // Aspect ratio is preserved (no crop). Upload square photos and they fill the
+    // catalog box perfectly.
     return await new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        const side = Math.min(img.width, img.height);      // square crop taken from source
-        const sx = (img.width - side) / 2;                 // centred horizontally
-        const sy = (img.height - side) / 2;                // centred vertically
-        const out = 300;                                   // output square size
+        const maxDim = 300;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
         const canvas = document.createElement('canvas');
-        canvas.width = out; canvas.height = out;
+        canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, out, out); // for transparent PNGs
-        ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out);  // crop + scale, no distortion
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // in case of transparent PNGs
+        ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL('image/jpeg', 0.72));
       };
-      img.onerror = () => resolve(rawDataUrl); // fall back to the original if cropping fails
+      img.onerror = () => resolve(rawDataUrl); // fall back to the original if resizing fails
       img.src = rawDataUrl;
     });
   }
