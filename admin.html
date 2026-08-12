@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jet Fish — Admin</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CjxyZWN0IHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgcng9IjE0IiBmaWxsPSIjMEY2RTYzIi8+CjxwYXRoIGQ9Ik0xMyAzMmM2LTkgMTctMTQgMjctMTQgMyAwIDYgLjQgOCAxbDYtNmMxLTEgMyAwIDMgMS42VjI1YzMgMiA1IDQuNSA1IDdzLTIgNS01IDd2OS40YzAgMS42LTIgMi42LTMgMS42bC02LTZjLTIgLjYtNSAxLTggMS0xMCAwLTIxLTUtMjctMTR6IiBmaWxsPSIjRkZGRkZGIi8+CjxjaXJjbGUgY3g9IjI0IiBjeT0iMjkiIHI9IjIuNiIgZmlsbD0iIzBGNkU2MyIvPgo8L3N2Zz4=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -1563,12 +1564,12 @@ BET-0166"></textarea>
       // Price anchored to the bottom, emphasised (bigger, accent colour). Fitted so
       // multi-tier prices stay inside the card.
       const priceMaxH = Math.min((textBottom - cursorY) * 0.45, 30);
-      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 13, 8);
+      const priceBlock = pdfFitBlock(doc, priceStr, textW, priceMaxH, 12, 8);
       const priceH = priceBlock.lines.length * priceBlock.lineH;
 
       // Fish NAME — the largest text, filling the space between code and price. Every
       // word kept (font shrinks to fit) but short names show nice and big.
-      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 5, 15.5, 7);
+      const nameBlock = pdfFitBlock(doc, nameStr, textW, (textBottom - cursorY) - priceH - 5, 13, 7);
       doc.setTextColor(INK[0], INK[1], INK[2]);
       let ny = cursorY + nameBlock.size;
       nameBlock.lines.forEach((ln) => { pdfDrawText(doc, ln, centerX, ny, nameBlock.size, 'center'); ny += nameBlock.lineH; });
