@@ -1467,25 +1467,25 @@ BET-0166"></textarea>
       reader.readAsDataURL(blob);
     });
 
-    // Resize to a max of 300px and re-compress as JPEG — photos are only ever
-    // displayed at ~120px in this catalog, so embedding full camera-resolution
-    // originals (often several MB each) is what was blowing the file size up
-    // to 100+ MB. This alone should cut it down to a few MB total.
+    // Center-CROP to a square, then scale to 300px. Cropping (instead of squashing)
+    // is what keeps the fish's real proportions AND fills the whole catalog box with
+    // no ugly white bars. We take the largest centred square from the photo — the
+    // fish is almost always in the middle, so this trims only the outer edges.
     return await new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        const maxDim = 300;
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        const w = Math.max(1, Math.round(img.width * scale));
-        const h = Math.max(1, Math.round(img.height * scale));
+        const side = Math.min(img.width, img.height);      // square crop taken from source
+        const sx = (img.width - side) / 2;                 // centred horizontally
+        const sy = (img.height - side) / 2;                // centred vertically
+        const out = 300;                                   // output square size
         const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
+        canvas.width = out; canvas.height = out;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // in case of transparent PNGs
-        ctx.drawImage(img, 0, 0, w, h);
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, out, out); // for transparent PNGs
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, out, out);  // crop + scale, no distortion
         resolve(canvas.toDataURL('image/jpeg', 0.72));
       };
-      img.onerror = () => resolve(rawDataUrl); // fall back to the original if resizing fails
+      img.onerror = () => resolve(rawDataUrl); // fall back to the original if cropping fails
       img.src = rawDataUrl;
     });
   }
@@ -1590,24 +1590,9 @@ BET-0166"></textarea>
           let fmt = mimeMatch ? mimeMatch[1].toUpperCase() : 'JPEG';
           if (fmt === 'JPG') fmt = 'JPEG';
           if (!['JPEG', 'PNG', 'WEBP'].includes(fmt)) fmt = 'JPEG';
-          // Preserve the photo's real proportions. Forcing a non-square photo into a
-          // square box (the old code) stretched it — a portrait shot got pulled wide,
-          // making the fish look fatter than it is. Instead, scale to FIT inside the
-          // square (no distortion, no cropping) and centre it.
-          let dw = photoSize, dh = photoSize;
-          try {
-            const props = doc.getImageProperties(photoData[f.code]);
-            if (props && props.width && props.height) {
-              const ar = props.width / props.height;
-              if (ar >= 1) { dh = photoSize / ar; } else { dw = photoSize * ar; }
-            }
-          } catch (e) { /* fall back to square if properties can't be read */ }
-          const dx = photoX + (photoSize - dw) / 2;
-          const dy = photoY + (photoSize - dh) / 2;
-          // Light backing so the letterbox area around a non-square photo looks tidy.
-          doc.setFillColor(248, 249, 250);
-          doc.rect(photoX, photoY, photoSize, photoSize, 'F');
-          doc.addImage(photoData[f.code], fmt, dx, dy, dw, dh, undefined, 'FAST');
+          // Photos are pre-cropped to a square during upload processing, so they fill
+          // the box exactly — no stretching, no white bars.
+          doc.addImage(photoData[f.code], fmt, photoX, photoY, photoSize, photoSize, undefined, 'FAST');
         } catch (e) {
           doc.setFillColor(240, 241, 242);
           doc.rect(photoX, photoY, photoSize, photoSize, 'F');
