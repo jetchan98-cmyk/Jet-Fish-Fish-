@@ -1420,8 +1420,9 @@ BET-0166"></textarea>
   // indent) and Chinese never splits; the whole block shrinks until it fits.
   // fields: [{ label, value, color }]. Returns { size, lineH, built } or null.
   function pdfLayoutFields(doc, fields, maxWidth, availHeight, maxSize, minSize) {
+    const FIELD_GAP = 2.5;  // small breathing space between each labelled row
     for (let size = maxSize; size >= minSize; size -= 0.5) {
-      const lineH = size * 1.28;
+      const lineH = size * 1.42;   // roomier line spacing = easier to read
       let total = 0, ok = true;
       const built = [];
       for (const fld of fields) {
@@ -1433,12 +1434,12 @@ BET-0166"></textarea>
         const lines = pdfWrapText(doc, fld.value, valueW, size, 999);
         if (pdfMaxLineWidth(doc, lines, size) > valueW + 0.5) { ok = false; break; }
         built.push({ fld, prefix, prefixW, lines });
-        total += lines.length * lineH;
+        total += lines.length * lineH + FIELD_GAP;
       }
-      if (ok && total <= availHeight) return { size, lineH, built };
+      if (ok && total <= availHeight) return { size, lineH, fieldGap: FIELD_GAP, built };
     }
     // Fallback: build at min size (may slightly overflow rather than drop anything).
-    const size = minSize, lineH = size * 1.28;
+    const size = minSize, lineH = size * 1.42;
     const built = [];
     for (const fld of fields) {
       if (!fld.value) continue;
@@ -1446,7 +1447,7 @@ BET-0166"></textarea>
       const prefixW = pdfTextWidth(doc, prefix, size);
       built.push({ fld, prefix, prefixW, lines: pdfWrapText(doc, fld.value, maxWidth - prefixW, size, 999) });
     }
-    return { size, lineH, built };
+    return { size, lineH, fieldGap: FIELD_GAP, built };
   }
 
   function reportMissingChars() {
@@ -1615,9 +1616,9 @@ BET-0166"></textarea>
       const sizeStr = f.size || '';
       const priceStr = tierSummaryCompact(f.tiers);
 
-      const LABEL = [120, 126, 132];
+      const LABEL = INK;   // labels in black too — clean, uniform, easy to read
       const fields = [
-        { label: 'Code', value: codeStr, color: ACCENT },
+        { label: 'Code', value: codeStr, color: INK },
         { label: 'Name', value: nameStr, color: INK },
         { label: 'Size', value: sizeStr, color: INK },
         { label: 'Price', value: priceStr, color: ACCENT },
@@ -1636,7 +1637,7 @@ BET-0166"></textarea>
           fy += layout.lineH;
           pdfDrawText(doc, b.lines[kk], textX + b.prefixW, fy, layout.size);
         }
-        fy += layout.lineH;
+        fy += layout.lineH + layout.fieldGap;
       });
     });
 
