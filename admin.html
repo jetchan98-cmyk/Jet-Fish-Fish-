@@ -530,7 +530,9 @@ BAB-9042"></textarea>
           <h3>Products To Deactivate <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn OFF)</span></h3>
           <div id="codes-deactivate-list" style="font-size:13px; margin-bottom:16px;"></div>
           <h3>Unknown Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(no matching fish found)</span></h3>
-          <div id="codes-unknown-list" style="font-size:13px;"></div>
+          <div id="codes-unknown-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Duplicate Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(pasted more than once — only counted once)</span></h3>
+          <div id="codes-duplicate-list" style="font-size:13px;"></div>
         </div>
       </div>
 
@@ -552,6 +554,7 @@ BET-0166"></textarea>
             <div class="stat-box"><div class="stat-label" style="color:var(--orange);">Will Turn Off</div><div class="stat-value" style="color:var(--orange);" id="stat-off-matched">0</div></div>
             <div class="stat-box"><div class="stat-label" style="color:var(--ink-soft);">Already Off</div><div class="stat-value" id="stat-off-alreadyoff">0</div></div>
             <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unknown</div><div class="stat-value" style="color:var(--red);" id="stat-off-unknown">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Duplicates</div><div class="stat-value" style="color:var(--red);" id="stat-off-duplicates">0</div></div>
           </div>
           <button class="save-btn" id="turnoff-import-btn" type="button" style="margin-top:14px;">Turn Off Listed Fish</button>
           <div class="result-msg" id="turnoff-result"></div>
@@ -562,7 +565,9 @@ BET-0166"></textarea>
           <h3>Already Off</h3>
           <div id="turnoff-alreadyoff-list" style="font-size:13px; margin-bottom:16px;"></div>
           <h3>Unknown Codes</h3>
-          <div id="turnoff-unknown-list" style="font-size:13px;"></div>
+          <div id="turnoff-unknown-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Duplicate Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(pasted more than once — only counted once)</span></h3>
+          <div id="turnoff-duplicate-list" style="font-size:13px;"></div>
         </div>
       </div>
 
@@ -584,6 +589,7 @@ BET-0166"></textarea>
             <div class="stat-box"><div class="stat-label" style="color:var(--accent);">Will Turn On</div><div class="stat-value" style="color:var(--accent);" id="stat-addon-matched">0</div></div>
             <div class="stat-box"><div class="stat-label" style="color:var(--brand-blue);">Already On</div><div class="stat-value" id="stat-addon-alreadyon">0</div></div>
             <div class="stat-box"><div class="stat-label" style="color:var(--red);">Unknown</div><div class="stat-value" style="color:var(--red);" id="stat-addon-unknown">0</div></div>
+            <div class="stat-box"><div class="stat-label" style="color:var(--red);">Duplicates</div><div class="stat-value" style="color:var(--red);" id="stat-addon-duplicates">0</div></div>
           </div>
           <button class="save-btn" id="addon-import-btn" type="button" style="margin-top:14px;">Add On Listed Fish</button>
           <div class="result-msg" id="addon-result"></div>
@@ -594,7 +600,9 @@ BET-0166"></textarea>
           <h3>Already On</h3>
           <div id="addon-alreadyon-list" style="font-size:13px; margin-bottom:16px;"></div>
           <h3>Unknown Codes</h3>
-          <div id="addon-unknown-list" style="font-size:13px;"></div>
+          <div id="addon-unknown-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Duplicate Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(pasted more than once — only counted once)</span></h3>
+          <div id="addon-duplicate-list" style="font-size:13px;"></div>
         </div>
       </div>
     </section>
@@ -2213,7 +2221,7 @@ BET-0166"></textarea>
     const alreadyOn = matched.filter(f => f.available);
     const turnOff = fishList.filter(f => f.available && !matchedCodesUpper.has(f.code.toUpperCase()));
 
-    return { codesPasted: lines.length, duplicates: duplicateLines.length, unknown, matched, turnOn, alreadyOn, turnOff };
+    return { codesPasted: lines.length, duplicates: duplicateLines, unknown, matched, turnOn, alreadyOn, turnOff };
   }
 
   function renderCodesPreview() {
@@ -2223,7 +2231,7 @@ BET-0166"></textarea>
     document.getElementById('stat-alreadyon').textContent = r.alreadyOn.length;
     document.getElementById('stat-turnoff').textContent = r.turnOff.length;
     document.getElementById('stat-unknown').textContent = r.unknown.length;
-    document.getElementById('stat-duplicates').textContent = r.duplicates;
+    document.getElementById('stat-duplicates').textContent = r.duplicates.length;
 
     const listsWrap = document.getElementById('codes-lists-wrap');
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
@@ -2239,6 +2247,10 @@ BET-0166"></textarea>
 
     document.getElementById('codes-unknown-list').innerHTML = r.unknown.length
       ? r.unknown.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">No match found</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('codes-duplicate-list').innerHTML = r.duplicates.length
+      ? r.duplicates.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">Duplicate</span></div>`).join('')
       : `<div style="color:var(--ink-soft);">None.</div>`;
   }
 
@@ -2281,9 +2293,11 @@ BET-0166"></textarea>
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
     const seenKeys = new Set();
     const uniqueCodes = [];
+    const duplicates = [];
     lines.forEach(code => {
       const key = normalizeCode(code);
-      if (!seenKeys.has(key)) { seenKeys.add(key); uniqueCodes.push(code); }
+      if (seenKeys.has(key)) { duplicates.push(code); }
+      else { seenKeys.add(key); uniqueCodes.push(code); }
     });
 
     const byCodeUpper = {};
@@ -2299,7 +2313,7 @@ BET-0166"></textarea>
     const willTurnOff = matched.filter(f => f.available);
     const alreadyOff = matched.filter(f => !f.available);
 
-    return { codesPasted: lines.length, willTurnOff, alreadyOff, unknown };
+    return { codesPasted: lines.length, willTurnOff, alreadyOff, unknown, duplicates };
   }
 
   function renderTurnOffPreview() {
@@ -2308,6 +2322,7 @@ BET-0166"></textarea>
     document.getElementById('stat-off-matched').textContent = r.willTurnOff.length;
     document.getElementById('stat-off-alreadyoff').textContent = r.alreadyOff.length;
     document.getElementById('stat-off-unknown').textContent = r.unknown.length;
+    document.getElementById('stat-off-duplicates').textContent = r.duplicates.length;
 
     const listsWrap = document.getElementById('turnoff-lists-wrap');
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
@@ -2323,6 +2338,10 @@ BET-0166"></textarea>
 
     document.getElementById('turnoff-unknown-list').innerHTML = r.unknown.length
       ? r.unknown.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">No match found</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('turnoff-duplicate-list').innerHTML = r.duplicates.length
+      ? r.duplicates.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">Duplicate</span></div>`).join('')
       : `<div style="color:var(--ink-soft);">None.</div>`;
   }
   document.getElementById('turnoff-textarea').addEventListener('input', renderTurnOffPreview);
@@ -2360,9 +2379,11 @@ BET-0166"></textarea>
     const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== '');
     const seenKeys = new Set();
     const uniqueCodes = [];
+    const duplicates = [];
     lines.forEach(code => {
       const key = normalizeCode(code);
-      if (!seenKeys.has(key)) { seenKeys.add(key); uniqueCodes.push(code); }
+      if (seenKeys.has(key)) { duplicates.push(code); }
+      else { seenKeys.add(key); uniqueCodes.push(code); }
     });
 
     const byCodeUpper = {};
@@ -2378,7 +2399,7 @@ BET-0166"></textarea>
     const willTurnOn = matched.filter(f => !f.available);
     const alreadyOn = matched.filter(f => f.available);
 
-    return { codesPasted: lines.length, willTurnOn, alreadyOn, unknown };
+    return { codesPasted: lines.length, willTurnOn, alreadyOn, unknown, duplicates };
   }
 
   function renderAddOnPreview() {
@@ -2387,6 +2408,7 @@ BET-0166"></textarea>
     document.getElementById('stat-addon-matched').textContent = r.willTurnOn.length;
     document.getElementById('stat-addon-alreadyon').textContent = r.alreadyOn.length;
     document.getElementById('stat-addon-unknown').textContent = r.unknown.length;
+    document.getElementById('stat-addon-duplicates').textContent = r.duplicates.length;
 
     const listsWrap = document.getElementById('addon-lists-wrap');
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
@@ -2402,6 +2424,10 @@ BET-0166"></textarea>
 
     document.getElementById('addon-unknown-list').innerHTML = r.unknown.length
       ? r.unknown.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">No match found</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('addon-duplicate-list').innerHTML = r.duplicates.length
+      ? r.duplicates.map(code => `<div class="codes-list-row"><span>${code}</span><span style="color:var(--red); font-weight:600;">Duplicate</span></div>`).join('')
       : `<div style="color:var(--ink-soft);">None.</div>`;
   }
   document.getElementById('addon-textarea').addEventListener('input', renderAddOnPreview);
