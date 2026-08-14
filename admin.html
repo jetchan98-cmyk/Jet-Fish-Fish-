@@ -285,6 +285,9 @@
         <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
           <button class="qa-btn qa-outline" id="qa-photo-catalog-pdf">Photo Catalog PDF</button>
         </div>
+        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+          <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
+        </div>
         <div class="editor-card" id="photo-catalog-progress-panel" style="display:none;">
           <h3 style="margin:0 0 10px;">Building Photo Catalog…</h3>
           <div style="background:#F2F3F4; border-radius:8px; height:10px; overflow:hidden;">
@@ -782,6 +785,14 @@ BET-0166"></textarea>
       return { label, price: parseFloat(t.price) };
     });
   }
+  // Fish currently ON, sorted the same way for every PDF export (category, then code).
+  function getAvailableFishSorted() {
+    return fishList.filter(f => f.available).slice().sort((a, b) => {
+      if (a.category !== b.category) return a.category.localeCompare(b.category);
+      return a.code.localeCompare(b.code);
+    });
+  }
+
   function tierSummaryCompact(tiers) {
     if (!tiers || !tiers.length) return 'No price set';
     const sorted = [...tiers].sort((a, b) => a.qty - b.qty);
@@ -1506,26 +1517,15 @@ BET-0166"></textarea>
     });
   }
 
-  document.getElementById('qa-photo-catalog-pdf').addEventListener('click', async () => {
-    const btn = document.getElementById('qa-photo-catalog-pdf');
-    const progressPanel = document.getElementById('photo-catalog-progress-panel');
-    const progressBar = document.getElementById('photo-catalog-progress-bar');
-    const progressText = document.getElementById('photo-catalog-progress-text');
-    btn.disabled = true;
-    progressPanel.style.display = 'block';
-    progressBar.style.width = '0%';
-
-    const available = fishList.filter(f => f.available).slice().sort((a, b) => {
-      if (a.category !== b.category) return a.category.localeCompare(b.category);
-      return a.code.localeCompare(b.code);
-    });
-
-    // Pre-load every photo as a data URL (jsPDF needs actual image data, not just a URL)
+  // Loads every photo for the given fish list as data URLs (jsPDF needs actual
+  // image data, not a URL), reporting progress via the shared progress panel.
+  // Shared by both the standalone Photo Catalog button and the 2-in-1 button.
+  async function preloadCatalogPhotos(available, progressBar, progressText, pctStart, pctEnd) {
     const photoData = {};
     for (let i = 0; i < available.length; i++) {
       const f = available[i];
       progressText.textContent = `Loading photos… ${i + 1}/${available.length}`;
-      progressBar.style.width = `${Math.round(((i + 1) / available.length) * 70)}%`;
+      progressBar.style.width = `${Math.round(pctStart + ((i + 1) / available.length) * (pctEnd - pctStart))}%`;
       if (f.images && f.images[0]) {
         try {
           photoData[f.code] = await imageUrlToDataURL(f.images[0]);
@@ -1536,18 +1536,18 @@ BET-0166"></textarea>
         photoData[f.code] = null;
       }
     }
+    return photoData;
+  }
 
-    progressText.textContent = 'Building PDF…';
-    progressBar.style.width = '85%';
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
-    doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
-    pdfMissingChars = new Set();
-
+  // Draws the photo catalog cards into `doc`, starting on whatever the CURRENT page
+  // is (it does not add a page first) — so callers control whether it lands on page
+  // 1 or after some other content (e.g. the price list in the 2-in-1 PDF). Footer
+  // and page numbers are scoped to only the pages this function itself creates.
+  function drawPhotoCatalogSection(doc, available, photoData) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const startPage = doc.internal.getNumberOfPages();
+
     const marginX = 28, marginTop = 56, marginBottom = 46;  // top leaves room for title, bottom for footer
     const cols = 3, rows = 3, perPage = cols * rows;         // 3×3 = 9 fish per page (bigger cells)
     const gapX = 14, gapY = 16;
@@ -1661,9 +1661,10 @@ BET-0166"></textarea>
       });
     });
 
-    // Footer on EVERY page: your shop name + phone (ownership stamp) and page numbers.
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= totalPages; p++) {
+    // Footer on every page THIS SECTION drew: your shop name + phone (ownership
+    // stamp) and page numbers scoped to this section only.
+    const endPage = doc.internal.getNumberOfPages();
+    for (let p = startPage; p <= endPage; p++) {
       doc.setPage(p);
       const fy = pageHeight - 26;
       doc.setDrawColor(HAIRLINE[0], HAIRLINE[1], HAIRLINE[2]);
@@ -1672,9 +1673,34 @@ BET-0166"></textarea>
       doc.setTextColor(90, 96, 102);
       pdfDrawText(doc, `Jet Fish  ·  Jet: ${CONTACT_PHONE}`, marginX, fy, 8.5);
       doc.setTextColor(150, 155, 160);
-      pdfDrawText(doc, `Page ${p} / ${totalPages}`, pageWidth - marginX, fy, 8.5, 'right');
+      pdfDrawText(doc, `Page ${p - startPage + 1} / ${endPage - startPage + 1}`, pageWidth - marginX, fy, 8.5, 'right');
     }
+  }
 
+  document.getElementById('qa-photo-catalog-pdf').addEventListener('click', async () => {
+    const btn = document.getElementById('qa-photo-catalog-pdf');
+    const progressPanel = document.getElementById('photo-catalog-progress-panel');
+    const progressBar = document.getElementById('photo-catalog-progress-bar');
+    const progressText = document.getElementById('photo-catalog-progress-text');
+    btn.disabled = true;
+    progressPanel.style.display = 'block';
+    progressBar.style.width = '0%';
+
+    const available = getAvailableFishSorted();
+    const photoData = await preloadCatalogPhotos(available, progressBar, progressText, 0, 70);
+
+    progressText.textContent = 'Building PDF…';
+    progressBar.style.width = '85%';
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
+    doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
+    pdfMissingChars = new Set();
+
+    drawPhotoCatalogSection(doc, available, photoData);
+
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
     progressBar.style.width = '100%';
     progressText.textContent = 'Done — downloading…';
     doc.save(`Jet-Fish-Photo-Catalog-${today.replace(/\//g, '-')}.pdf`);
@@ -1686,23 +1712,57 @@ BET-0166"></textarea>
     }, 600);
   });
 
-  document.getElementById('qa-price-pdf').addEventListener('click', () => {
+  // ---------- 2-IN-1 PDF: PRICE LIST + PHOTO CATALOG ----------
+  // Price list first, then the photo catalog starts fresh on its own page below it,
+  // all inside one PDF file.
+  document.getElementById('qa-combo-pdf').addEventListener('click', async () => {
+    const btn = document.getElementById('qa-combo-pdf');
+    const progressPanel = document.getElementById('photo-catalog-progress-panel');
+    const progressBar = document.getElementById('photo-catalog-progress-bar');
+    const progressText = document.getElementById('photo-catalog-progress-text');
+    btn.disabled = true;
+    progressPanel.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressText.textContent = 'Loading photos…';
+
+    const available = getAvailableFishSorted();
+    const photoData = await preloadCatalogPhotos(available, progressBar, progressText, 0, 70);
+
+    progressText.textContent = 'Building PDF…';
+    progressBar.style.width = '85%';
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    // Embed the custom Chinese-capable font (subset built specifically for your fish list)
     doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
     doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
     pdfMissingChars = new Set();
 
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    // Price list first (starts on page 1)…
+    drawPriceListSection(doc, available);
+    // …then the photo catalog starts fresh on the next page.
+    doc.addPage();
+    drawPhotoCatalogSection(doc, available, photoData);
 
-    const available = fishList.filter(f => f.available).slice().sort((a, b) => {
-      if (a.category !== b.category) return a.category.localeCompare(b.category);
-      return a.code.localeCompare(b.code);
-    });
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    progressBar.style.width = '100%';
+    progressText.textContent = 'Done — downloading…';
+    doc.save(`Jet-Fish-Price-And-Photos-${today.replace(/\//g, '-')}.pdf`);
+    reportMissingChars();
+
+    setTimeout(() => {
+      progressPanel.style.display = 'none';
+      btn.disabled = false;
+    }, 600);
+  });
+
+
+  // function itself creates, so it works standalone or stitched into the 2-in-1 PDF.
+  function drawPriceListSection(doc, available) {
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const startPage = doc.internal.getNumberOfPages();
+
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
     // ONE uniform font size for the entire table — no per-cell shrinking, so every
     // fish reads at the same size. Columns are sized so Code, Size and Price always
@@ -1733,23 +1793,25 @@ BET-0166"></textarea>
     const startY = 58, marginBottom = 22;
     const rowH = Math.floor(((pageHeight - startY - marginBottom) / (ROWS_PER_PAGE + 1)) * 10) / 10 - 0.3;
 
+    // Pure black & white: black text, black borders, plain white rows — no grey
+    // zebra shading. Borders are drawn on every cell (Excel-gridline style).
     const sharedOpts = {
       startY,
       margin: { top: startY, bottom: marginBottom, left: 40, right: 40 },
-      theme: 'grid',                            // borders on every cell, like Excel gridlines
+      theme: 'grid',
       styles: {
-        font: 'helvetica', fontSize: BODY_SIZE,
+        font: 'helvetica', fontSize: BODY_SIZE, textColor: [0, 0, 0],
         cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
         halign: 'left', valign: 'middle',
         overflow: 'hidden',                     // never wrap — Size/Group etc. stay one line
-        minCellHeight: rowH, lineWidth: 0.5, lineColor: [200, 203, 206]
+        fillColor: [255, 255, 255],
+        minCellHeight: rowH, lineWidth: 0.75, lineColor: [0, 0, 0]
       },
       headStyles: {
-        fillColor: [20, 24, 26], textColor: [255, 255, 255],
+        fillColor: [0, 0, 0], textColor: [255, 255, 255],
         font: 'helvetica', fontSize: BODY_SIZE, valign: 'middle',
-        minCellHeight: rowH, lineWidth: 0.5, lineColor: [20, 24, 26]
+        minCellHeight: rowH, lineWidth: 0.75, lineColor: [0, 0, 0]
       },
-      alternateRowStyles: { fillColor: [244, 246, 247] }, // subtle zebra for easier scanning
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const c = data.column.index;
@@ -1794,8 +1856,7 @@ BET-0166"></textarea>
           const pos = data.cell.getTextPos();
           const size = pdfFitOneLine(doc, price, PRICE_W - 8, BODY_SIZE, 6.5);
           const ty = data.cell.y + data.cell.height / 2 + (size / k) * 0.5;
-          const tc = data.cell.styles.textColor;
-          if (Array.isArray(tc)) doc.setTextColor(tc[0], tc[1], tc[2]); else doc.setTextColor(tc);
+          doc.setTextColor(0, 0, 0);
           pdfDrawText(doc, price, pos.x, ty, size);
           return;
         }
@@ -1810,8 +1871,7 @@ BET-0166"></textarea>
         else if (c === GROUP_COL) maxW = GROUP_TEXT_W;
         const shown = pdfTruncateToWidth(doc, full, maxW, BODY_SIZE);
         const ty = data.cell.y + data.cell.height / 2 + (BODY_SIZE / k) * 0.5; // vertical centre
-        const tc = data.cell.styles.textColor;
-        if (Array.isArray(tc)) doc.setTextColor(tc[0], tc[1], tc[2]); else doc.setTextColor(tc);
+        doc.setTextColor(0, 0, 0);
         pdfDrawText(doc, shown, pos.x, ty, BODY_SIZE);
       }
     };
@@ -1827,16 +1887,26 @@ BET-0166"></textarea>
         body: chunk
       }));
     }
-    // safety: if there were zero rows, still nothing to draw
 
-
-    // Page numbers — these DO repeat on every page, matching your original
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= totalPages; p++) {
+    // Page numbers — scoped to just the pages this section drew, so it works
+    // correctly whether it's a standalone PDF or the first half of the 2-in-1.
+    const endPage = doc.internal.getNumberOfPages();
+    for (let p = startPage; p <= endPage; p++) {
       doc.setPage(p);
-      doc.setTextColor(60);
-      pdfDrawText(doc, `${p}`, pageWidth - 40, pageHeight - 20, 9);
+      doc.setTextColor(0, 0, 0);
+      pdfDrawText(doc, `${p - startPage + 1}`, pageWidth - 40, pageHeight - 20, 9);
     }
+  }
+
+  document.getElementById('qa-price-pdf').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
+    doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
+    pdfMissingChars = new Set();
+
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    drawPriceListSection(doc, getAvailableFishSorted());
 
     doc.save(`Jet-Fish-Price-List-${today.replace(/\//g, '-')}.pdf`);
     reportMissingChars();
