@@ -63,6 +63,8 @@
     .fish-card { margin-bottom: 0; }
     .toolbar { max-width: 900px; }
   }
+  .cat-group-header { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 8px 12px; margin: 14px 0 8px; }
+  .cat-group-header:first-child { margin-top: 0; }
   .panel { display: none; }
   .panel.active { display: block; }
 
@@ -311,6 +313,7 @@
           <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
           <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
           <select class="cat-filter" id="stock-sort">
+            <option value="cat-asc">Category A–Z</option>
             <option value="name-asc">Name A–Z</option>
             <option value="name-desc">Name Z–A</option>
             <option value="code-asc">Code A–Z</option>
@@ -832,7 +835,8 @@ BET-0166"></textarea>
     if (catFilter) list = list.filter(f => f.category === catFilter);
     if (q) list = list.filter(f => f.name.toLowerCase().includes(q) || f.code.toLowerCase().includes(q) || normalizeCode(f.code).includes(normalizeCode(q)));
 
-    if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortMode === 'cat-asc') list.sort((a, b) => (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name));
+    else if (sortMode === 'name-asc') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list.sort((a, b) => b.name.localeCompare(a.name));
     else if (sortMode === 'code-asc') list.sort((a, b) => a.code.localeCompare(b.code));
     else if (sortMode === 'code-desc') list.sort((a, b) => b.code.localeCompare(a.code));
@@ -851,12 +855,20 @@ BET-0166"></textarea>
     if (stockPage > totalPages) stockPage = totalPages;
     const pageList = showAllStock ? list : list.slice((stockPage - 1) * pageSize, stockPage * pageSize);
 
+    const groupByCat = (sortMode === 'cat-asc');
+    let lastCat = null;
     listEl.innerHTML = pageList.map(f => {
       const thumb = f.images && f.images[0]
         ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
         : `<div class="fc-thumb-placeholder">🐟</div>`;
       const missingImg = !f.images || !f.images.length;
-      return `
+      // When sorted by Category A–Z, drop in a header each time the category changes.
+      let header = '';
+      if (groupByCat && f.category !== lastCat) {
+        lastCat = f.category;
+        header = `<div class="cat-group-header">${f.category || 'Uncategorised'}</div>`;
+      }
+      return header + `
       <div class="fish-card" data-code="${f.code}">
         <div class="fc-top">
           ${thumb}
