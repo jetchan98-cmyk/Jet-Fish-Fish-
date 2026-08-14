@@ -29,6 +29,8 @@
     width: 100%; background: var(--ink); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-bottom: 10px;
   }
   .client-login-error { color: #B91C1C; font-size: 12.5px; margin: 4px 0 10px; display: none; }
+  .remember-row { display: flex !important; align-items: center; gap: 8px; text-align: left !important; font-size: 12.5px !important; font-weight: 500 !important; color: var(--ink-soft) !important; text-transform: none !important; letter-spacing: 0 !important; margin: 2px 0 14px !important; cursor: pointer; }
+  .remember-row input { width: auto !important; margin: 0 !important; width: 17px; height: 17px; flex: 0 0 auto; accent-color: var(--brand-blue); }
   .client-login-error:not(:empty) { display: block; }
   .client-forgot-link { background: none; border: none; color: var(--brand-blue); font-size: 13px; text-decoration: underline; padding: 4px; }
   .client-security-q { background: #F7F8F8; border-radius: 8px; padding: 12px; font-size: 13px; text-align: left; margin-bottom: 14px; }
@@ -320,6 +322,10 @@
       <input type="text" id="client-login-username" autocomplete="username">
       <label>Password</label>
       <input type="password" id="client-login-password" autocomplete="current-password">
+      <label class="remember-row" for="client-remember-me">
+        <input type="checkbox" id="client-remember-me" checked>
+        <span id="lbl-remember-me">Keep me logged in on this device</span>
+      </label>
       <button id="client-login-btn">Log In</button>
       <div class="client-login-error" id="client-login-error">Incorrect login ID or password.</div>
       <button class="client-forgot-link" id="client-forgot-link" type="button">Forgot password?</button>
@@ -653,8 +659,30 @@
 
   let products = [];
   let activeCategory = 'All Fish';
+
+  // ---------- SESSION HELPERS ----------
+  // The login is remembered in one of two places depending on the "Keep me logged
+  // in" choice at sign-in:
+  //   localStorage   → survives closing the tab / browser (stay logged in)
+  //   sessionStorage → cleared when the tab is closed (log in each visit)
+  // getSession() reads whichever one holds it, so the rest of the app doesn't care.
+  const SESSION_KEY = 'jetfish_client_session';
+  function getSession() {
+    return localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || null;
+  }
+  function setSession(username, remember) {
+    // Clear both first so switching modes never leaves a stale copy behind.
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, username);
+  }
+  function clearSession() {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
   function cartStorageKey() {
-    const username = localStorage.getItem('jetfish_client_session') || 'guest';
+    const username = getSession() || 'guest';
     return 'jetfish_cart_' + username;
   }
   let cart = [];
@@ -771,7 +799,7 @@
     openOrderHistory();
   });
   document.getElementById('menu-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('jetfish_client_session');
+    clearSession();
     location.reload();
   });
   document.addEventListener('click', (e) => {
@@ -1054,7 +1082,7 @@
   async function loadOrderHistory() {
     const listEl = document.getElementById('order-history-items');
     listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryLoading')}</div>`;
-    const username = localStorage.getItem('jetfish_client_session');
+    const username = getSession();
     if (!username) { listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryEmpty')}</div>`; return; }
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?client_username=eq.${encodeURIComponent(username)}&select=*&order=created_at.desc`, { headers: supabaseHeaders });
@@ -1326,7 +1354,7 @@
         headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
         body: JSON.stringify({
           order_ref: orderId, company, phone, items, order_total: orderTotal,
-          client_username: localStorage.getItem('jetfish_client_session') || null,
+          client_username: getSession() || null,
           total_types: totalTypes, total_qty: totalQty, status: 'new'
         })
       });
@@ -1340,7 +1368,7 @@
     }
 
     // Log to activity history (best-effort — order is already saved either way)
-    const loggedInAs = localStorage.getItem('jetfish_client_session');
+    const loggedInAs = getSession();
     fetch(`${SUPABASE_URL}/rest/v1/activity_log`, {
       method: 'POST', headers: { ...supabaseHeaders, 'Prefer': 'return=minimal' },
       body: JSON.stringify([{ action: 'New Order', code: loggedInAs || null, details: `${company}${loggedInAs ? ' (' + loggedInAs + ')' : ''} — ${totalTypes} fish types, ${totalQty} qty, RM${orderTotal.toFixed(2)}` }])
@@ -1422,7 +1450,8 @@
           errorEl.textContent = 'Your access has been paused. Please contact us on WhatsApp (010-9881389).';
           return;
         }
-        localStorage.setItem('jetfish_client_session', username);
+        const remember = document.getElementById('client-remember-me').checked;
+        setSession(username, remember);
         // Record the login — best-effort, doesn't block getting into the shop
         fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${client.id}`, {
           method: 'PATCH', headers: supabaseHeaders, body: JSON.stringify({ last_login: new Date().toISOString() })
@@ -1512,7 +1541,7 @@
   // Re-check any saved session against the database — if the client was deleted
   // or renamed since, this browser loses access and is sent back to the login screen.
   (async function checkSavedSession() {
-    const savedUsername = localStorage.getItem('jetfish_client_session');
+    const savedUsername = getSession();
     if (!savedUsername) return;
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(savedUsername)}&select=id,active`, { headers: supabaseHeaders });
@@ -1523,7 +1552,7 @@
         }).catch(() => {});
         showShop();
       } else {
-        localStorage.removeItem('jetfish_client_session');
+        clearSession();
         if (rows.length && !rows[0].active) {
           document.getElementById('client-login-error').textContent = 'Your access has been paused. Please contact us on WhatsApp (010-9881389).';
         }
