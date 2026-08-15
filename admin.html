@@ -85,13 +85,18 @@
   .toolbar > * { flex: 1 1 auto; }
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
   .search-input:focus { border-color: var(--brand-blue); }
-  /* Wrapper matches the search input's original toolbar sizing (flex: 1 1 auto
-     inherited from `.toolbar > *`, min-width same as the input). The ✕ button
-     sits inside the input via absolute positioning; vertical centering is anchored
-     to the INPUT's own height using top + bottom + margin auto. */
-  .search-wrap { position: relative; display: block; min-width: 140px; }
-  .search-wrap .search-input { display: block; width: 100%; padding-right: 34px; box-sizing: border-box; }
-  .search-clear-btn { position: absolute; right: 6px; top: 50%; margin-top: -11px; width: 22px; height: 22px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 12px; line-height: 22px; text-align: center; cursor: pointer; padding: 0; display: none; }
+  /* Search + ✕ layout:
+     - Wrapper claims its share of the toolbar row aggressively (flex-basis 200px
+       plus grow) so the search bar reads as at least as wide as the neighbouring
+       dropdowns, not squashed by their long option text.
+     - ✕ button sits inside the input's padding area.
+     - Wrapper is `display: flex; align-items: stretch` so its height tracks the
+       input's height on every device — no manual centring math needed.
+     - The ✕ is centred vertically with the top/bottom/margin auto trick, which
+       is bullet-proof as long as the containing block has a definite height. */
+  .search-wrap { position: relative; display: flex; align-items: stretch; flex: 3 1 200px; min-width: 140px; }
+  .search-wrap .search-input { flex: 1 1 auto; width: 100%; padding-right: 34px; box-sizing: border-box; }
+  .search-clear-btn { position: absolute; right: 8px; top: 0; bottom: 0; margin: auto 0; width: 20px; height: 20px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; padding: 0; display: none; }
   .search-clear-btn:hover { background: #d7d9dc; color: var(--ink); }
   .search-wrap.has-text .search-clear-btn { display: block; }
   select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px; background: var(--panel); outline: none; }
