@@ -86,19 +86,22 @@
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
   .search-input:focus { border-color: var(--brand-blue); }
   /* Search + ✕ layout:
-     - Wrapper claims its share of the toolbar row aggressively (flex-basis 200px
-       plus grow) so the search bar reads as at least as wide as the neighbouring
-       dropdowns, not squashed by their long option text.
-     - ✕ button sits inside the input's padding area.
-     - Wrapper is `display: flex; align-items: stretch` so its height tracks the
-       input's height on every device — no manual centring math needed.
-     - The ✕ is centred vertically with the top/bottom/margin auto trick, which
-       is bullet-proof as long as the containing block has a definite height. */
-  .search-wrap { position: relative; display: flex; align-items: stretch; flex: 3 1 200px; min-width: 140px; }
+     - The Stocks search sits on its own row above the filter dropdowns, taking
+       the full row width (which is > half the page) — Shopee-style.
+     - Wrapper is `display: flex` so its height tracks the input's height on
+       every device (no manual centring math).
+     - The ✕ button uses top:0/bottom:0/margin:auto — the bullet-proof "center
+       an absolute element vertically" trick — so it lands in the exact middle
+       of the search bar regardless of the input's real rendered height. */
+  .search-wrap { position: relative; display: flex; align-items: stretch; flex: 1 1 auto; min-width: 140px; }
   .search-wrap .search-input { flex: 1 1 auto; width: 100%; padding-right: 34px; box-sizing: border-box; }
-  .search-clear-btn { position: absolute; right: 8px; top: 0; bottom: 0; margin: auto 0; width: 20px; height: 20px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 11px; line-height: 20px; text-align: center; cursor: pointer; padding: 0; display: none; }
+  .search-clear-btn { position: absolute; right: 8px; top: 0; bottom: 0; margin: auto 0; width: 22px; height: 22px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 12px; line-height: 22px; text-align: center; cursor: pointer; padding: 0; display: none; }
   .search-clear-btn:hover { background: #d7d9dc; color: var(--ink); }
   .search-wrap.has-text .search-clear-btn { display: block; }
+  /* The Stocks search row sits above the filter dropdown row. Its wrapper spans
+     the full width of the panel; the row below holds the two filter dropdowns. */
+  .toolbar-search-row { margin-bottom: 10px; }
+  .toolbar-search-row .search-wrap { flex-basis: 100%; }
   select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px; background: var(--panel); outline: none; }
 
   /* ---------- STOCK CARD LIST ---------- */
@@ -326,11 +329,13 @@
           <button class="avail-filter-btn" data-avail="off">OFF</button>
         </div>
 
-        <div class="toolbar">
+        <div class="toolbar toolbar-search-row">
           <div class="search-wrap">
             <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
             <button type="button" class="search-clear-btn" data-clear-target="stock-search" aria-label="Clear search">✕</button>
           </div>
+        </div>
+        <div class="toolbar toolbar-filter-row">
           <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
           <select class="cat-filter" id="stock-sort">
             <option value="cat-asc">Category A–Z</option>
