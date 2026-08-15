@@ -86,22 +86,19 @@
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
   .search-input:focus { border-color: var(--brand-blue); }
   /* Search + ✕ layout:
-     - The Stocks search sits on its own row above the filter dropdowns, taking
-       the full row width (which is > half the page) — Shopee-style.
-     - Wrapper is `display: flex` so its height tracks the input's height on
-       every device (no manual centring math).
-     - The ✕ button uses top:0/bottom:0/margin:auto — the bullet-proof "center
-       an absolute element vertically" trick — so it lands in the exact middle
-       of the search bar regardless of the input's real rendered height. */
-  .search-wrap { position: relative; display: flex; align-items: stretch; flex: 1 1 auto; min-width: 140px; }
-  .search-wrap .search-input { flex: 1 1 auto; width: 100%; padding-right: 34px; box-sizing: border-box; }
+     - Stocks search sits on its own row above the filter dropdowns and takes the
+       full row width. The wrapper is a plain block; the input fills 100% of it.
+     - ✕ button sits absolutely at the right edge of the wrapper. Because the
+       wrapper's height equals the input's height (block containing only the input),
+       top:0/bottom:0/margin:auto centres the ✕ inside the search bar. */
+  .search-wrap { position: relative; display: block; }
+  .search-wrap .search-input { display: block; width: 100%; padding-right: 36px; box-sizing: border-box; min-width: 0; }
   .search-clear-btn { position: absolute; right: 8px; top: 0; bottom: 0; margin: auto 0; width: 22px; height: 22px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 12px; line-height: 22px; text-align: center; cursor: pointer; padding: 0; display: none; }
   .search-clear-btn:hover { background: #d7d9dc; color: var(--ink); }
   .search-wrap.has-text .search-clear-btn { display: block; }
-  /* The Stocks search row sits above the filter dropdown row. Its wrapper spans
-     the full width of the panel; the row below holds the two filter dropdowns. */
-  .toolbar-search-row { margin-bottom: 10px; }
-  .toolbar-search-row .search-wrap { flex-basis: 100%; }
+  /* Stocks: search row on its own line above the filter dropdown row. */
+  .toolbar-search-row { display: block; }
+  .toolbar-search-row .search-wrap { width: 100%; }
   select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px; background: var(--panel); outline: none; }
 
   /* ---------- STOCK CARD LIST ---------- */
