@@ -85,6 +85,11 @@
   .toolbar > * { flex: 1 1 auto; }
   .search-input { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13.5px; outline: none; background: var(--panel); min-width: 140px; }
   .search-input:focus { border-color: var(--brand-blue); }
+  .search-wrap { position: relative; display: inline-flex; flex: 1; min-width: 140px; }
+  .search-wrap .search-input { width: 100%; padding-right: 34px; }
+  .search-clear-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border: none; background: var(--line); color: var(--ink-soft); border-radius: 50%; font-size: 13px; line-height: 1; cursor: pointer; display: none; align-items: center; justify-content: center; padding: 0; }
+  .search-clear-btn:hover { background: #d7d9dc; color: var(--ink); }
+  .search-wrap.has-text .search-clear-btn { display: flex; }
   select.cat-filter { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; font-size: 13px; background: var(--panel); outline: none; }
 
   /* ---------- STOCK CARD LIST ---------- */
@@ -313,7 +318,10 @@
         </div>
 
         <div class="toolbar">
-          <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="stock-search" placeholder="Search by name or code...">
+            <button type="button" class="search-clear-btn" data-clear-target="stock-search" aria-label="Clear search">✕</button>
+          </div>
           <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
           <select class="cat-filter" id="stock-sort">
             <option value="cat-asc">Category A–Z</option>
@@ -461,7 +469,10 @@
         </div>
 
         <div style="display:flex; gap:10px; align-items:center; margin-top:14px; flex-wrap:wrap;">
-          <input type="text" class="search-input" id="bi-search" placeholder="Search fish code or name" style="flex:1; min-width:180px;">
+          <div class="search-wrap" style="min-width:180px;">
+            <input type="text" class="search-input" id="bi-search" placeholder="Search fish code or name" style="width:100%;">
+            <button type="button" class="search-clear-btn" data-clear-target="bi-search" aria-label="Clear search">✕</button>
+          </div>
           <button class="save-btn" id="bi-upload-btn" type="button" style="margin:0; width:auto; padding:13px 22px;">Upload Ready Images</button>
         </div>
 
@@ -653,7 +664,10 @@ BET-0166"></textarea>
     <!-- ================= HISTORY ================= -->
     <section class="panel" id="panel-history">
       <div class="toolbar">
-        <input type="text" class="search-input" id="history-search" placeholder="Search by fish code...">
+        <div class="search-wrap">
+          <input type="text" class="search-input" id="history-search" placeholder="Search by fish code...">
+          <button type="button" class="search-clear-btn" data-clear-target="history-search" aria-label="Clear search">✕</button>
+        </div>
         <button class="icon-btn" id="refresh-history-btn" style="flex:0 0 auto;">↻ Refresh</button>
       </div>
       <div id="history-list"><div class="loading-msg">Loading history…</div></div>
@@ -2828,6 +2842,24 @@ BET-0166"></textarea>
   }
 
   document.getElementById('history-search').addEventListener('input', renderHistoryList);
+
+  // ---------- SEARCH CLEAR (✕) BUTTONS ----------
+  // Shared behaviour for every search box: show the ✕ only once there's text,
+  // and clicking it empties the field, re-runs that field's own search/filter,
+  // and puts focus back in the box — so no more holding backspace to clear it.
+  document.querySelectorAll('.search-wrap').forEach((wrap) => {
+    const input = wrap.querySelector('.search-input');
+    const clearBtn = wrap.querySelector('.search-clear-btn');
+    if (!input || !clearBtn) return;
+    const syncVisibility = () => wrap.classList.toggle('has-text', input.value.length > 0);
+    syncVisibility();
+    input.addEventListener('input', syncVisibility);
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+  });
   document.getElementById('refresh-history-btn').addEventListener('click', loadHistory);
 
   async function init() {
