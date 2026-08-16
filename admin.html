@@ -1821,11 +1821,11 @@ BET-0166"></textarea>
     pdfDrawText(doc, `Jet: ${CONTACT_PHONE}`, pageWidth / 2, 38, 8, 'center');
     pdfDrawText(doc, 'PM for photos & videos / 图片视频请私讯', pageWidth / 2, 50, 8, 'center');
 
-    // 28 fish rows per page. Fixed row height keeps every page identical (Excel-style)
-    // and guarantees exactly 28 per page. We paginate manually in chunks of 28.
-    const ROWS_PER_PAGE = 28;
+    // Minimum row height so single-tier rows don't look cramped and every row has
+    // consistent breathing room. Multi-tier price rows grow taller automatically to
+    // fit their extra lines. Autotable will paginate naturally based on real height.
     const startY = 58, marginBottom = 22;
-    const rowH = Math.floor(((pageHeight - startY - marginBottom) / (ROWS_PER_PAGE + 1)) * 10) / 10 - 0.3;
+    const rowH = 22;                    // comfortable minimum for a single-line row
 
     // Pure black & white: black text, black borders, plain white rows — no grey
     // zebra shading. Borders are drawn on every cell (Excel-gridline style).
@@ -1937,17 +1937,16 @@ BET-0166"></textarea>
       }
     };
 
-    // Draw one table per page-chunk of 28 rows. Header shows on page 1 only,
-    // matching your original Excel export.
-    const headRow = [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']];
-    for (let start = 0; start < rows.length; start += ROWS_PER_PAGE) {
-      const chunk = rows.slice(start, start + ROWS_PER_PAGE);
-      if (start > 0) doc.addPage();
-      doc.autoTable(Object.assign({}, sharedOpts, {
-        head: start === 0 ? headRow : [],
-        body: chunk
-      }));
-    }
+    // Let autoTable paginate naturally — it fills each page with as many rows as
+    // actually fit given each row's real height. Single-tier rows are short so more
+    // fit per page; rows with 2- or 3-tier prices take a bit more space. This
+    // guarantees no big empty gaps at the bottom of a page.
+    // Header shows on page 1 only, matching your original Excel export.
+    doc.autoTable(Object.assign({}, sharedOpts, {
+      head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
+      body: rows,
+      showHead: 'firstPage'
+    }));
 
     // Page numbers — scoped to just the pages this section drew, so it works
     // correctly whether it's a standalone PDF or the first half of the 2-in-1.
