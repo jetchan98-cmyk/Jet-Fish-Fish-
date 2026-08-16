@@ -1377,7 +1377,11 @@
     // Notify the shop owner on Telegram (best-effort — order is already saved either way)
     try {
       const localPhone = phone.replace(/-/g, '');
-      const itemsText = items.map((it, i) => `${i + 1}. ${it.code} ${it.name} x${it.qty}`).join('\n\n');
+      // One item per block, showing: code + name, then quantity × unit price = line total.
+      // Two-line format keeps long fish names readable on Telegram without wrapping badly.
+      const itemsText = items.map((it, i) =>
+        `${i + 1}. ${it.code} ${it.name} x${it.qty}\n   RM${it.unit_price.toFixed(2)} each  =  RM${it.line_total.toFixed(2)}`
+      ).join('\n\n');
       const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const now = new Date();
       let h = now.getHours();

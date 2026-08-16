@@ -1802,7 +1802,7 @@ BET-0166"></textarea>
     // fish reads at the same size. Columns are sized so Code, Size and Price always
     // fit on one line; only long Fish names get an ellipsis ("…") at that same size.
     const FISH_COL = 3, PRICE_COL = 5, CODE_COL = 2, GROUP_COL = 1;
-    const NO_W = 24, GROUP_W = 58, CODE_W = 58, SIZE_W = 48, PRICE_W = 124;
+    const NO_W = 24, GROUP_W = 58, CODE_W = 72, SIZE_W = 48, PRICE_W = 110;
     const FISH_COL_W = pageWidth - 80 - (NO_W + GROUP_W + CODE_W + SIZE_W + PRICE_W);
     const FISH_TEXT_W = FISH_COL_W - 8; // minus left+right cell padding
     const GROUP_TEXT_W = GROUP_W - 8;
@@ -1882,27 +1882,30 @@ BET-0166"></textarea>
         if (data.section !== 'body') return;
         const c = data.column.index;
         const k = doc.internal.scaleFactor;
-        // Price: draw in full, shrink only if it would otherwise overflow.
-        if (c === PRICE_COL) {
-          const price = data.cell.__price;
-          if (price == null || price === '') return;
-          data.cell.text = [price];
+        // Price and Code: draw in FULL, shrink font only if the value would otherwise
+        // overflow. A truncated code ("MOO-19…") is useless to a customer — they need
+        // every digit to be able to order it — so codes must never be cut.
+        if (c === PRICE_COL || c === CODE_COL) {
+          const full = (c === PRICE_COL) ? data.cell.__price : data.cell.__oneLine;
+          if (full == null || full === '') return;
+          data.cell.text = [full];
+          const maxW = (c === PRICE_COL ? PRICE_W : CODE_W) - 8;
           const pos = data.cell.getTextPos();
-          const size = pdfFitOneLine(doc, price, PRICE_W - 8, BODY_SIZE, 6.5);
+          const size = pdfFitOneLine(doc, full, maxW, BODY_SIZE, 6.5);
           const ty = data.cell.y + data.cell.height / 2 + (size / k) * 0.5;
           doc.setTextColor(0, 0, 0);
-          pdfDrawText(doc, price, pos.x, ty, size);
+          pdfDrawText(doc, full, pos.x, ty, size);
           return;
         }
-        if (c !== FISH_COL && c !== CODE_COL && c !== GROUP_COL) return;
+        if (c !== FISH_COL && c !== GROUP_COL) return;
         const full = data.cell.__oneLine;
         if (full == null || full === '') return;
         data.cell.text = [full];
         const pos = data.cell.getTextPos();
-        // Same uniform BODY_SIZE for all — only truncate with "…" if it overflows.
-        let maxW = FISH_TEXT_W;
-        if (c === CODE_COL) maxW = CODE_TEXT_W;
-        else if (c === GROUP_COL) maxW = GROUP_TEXT_W;
+        // For the long-text columns (Fish name, Group), keep the uniform body size and
+        // truncate with "…" if it overflows — losing part of a long fish name is fine
+        // (photo catalog shows it in full), but losing digits from a code is not.
+        const maxW = (c === GROUP_COL) ? GROUP_TEXT_W : FISH_TEXT_W;
         const shown = pdfTruncateToWidth(doc, full, maxW, BODY_SIZE);
         const ty = data.cell.y + data.cell.height / 2 + (BODY_SIZE / k) * 0.5; // vertical centre
         doc.setTextColor(0, 0, 0);
