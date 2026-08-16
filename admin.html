@@ -1857,11 +1857,13 @@ BET-0166"></textarea>
           data.cell.text = ['.'];
         }
         // Price is hand-drawn too, but never truncated — a price must show in full.
-        // It uses the uniform size unless a rare 3-tier price would overflow, in
-        // which case only that one price shrinks a little (digits must never be cut).
+        // For multi-tier prices (2+ tiers), split by " / " so each tier can render on
+        // its own line at full body size instead of being crammed into a shrunken
+        // one-liner. Row height auto-grows to fit the extra lines.
         if (c === PRICE_COL) {
-          data.cell.__price = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
-          data.cell.text = ['.'];
+          const full = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
+          data.cell.__priceLines = full ? full.split(' / ') : [''];
+          data.cell.text = new Array(data.cell.__priceLines.length).fill('.');
         }
       },
       columnStyles: {
@@ -1882,14 +1884,36 @@ BET-0166"></textarea>
         if (data.section !== 'body') return;
         const c = data.column.index;
         const k = doc.internal.scaleFactor;
-        // Price and Code: draw in FULL, shrink font only if the value would otherwise
-        // overflow. A truncated code ("MOO-19…") is useless to a customer — they need
-        // every digit to be able to order it — so codes must never be cut.
-        if (c === PRICE_COL || c === CODE_COL) {
-          const full = (c === PRICE_COL) ? data.cell.__price : data.cell.__oneLine;
+        // Price: draw each tier on its OWN line at full body size, so 2- and 3-tier
+        // prices stay readable (never squeezed together into one shrunken line).
+        // If a single tier is still too long for the column, that one line shrinks
+        // just enough to fit — no digits are ever cut.
+        if (c === PRICE_COL) {
+          const lines = data.cell.__priceLines || [''];
+          if (!lines.length || (lines.length === 1 && !lines[0])) return;
+          data.cell.text = lines;
+          const pos = data.cell.getTextPos();
+          const maxW = PRICE_W - 8;
+          const lineH = BODY_SIZE * 1.15;
+          // top of the price block, centred vertically in the cell
+          const totalH = lines.length * lineH;
+          let ty = data.cell.y + (data.cell.height - totalH) / 2 + BODY_SIZE * 0.85;
+          doc.setTextColor(0, 0, 0);
+          for (const ln of lines) {
+            const size = pdfFitOneLine(doc, ln, maxW, BODY_SIZE, 6.5);
+            pdfDrawText(doc, ln, pos.x, ty, size);
+            ty += lineH;
+          }
+          return;
+        }
+        // Code: draw in FULL, shrink font only if the value would otherwise overflow.
+        // A truncated code ("MOO-19…") is useless to a customer — they need every
+        // digit to be able to order it — so codes must never be cut.
+        if (c === CODE_COL) {
+          const full = data.cell.__oneLine;
           if (full == null || full === '') return;
           data.cell.text = [full];
-          const maxW = (c === PRICE_COL ? PRICE_W : CODE_W) - 8;
+          const maxW = CODE_W - 8;
           const pos = data.cell.getTextPos();
           const size = pdfFitOneLine(doc, full, maxW, BODY_SIZE, 6.5);
           const ty = data.cell.y + data.cell.height / 2 + (size / k) * 0.5;
