@@ -876,27 +876,15 @@
   document.getElementById('feat-next-btn').addEventListener('click', () => {
     featScroll.scrollBy({ left: 420, behavior: 'smooth' });
   });
-  let cachedFeaturedIds = null;
   function renderFeatured() {
-    const explicit = products.filter(p => p.feat && p.available);
-    const FEATURED_TARGET = 20;
-    let feat;
-    if (explicit.length >= FEATURED_TARGET) {
-      feat = explicit;
-    } else if (cachedFeaturedIds) {
-      // Reuse the previously chosen random set (in original order) so it stays stable across re-renders
-      feat = cachedFeaturedIds.map(id => products.find(p => p.id === id)).filter(p => p && p.available);
-    } else {
-      const explicitIds = new Set(explicit.map(p => p.id));
-      const pool = products.filter(p => p.available && !explicitIds.has(p.id));
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      feat = explicit.concat(pool.slice(0, FEATURED_TARGET - explicit.length));
-      cachedFeaturedIds = feat.map(p => p.id);
-    }
-    featScroll.innerHTML = feat.length ? feat.map(productCard).join('') : `<div style="color:var(--ink-soft); font-size:13px; padding:10px 0;">${t('noFeatured')}</div>`;
+    // Show ONLY the fish explicitly marked Featured in the admin (and still available).
+    // No random padding — "Featured" means exactly what you picked. If none are
+    // marked, the whole Featured section is hidden.
+    const feat = products.filter(p => p.feat && p.available);
+    const section = document.getElementById('featured-section');
+    if (!feat.length) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    featScroll.innerHTML = feat.map(productCard).join('');
     attachAddListeners(featScroll);
   }
 
@@ -907,7 +895,9 @@
   let currentGridList = [];
   function renderGrid() {
     const q = searchInput.value.trim().toLowerCase();
-    document.getElementById('featured-section').style.display = q ? 'none' : '';
+    // Featured section shows only when NOT searching AND at least one fish is featured.
+    const hasFeatured = products.some(p => p.feat && p.available);
+    document.getElementById('featured-section').style.display = (q || !hasFeatured) ? 'none' : '';
     let list = products.filter(p => p.available);
     if (activeCategory !== 'All Fish') list = list.filter(p => p.category === activeCategory);
     if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q));

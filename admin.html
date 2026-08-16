@@ -311,6 +311,9 @@
         <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
           <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
         </div>
+        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+          <button class="qa-btn qa-outline" id="qa-stockcheck-pdf">Stock Check Codes PDF (all codes only)</button>
+        </div>
         <div class="editor-card" id="photo-catalog-progress-panel" style="display:none;">
           <h3 style="margin:0 0 10px;">Building Photo Catalog…</h3>
           <div style="background:#F2F3F4; border-radius:8px; height:10px; overflow:hidden;">
@@ -345,17 +348,17 @@
           <select class="cat-filter" id="stock-cat-filter"><option value="">All categories</option></select>
           <select class="cat-filter" id="stock-sort">
             <option value="cat-asc">Category A–Z</option>
-            <option value="name-asc">Name A–Z</option>
-            <option value="name-desc">Name Z–A</option>
             <option value="code-asc">Code A–Z</option>
             <option value="code-desc">Code Z–A</option>
             <option value="price-desc">Price: High to Low</option>
             <option value="price-asc">Price: Low to High</option>
             <option value="img-yes">With Image</option>
             <option value="img-no">No Image</option>
-            <option value="offer">Offer Fish</option>
             <option value="featured">Featured Fish</option>
           </select>
+        </div>
+        <div id="clear-featured-row" style="display:none; margin:-6px 0 12px;">
+          <button type="button" id="clear-featured-btn" style="background:none; border:none; color:var(--red); font-size:13px; font-weight:600; cursor:pointer; padding:4px 0; text-decoration:underline;">Clear all featured (un-star every featured fish)</button>
         </div>
         <div id="fish-card-list"><div class="loading-msg">Loading stock…</div></div>
       </div>
@@ -900,6 +903,10 @@ BET-0166"></textarea>
     else if (sortMode === 'offer') list = list.filter(f => f.offer_price !== null && f.offer_price !== undefined);
     else if (sortMode === 'featured') list = list.filter(f => f.featured);
 
+    // Show the "Clear all featured" shortcut only while viewing the Featured filter.
+    const clearRow = document.getElementById('clear-featured-row');
+    if (clearRow) clearRow.style.display = (sortMode === 'featured' && fishList.some(f => f.featured)) ? 'block' : 'none';
+
     const listEl = document.getElementById('fish-card-list');
     if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; renderStockPager(0, 0); return; }
 
@@ -1018,6 +1025,26 @@ BET-0166"></textarea>
   document.getElementById('stock-search').addEventListener('input', () => { stockPage = 1; renderStockList(); });
   document.getElementById('stock-cat-filter').addEventListener('change', () => { stockPage = 1; renderStockList(); });
   document.getElementById('stock-sort').addEventListener('change', () => { stockPage = 1; renderStockList(); });
+
+  // Clear all featured: un-stars every featured fish in one go (with confirmation).
+  // Handy for resetting old leftover featured flags so "Featured" means only what you pick.
+  document.getElementById('clear-featured-btn').addEventListener('click', async () => {
+    const featured = fishList.filter(f => f.featured);
+    if (!featured.length) return;
+    if (!confirm(`Un-star all ${featured.length} featured fish? This removes them from the Featured row on your shop. (You can re-feature the ones you want afterwards.)`)) return;
+    const btn = document.getElementById('clear-featured-btn');
+    btn.disabled = true; btn.textContent = 'Clearing…';
+    // One bulk PATCH: set featured=false for every currently-featured code.
+    const codes = featured.map(f => f.code);
+    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=in.(${codes.map(c => encodeURIComponent(c)).join(',')})`, {
+      method: 'PATCH', headers, body: JSON.stringify({ featured: false })
+    });
+    featured.forEach(f => { f.featured = false; });
+    logActivity('Cleared all featured', null, `${codes.length} fish un-starred`);
+    btn.disabled = false; btn.textContent = 'Clear all featured (un-star every featured fish)';
+    renderStockList();
+    showToast(`Cleared ${codes.length} featured fish`);
+  });
   document.querySelectorAll('.avail-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.avail-filter-btn').forEach(b => b.classList.remove('active'));
@@ -1789,8 +1816,75 @@ BET-0166"></textarea>
     }, 600);
   });
 
+  // ---------- STOCK CHECK CODES PDF (codes only, for manual weekly count) ----------
+  // A compact multi-column grid of every fish code (ON + OFF), sorted, so you can
+  // print it and tick items off during a physical stock count. No names, no prices.
+  document.getElementById('qa-stockcheck-pdf').addEventListener('click', () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    pdfMissingChars = new Set();
 
-  // function itself creates, so it works standalone or stitched into the 2-in-1 PDF.
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 30, marginTop = 54, marginBottom = 34;
+
+    // Every code, both ON and OFF (a stock count covers all stock), sorted A→Z.
+    const codes = fishList.map(f => f.code).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
+
+    // Grid layout: fixed number of columns, filled COLUMN-BY-COLUMN top-to-bottom so
+    // codes read down each column (like your Excel QC form).
+    const COLS = 8;
+    const colW = (pageWidth - marginX * 2) / COLS;
+    const FONT_SIZE = 8.5, ROW_H = 15;
+    const usableH = pageHeight - marginTop - marginBottom;
+    const rowsPerCol = Math.floor(usableH / ROW_H);
+    const perPage = COLS * rowsPerCol;
+    const totalPages = Math.max(1, Math.ceil(codes.length / perPage));
+
+    doc.setFont('helvetica', 'normal');
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) doc.addPage();
+      // Header
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(13);
+      doc.text('Jet Fish — Stock Check', marginX, 30);
+      doc.setFontSize(9);
+      doc.setTextColor(90, 90, 90);
+      doc.text(`${today}   ·   ${codes.length} codes`, marginX, 44);
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.8);
+      doc.line(marginX, 49, pageWidth - marginX, 49);
+
+      const pageCodes = codes.slice(page * perPage, (page + 1) * perPage);
+      doc.setFontSize(FONT_SIZE);
+      doc.setTextColor(0, 0, 0);
+      pageCodes.forEach((code, i) => {
+        const col = Math.floor(i / rowsPerCol);
+        const row = i % rowsPerCol;
+        const x = marginX + col * colW;
+        const y = marginTop + row * ROW_H + FONT_SIZE;
+        // small tick box + code
+        doc.setDrawColor(120, 120, 120);
+        doc.setLineWidth(0.5);
+        doc.rect(x, y - FONT_SIZE + 1.5, 8, 8);
+        doc.text(code, x + 12, y);
+      });
+
+      // Footer / page number
+      doc.setFontSize(8.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Jet Fish  ·  Jet: ${CONTACT_PHONE}`, marginX, pageHeight - 18);
+      doc.text(`Page ${page + 1} / ${totalPages}`, pageWidth - marginX, pageHeight - 18, { align: 'right' });
+    }
+
+    doc.save(`Jet-Fish-Stock-Check-${today.replace(/\//g, '-')}.pdf`);
+  });
+
+
+  // Draws the price list into `doc` starting on the current page. Extracted so both
+  // the standalone Price List button and the 2-in-1 button share identical output.
   function drawPriceListSection(doc, available) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
