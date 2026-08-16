@@ -1894,10 +1894,15 @@ BET-0166"></textarea>
           data.cell.text = lines;
           const pos = data.cell.getTextPos();
           const maxW = PRICE_W - 8;
+          // Match autoTable's own line height so drawn lines land where autoTable
+          // reserved space for them (autoTable used a placeholder of N lines to
+          // grow the row height — draw N real lines at the same spacing here).
+          const padTop = (data.cell.padding && data.cell.padding('top')) || 3;
           const lineH = BODY_SIZE * 1.15;
-          // top of the price block, centred vertically in the cell
-          const totalH = lines.length * lineH;
-          let ty = data.cell.y + (data.cell.height - totalH) / 2 + BODY_SIZE * 0.85;
+          // Anchor to the cell's TOP (padding + first-line ascent), not autoTable's
+          // vertically-centred position — that centring pushed the block up so
+          // multi-tier rows clipped their last line against the bottom border.
+          let ty = data.cell.y + padTop + BODY_SIZE * 0.85;
           doc.setTextColor(0, 0, 0);
           for (const ln of lines) {
             const size = pdfFitOneLine(doc, ln, maxW, BODY_SIZE, 6.5);
