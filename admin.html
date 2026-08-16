@@ -1826,21 +1826,38 @@ BET-0166"></textarea>
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const marginX = 30, marginTop = 54, marginBottom = 34;
+    const marginX = 30, marginTop = 54, marginBottom = 28;
 
     // Every code, both ON and OFF (a stock count covers all stock), sorted A→Z.
     const codes = fishList.map(f => f.code).filter(Boolean).sort((a, b) => a.localeCompare(b));
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-    // Grid layout: fixed number of columns, filled COLUMN-BY-COLUMN top-to-bottom so
-    // codes read down each column (like your Excel QC form).
-    const COLS = 8;
-    const colW = (pageWidth - marginX * 2) / COLS;
-    const FONT_SIZE = 8.5, ROW_H = 15;
+    // ---- Fit EVERYTHING into exactly 2 pages ----
+    // The grid auto-densifies as the list grows: we search column counts and row
+    // heights until all codes fit within MAX_PAGES, preferring a comfortable layout
+    // (fewest columns / tallest rows) that still fits. Codes fill column-by-column,
+    // top-to-bottom, so you read down each column like your Excel QC form.
+    const MAX_PAGES = 2;
+    const usableW = pageWidth - marginX * 2;
     const usableH = pageHeight - marginTop - marginBottom;
-    const rowsPerCol = Math.floor(usableH / ROW_H);
-    const perPage = COLS * rowsPerCol;
-    const totalPages = Math.max(1, Math.ceil(codes.length / perPage));
+
+    // Candidate layouts, from most comfortable (big) to most dense (small).
+    const candidates = [];
+    for (let cols = 8; cols <= 14; cols++) {
+      for (let rowH = 15; rowH >= 9; rowH -= 0.5) {
+        const fontSize = Math.min(9, rowH - 4);
+        const rowsPerCol = Math.floor(usableH / rowH);
+        const perPage = cols * rowsPerCol;
+        candidates.push({ cols, rowH, fontSize, rowsPerCol, perPage, capacity: perPage * MAX_PAGES });
+      }
+    }
+    // Pick the first (most comfortable) layout whose 2-page capacity holds all codes.
+    let layout = candidates.find(c => c.capacity >= codes.length);
+    if (!layout) layout = candidates[candidates.length - 1]; // extreme fallback (very long lists)
+
+    const { cols, rowH, fontSize, rowsPerCol, perPage } = layout;
+    const colW = usableW / cols;
+    const totalPages = Math.min(MAX_PAGES, Math.max(1, Math.ceil(codes.length / perPage)));
 
     doc.setFont('helvetica', 'normal');
 
@@ -1858,25 +1875,42 @@ BET-0166"></textarea>
       doc.line(marginX, 49, pageWidth - marginX, 49);
 
       const pageCodes = codes.slice(page * perPage, (page + 1) * perPage);
-      doc.setFontSize(FONT_SIZE);
+      doc.setFontSize(fontSize);
       doc.setTextColor(0, 0, 0);
+      const boxSize = Math.min(8, rowH - 5);
+      // Prefix = letters before the dash (AGL, BAB, KOI…). We draw a THICK line above
+      // the first code of every new prefix group so each set is instantly visible.
+      const prefixOf = (code) => { const m = String(code).match(/^[A-Za-z]+/); return m ? m[0].toUpperCase() : code; };
       pageCodes.forEach((code, i) => {
         const col = Math.floor(i / rowsPerCol);
         const row = i % rowsPerCol;
         const x = marginX + col * colW;
-        const y = marginTop + row * ROW_H + FONT_SIZE;
+        const y = marginTop + row * rowH + fontSize;
+
+        // Thick divider when the prefix changes from the previous code (across the
+        // whole run, so page 2 / new columns still get a divider when a group starts).
+        const globalIndex = page * perPage + i;
+        const prevCode = globalIndex > 0 ? codes[globalIndex - 1] : null;
+        const isNewGroup = !prevCode || prefixOf(code) !== prefixOf(prevCode);
+        if (isNewGroup && globalIndex > 0) {
+          const lineY = marginTop + row * rowH - 1;   // just above this code's row
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(1.6);                       // thick, clearly visible
+          doc.line(x, lineY, x + colW - 4, lineY);
+        }
+
         // small tick box + code
         doc.setDrawColor(120, 120, 120);
         doc.setLineWidth(0.5);
-        doc.rect(x, y - FONT_SIZE + 1.5, 8, 8);
-        doc.text(code, x + 12, y);
+        doc.rect(x, y - fontSize + 1.5, boxSize, boxSize);
+        doc.text(code, x + boxSize + 4, y);
       });
 
       // Footer / page number
       doc.setFontSize(8.5);
       doc.setTextColor(120, 120, 120);
-      doc.text(`Jet Fish  ·  Jet: ${CONTACT_PHONE}`, marginX, pageHeight - 18);
-      doc.text(`Page ${page + 1} / ${totalPages}`, pageWidth - marginX, pageHeight - 18, { align: 'right' });
+      doc.text(`Jet Fish  ·  Jet: ${CONTACT_PHONE}`, marginX, pageHeight - 14);
+      doc.text(`Page ${page + 1} / ${totalPages}`, pageWidth - marginX, pageHeight - 14, { align: 'right' });
     }
 
     doc.save(`Jet-Fish-Stock-Check-${today.replace(/\//g, '-')}.pdf`);
