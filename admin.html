@@ -47,6 +47,14 @@
   .more-menu-item:last-child { border-bottom: none; }
   .more-menu-item:hover { background: #F7F8F8; }
   .more-menu-item.active { background: var(--accent-soft); color: var(--accent); }
+  /* Collapsible "Reports & PDF Exports" section on Stocks — collapsed by default so
+     you land straight on the fish list instead of scrolling past 5 export buttons
+     every time. Tap the header to expand; state is remembered between visits. */
+  .reports-toggle-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; border: none; background: var(--panel); padding: 14px 16px; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; }
+  .reports-toggle-chevron { color: var(--ink-soft); font-size: 13px; transition: transform 0.2s ease; }
+  .reports-toggle-btn.open .reports-toggle-chevron { transform: rotate(180deg); }
+  .reports-body { display: none; padding: 0 16px 16px; }
+  .reports-body.open { display: block; }
   .tab-btn.active { background: var(--ink); border-color: var(--ink); color: white; }
 
   main { max-width: 700px; margin: 0 auto; padding: 20px 16px 80px; }
@@ -310,18 +318,26 @@
 
       <!-- LIST VIEW -->
       <div id="stock-list-view">
-        <div class="quick-actions" style="grid-template-columns: 1fr 1fr;">
-          <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
-          <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
-        </div>
-        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
-          <button class="qa-btn qa-outline" id="qa-photo-catalog-pdf">Photo Catalog PDF</button>
-        </div>
-        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
-          <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
-        </div>
-        <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
-          <button class="qa-btn qa-outline" id="qa-stockcheck-pdf">Stock Check Codes PDF (all codes only)</button>
+        <div class="editor-card" id="reports-section" style="padding:0; overflow:hidden;">
+          <button type="button" id="reports-toggle-btn" class="reports-toggle-btn">
+            <span>📄 Reports &amp; PDF Exports</span>
+            <span id="reports-toggle-chevron" class="reports-toggle-chevron">▾</span>
+          </button>
+          <div id="reports-body" class="reports-body">
+            <div class="quick-actions" style="grid-template-columns: 1fr 1fr;">
+              <button class="qa-btn qa-outline" id="qa-price-pdf">Price List PDF</button>
+              <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
+            </div>
+            <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+              <button class="qa-btn qa-outline" id="qa-photo-catalog-pdf">Photo Catalog PDF</button>
+            </div>
+            <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+              <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
+            </div>
+            <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
+              <button class="qa-btn qa-outline" id="qa-stockcheck-pdf">Stock Check Codes PDF (all codes only)</button>
+            </div>
+          </div>
         </div>
         <div class="editor-card" id="photo-catalog-progress-panel" style="display:none;">
           <h3 style="margin:0 0 10px;">Building Photo Catalog…</h3>
@@ -738,26 +754,39 @@ BET-0166"></textarea>
     setTimeout(() => toast.classList.remove('show'), 1800);
   }
 
+  // ---------- REPORTS & PDF EXPORTS (collapsible) ----------
+  // Starts collapsed so Stocks opens straight to the fish list. Remembers whether
+  // you left it open/closed so it doesn't surprise you next visit.
+  (function initReportsToggle() {
+    const btn = document.getElementById('reports-toggle-btn');
+    const body = document.getElementById('reports-body');
+    const chevron = document.getElementById('reports-toggle-chevron');
+    const openNow = localStorage.getItem('jetfish_admin_reports_open') === '1';
+    if (openNow) { body.classList.add('open'); btn.classList.add('open'); }
+    btn.addEventListener('click', () => {
+      const willOpen = !body.classList.contains('open');
+      body.classList.toggle('open', willOpen);
+      btn.classList.toggle('open', willOpen);
+      localStorage.setItem('jetfish_admin_reports_open', willOpen ? '1' : '0');
+    });
+  })();
+
   // ---------- UNDO (for Turn On Only / Turn Off Only / Add On) ----------
   // These three tools all flip many fish's ON/OFF status at once from a pasted code
   // list, and it's easy to paste into the wrong one of the three by mistake. This
   // keeps a snapshot of what changed so the LAST bulk action can be reverted in one
   // tap, without needing to fix each fish by hand.
   let lastBulkChange = null; // { label, changes: [{ code, prevAvailable }] }
-  let undoBarTimer = null;
 
   function showUndoBar(message) {
     const bar = document.getElementById('undo-bar');
     document.getElementById('undo-bar-text').textContent = message;
     bar.classList.add('show');
-    clearTimeout(undoBarTimer);
-    // Stays up much longer than the little toast — long enough to notice a mistake
-    // after switching screens — but still auto-hides eventually so it doesn't linger.
-    undoBarTimer = setTimeout(hideUndoBar, 15000);
+    // No auto-hide — stays until you tap Undo or dismiss it, so it's still there
+    // even if you notice the mistake a bit later.
   }
   function hideUndoBar() {
     document.getElementById('undo-bar').classList.remove('show');
-    clearTimeout(undoBarTimer);
   }
   document.getElementById('undo-bar-dismiss').addEventListener('click', () => { hideUndoBar(); lastBulkChange = null; });
   document.getElementById('undo-bar-btn').addEventListener('click', async () => {
