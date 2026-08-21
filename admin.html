@@ -329,9 +329,6 @@
               <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
             </div>
             <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
-              <button class="qa-btn qa-outline" id="qa-photo-catalog-pdf">Photo Catalog PDF</button>
-            </div>
-            <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
               <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
             </div>
             <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
@@ -1845,41 +1842,6 @@ BET-0166"></textarea>
     }
   }
 
-  document.getElementById('qa-photo-catalog-pdf').addEventListener('click', async () => {
-    const btn = document.getElementById('qa-photo-catalog-pdf');
-    const progressPanel = document.getElementById('photo-catalog-progress-panel');
-    const progressBar = document.getElementById('photo-catalog-progress-bar');
-    const progressText = document.getElementById('photo-catalog-progress-text');
-    btn.disabled = true;
-    progressPanel.style.display = 'block';
-    progressBar.style.width = '0%';
-
-    const available = getAvailableFishSorted();
-    const photoData = await preloadCatalogPhotos(available, progressBar, progressText, 0, 70);
-
-    progressText.textContent = 'Building PDF…';
-    progressBar.style.width = '85%';
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    doc.addFileToVFS('NotoSansSC.ttf', NOTOSANS_SC_FONT);
-    doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
-    pdfMissingChars = new Set();
-
-    drawPhotoCatalogSection(doc, available, photoData);
-
-    const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
-    progressBar.style.width = '100%';
-    progressText.textContent = 'Done — downloading…';
-    doc.save(`Jet-Fish-Photo-Catalog-${today.replace(/\//g, '-')}.pdf`);
-    reportMissingChars();
-
-    setTimeout(() => {
-      progressPanel.style.display = 'none';
-      btn.disabled = false;
-    }, 600);
-  });
-
   // ---------- 2-IN-1 PDF: PRICE LIST + PHOTO CATALOG ----------
   // Price list first, then the photo catalog starts fresh on its own page below it,
   // all inside one PDF file.
@@ -1936,7 +1898,13 @@ BET-0166"></textarea>
     const marginX = 30, marginTop = 54, marginBottom = 28;
 
     // Every code, both ON and OFF (a stock count covers all stock), sorted A→Z.
-    const codes = fishList.map(f => f.code).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    // Sorted on the NORMALIZED code (dash/space stripped) so a code that's missing
+    // its dash in the database — e.g. "GGF1725" instead of "GGF-1725" — still lands
+    // in its correct numeric position instead of being shoved to the end of its
+    // prefix group (plain string sort treats "-" as sorting before any digit, which
+    // pushes every non-dashed code after ALL dashed ones of the same prefix).
+    const codes = fishList.map(f => f.code).filter(Boolean)
+      .sort((a, b) => normalizeCode(a).localeCompare(normalizeCode(b)));
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
     // ---- Fit EVERYTHING into exactly 2 pages ----
@@ -2130,21 +2098,19 @@ BET-0166"></textarea>
           data.cell.text = lines;
           const pos = data.cell.getTextPos();
           const maxW = PRICE_W - 8;
-          // Match autoTable's own line height so drawn lines land where autoTable
-          // reserved space for them (autoTable used a placeholder of N lines to
-          // grow the row height — draw N real lines at the same spacing here).
-          const padTop = (data.cell.padding && data.cell.padding('top')) || 3;
           const lineH = BODY_SIZE * 1.15;
-          // Anchor to the cell's TOP (padding + first-line ascent), not autoTable's
-          // vertically-centred position — that centring pushed the block up so
-          // multi-tier rows clipped their last line against the bottom border.
-          let ty = data.cell.y + padTop + BODY_SIZE * 0.85;
+          // Centre the WHOLE price block within the row's real height, using the
+          // same baseline convention as Code/Fish/Group (cell centre + size*0.5) so
+          // a single-tier price lines up with the rest of its row instead of sitting
+          // higher than its neighbours. Multi-line blocks stay symmetric around the
+          // same centre line, so they never spill past the border either.
+          const n = lines.length;
           doc.setTextColor(0, 0, 0);
-          for (const ln of lines) {
+          lines.forEach((ln, i) => {
             const size = pdfFitOneLine(doc, ln, maxW, BODY_SIZE, 6.5);
+            const ty = data.cell.y + data.cell.height / 2 + BODY_SIZE * 0.5 + (i - (n - 1) / 2) * lineH;
             pdfDrawText(doc, ln, pos.x, ty, size);
-            ty += lineH;
-          }
+          });
           return;
         }
         // Code: draw in FULL, shrink font only if the value would otherwise overflow.
