@@ -2053,12 +2053,21 @@ BET-0166"></textarea>
       didParseCell: (data) => {
         if (data.section !== 'body') return;
         const c = data.column.index;
-        // Fish/Code/Group are hand-drawn (Fish holds Chinese; all three may be long).
-        // Stash the real value and give autoTable a one-char placeholder so it keeps
-        // the row a single fixed line high instead of wrapping.
-        if (c === FISH_COL || c === CODE_COL || c === GROUP_COL) {
+        // Code/Group are hand-drawn as ONE line (Code must never lose a digit;
+        // Group names are short category words). Stash the value, reserve 1 line.
+        if (c === CODE_COL || c === GROUP_COL) {
           data.cell.__oneLine = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
           data.cell.text = ['.'];
+        }
+        // Fish holds the full English + Chinese name. It WRAPS onto as many lines
+        // as needed instead of truncating with "…" — every word of a long name
+        // (Chinese included) must show, matching what the photo catalog already
+        // does. maxLines is generous (5) so the ellipsis fallback never actually
+        // triggers for any realistic fish name; the row simply grows taller.
+        if (c === FISH_COL) {
+          const full = Array.isArray(data.cell.text) ? data.cell.text.join(' ') : data.cell.text;
+          data.cell.__fishLines = full ? pdfWrapText(doc, full, FISH_TEXT_W, BODY_SIZE, 5) : [''];
+          data.cell.text = new Array(data.cell.__fishLines.length).fill('.');
         }
         // Price is hand-drawn too, but never truncated — a price must show in full.
         // For multi-tier prices (2+ tiers), split by " / " so each tier can render on
@@ -2113,6 +2122,23 @@ BET-0166"></textarea>
           });
           return;
         }
+        // Fish: draw every wrapped line, centred as a block within the row — never
+        // truncated. Same symmetric centring as Price so a wrapped 2-line name
+        // lines up cleanly against a 2-tier price in the same row.
+        if (c === FISH_COL) {
+          const lines = data.cell.__fishLines || [''];
+          if (!lines.length || (lines.length === 1 && !lines[0])) return;
+          data.cell.text = lines;
+          const pos = data.cell.getTextPos();
+          const lineH = BODY_SIZE * 1.15;
+          const n = lines.length;
+          doc.setTextColor(0, 0, 0);
+          lines.forEach((ln, i) => {
+            const ty = data.cell.y + data.cell.height / 2 + BODY_SIZE * 0.5 + (i - (n - 1) / 2) * lineH;
+            pdfDrawText(doc, ln, pos.x, ty, BODY_SIZE);
+          });
+          return;
+        }
         // Code: draw in FULL, shrink font only if the value would otherwise overflow.
         // A truncated code ("MOO-19…") is useless to a customer — they need every
         // digit to be able to order it — so codes must never be cut.
@@ -2128,16 +2154,14 @@ BET-0166"></textarea>
           pdfDrawText(doc, full, pos.x, ty, size);
           return;
         }
-        if (c !== FISH_COL && c !== GROUP_COL) return;
+        // Group: short category word — keep the uniform body size and truncate
+        // with "…" only in the (very unlikely) case it overflows.
+        if (c !== GROUP_COL) return;
         const full = data.cell.__oneLine;
         if (full == null || full === '') return;
         data.cell.text = [full];
         const pos = data.cell.getTextPos();
-        // For the long-text columns (Fish name, Group), keep the uniform body size and
-        // truncate with "…" if it overflows — losing part of a long fish name is fine
-        // (photo catalog shows it in full), but losing digits from a code is not.
-        const maxW = (c === GROUP_COL) ? GROUP_TEXT_W : FISH_TEXT_W;
-        const shown = pdfTruncateToWidth(doc, full, maxW, BODY_SIZE);
+        const shown = pdfTruncateToWidth(doc, full, GROUP_TEXT_W, BODY_SIZE);
         const ty = data.cell.y + data.cell.height / 2 + (BODY_SIZE / k) * 0.5; // vertical centre
         doc.setTextColor(0, 0, 0);
         pdfDrawText(doc, shown, pos.x, ty, BODY_SIZE);
@@ -2145,9 +2169,11 @@ BET-0166"></textarea>
     };
 
     // Let autoTable paginate naturally — it fills each page with as many rows as
-    // actually fit given each row's real height. Single-tier rows are short so more
-    // fit per page; rows with 2- or 3-tier prices take a bit more space. This
-    // guarantees no big empty gaps at the bottom of a page.
+    // actually fit given each row's real height. Single-tier, single-line-name rows
+    // are short so more fit per page; rows with wrapped Fish names or 2/3-tier
+    // prices take more vertical space, so fewer land on that page. This keeps every
+    // page looking tidy (no forced squeeze to hit an exact row count) rather than
+    // shrinking things to cram in a fixed 28–30 rows regardless of content.
     // Header shows on page 1 only, matching your original Excel export.
     doc.autoTable(Object.assign({}, sharedOpts, {
       head: [['No.', 'Group', 'Code', 'Fish', 'Size', 'Price']],
