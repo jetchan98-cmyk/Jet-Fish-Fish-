@@ -584,9 +584,11 @@ BAB-9042"></textarea>
         </div>
 
         <div class="editor-card" id="codes-lists-wrap" style="display:none;">
-          <h3>Matched Products <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn ON)</span></h3>
-          <div id="codes-matched-list" style="font-size:13px; margin-bottom:16px;"></div>
-          <h3>Products To Deactivate <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(will turn OFF)</span></h3>
+          <h3>Will Turn ON <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(currently OFF, in your pasted list)</span></h3>
+          <div id="codes-turnon-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Already ON <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(no change needed)</span></h3>
+          <div id="codes-alreadyon-list" style="font-size:13px; margin-bottom:16px;"></div>
+          <h3>Will Turn OFF <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(currently ON, not in your pasted list)</span></h3>
           <div id="codes-deactivate-list" style="font-size:13px; margin-bottom:16px;"></div>
           <h3>Unknown Codes <span style="font-weight:400; color:var(--ink-soft); font-size:12px;">(no matching fish found)</span></h3>
           <div id="codes-unknown-list" style="font-size:13px; margin-bottom:16px;"></div>
@@ -2600,9 +2602,13 @@ BET-0166"></textarea>
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
     listsWrap.style.display = 'block';
 
-    document.getElementById('codes-matched-list').innerHTML = r.matched.length
-      ? r.matched.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--accent); font-weight:600;">${f.available ? 'Already ON' : 'Will turn ON'}</span></div>`).join('')
-      : `<div style="color:var(--ink-soft);">No fish matched.</div>`;
+    document.getElementById('codes-turnon-list').innerHTML = r.turnOn.length
+      ? r.turnOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--accent); font-weight:600;">Will turn ON</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
+
+    document.getElementById('codes-alreadyon-list').innerHTML = r.alreadyOn.length
+      ? r.alreadyOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--brand-blue); font-weight:600;">Already ON</span></div>`).join('')
+      : `<div style="color:var(--ink-soft);">None.</div>`;
 
     document.getElementById('codes-deactivate-list').innerHTML = r.turnOff.length
       ? r.turnOff.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--orange); font-weight:600;">Will turn OFF</span></div>`).join('')
