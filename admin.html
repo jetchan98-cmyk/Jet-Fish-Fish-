@@ -144,6 +144,12 @@
   .pager-arrow { width: 38px; height: 38px; padding: 0; font-size: 18px; font-weight: 700; flex: 0 0 auto; }
   .pager-num { width: 38px; height: 38px; padding: 0; font-size: 14px; font-weight: 600; flex: 0 0 auto; color: var(--ink-soft); }
   .pager-current { width: 46px; height: 38px; font-weight: 700; font-size: 14px; background: var(--ink); color: white; border: 1px solid var(--ink); border-radius: 7px; }
+  /* Infinite-scroll status line under the Stocks list. The sentinel is a 1px
+     marker the IntersectionObserver watches; it sits right after the cards so it
+     naturally moves down as more cards are appended, with no repositioning needed. */
+  .stock-scroll-sentinel { height: 1px; }
+  .stock-scroll-status { text-align: center; font-size: 12.5px; color: var(--ink-soft); padding: 14px 4px 6px; }
+  .stock-scroll-status .load-more-link { background: none; border: none; color: var(--brand-blue); font-weight: 600; font-size: 12.5px; cursor: pointer; padding: 0; text-decoration: underline; }
   .fc-btn { border: 1px solid var(--line); background: var(--panel); padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 600; text-align: center; white-space: nowrap; }
   .fc-btn.edit { color: var(--brand-blue); border-color: #C7DBFA; }
   .empty-msg { color: var(--ink-soft); font-size: 13.5px; padding: 30px 0; text-align: center; }
@@ -984,10 +990,14 @@ BET-0166"></textarea>
     }
   }
 
-  let stockPage = 1;
-  let showAllStock = false;
-  const STOCK_PAGE_SIZE = 50;
-  function renderStockList() {
+  let stockLoadedCount = 0;
+  const STOCK_BATCH_SIZE = 40;   // cards per initial load / per scroll-triggered batch
+  let stockScrollObserver = null;
+
+  // Applies the current search/filter/sort controls to fishList. Shared by
+  // renderStockList (full rebuild) and loadMoreStock (append-only) so the two
+  // never compute a different order/membership from each other.
+  function getFilteredSortedStockList() {
     const q = document.getElementById('stock-search').value.trim().toLowerCase();
     const catFilter = document.getElementById('stock-cat-filter').value;
     const sortMode = document.getElementById('stock-sort').value;
@@ -1008,28 +1018,14 @@ BET-0166"></textarea>
     else if (sortMode === 'img-no') list = list.filter(f => !f.images || !f.images.length);
     else if (sortMode === 'offer') list = list.filter(f => f.offer_price !== null && f.offer_price !== undefined);
     else if (sortMode === 'featured') list = list.filter(f => f.featured);
+    return list;
+  }
 
-    // Show the "Clear all featured" shortcut only while viewing the Featured filter.
-    const clearRow = document.getElementById('clear-featured-row');
-    if (clearRow) clearRow.style.display = (sortMode === 'featured' && fishList.some(f => f.featured)) ? 'block' : 'none';
-
-    const listEl = document.getElementById('fish-card-list');
-    if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`; renderStockPager(0, 0); return; }
-
-    const pageSize = showAllStock ? list.length || 1 : STOCK_PAGE_SIZE;
-    const totalPages = showAllStock ? 1 : Math.max(1, Math.ceil(list.length / pageSize));
-    if (stockPage > totalPages) stockPage = totalPages;
-    const pageList = showAllStock ? list : list.slice((stockPage - 1) * pageSize, stockPage * pageSize);
-
-    const groupByCat = false;
-    let lastCat = null;
-    listEl.innerHTML = pageList.map(f => {
-      const thumb = f.images && f.images[0]
-        ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
-        : `<div class="fc-thumb-placeholder">🐟</div>`;
-      const missingImg = !f.images || !f.images.length;
-      let header = '';
-      return header + `
+  function fishCardHtml(f) {
+    const thumb = f.images && f.images[0]
+      ? `<img class="fc-thumb" src="${f.images[0]}" alt="${f.name}">`
+      : `<div class="fc-thumb-placeholder">🐟</div>`;
+    return `
       <div class="fish-card" data-code="${f.code}">
         <div class="fc-top">
           ${thumb}
@@ -1050,56 +1046,97 @@ BET-0166"></textarea>
           </div>
         </div>
       </div>`;
-    }).join('');
-
-    listEl.querySelectorAll('.toggle-avail-btn').forEach(btn => btn.addEventListener('click', () => quickToggleAvailable(btn.dataset.code)));
-    listEl.querySelectorAll('.toggle-featured-btn').forEach(btn => btn.addEventListener('click', () => quickToggleFeatured(btn.dataset.code)));
-    listEl.querySelectorAll('.edit-fish-btn').forEach(btn => btn.addEventListener('click', () => openEditor(btn.dataset.code, 'details')));
-    renderStockPager(list.length, totalPages);
   }
 
-  function renderStockPager(totalCount, totalPages) {
-    let pagerEl = document.getElementById('stock-pager');
-    if (!pagerEl) {
-      pagerEl = document.createElement('div');
-      pagerEl.id = 'stock-pager';
-      pagerEl.className = 'stock-pager';
-      document.getElementById('fish-card-list').after(pagerEl);
-    }
-    if (totalCount === 0) { pagerEl.innerHTML = ''; return; }
-
-    function goTo(p) {
-      stockPage = Math.min(Math.max(1, p), totalPages);
-      renderStockList();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    const prevPage = stockPage - 1;
-    const nextPage = stockPage + 1;
-
-    pagerEl.innerHTML = `
-      <div class="pager-row" style="justify-content:center;">
-        <button class="icon-btn pager-arrow" id="stock-page-prev" ${stockPage <= 1 || showAllStock ? 'disabled' : ''}>‹</button>
-        ${!showAllStock && prevPage >= 1 ? `<button class="icon-btn pager-num" id="stock-page-prevnum">${prevPage}</button>` : ''}
-        <span class="pager-current" style="display:inline-flex; align-items:center; justify-content:center;">${stockPage}</span>
-        ${!showAllStock && nextPage <= totalPages ? `<button class="icon-btn pager-num" id="stock-page-nextnum">${nextPage}</button>` : ''}
-        <button class="icon-btn pager-arrow" id="stock-page-next" ${stockPage >= totalPages || showAllStock ? 'disabled' : ''}>›</button>
-      </div>
-      <div class="pager-row" style="justify-content:center; color:var(--ink-soft);">${showAllStock ? `Showing all ${totalCount} fish` : `Page ${stockPage} of ${totalPages} &nbsp;·&nbsp; ${totalCount} fish`}</div>
-      <div class="pager-row" style="justify-content:center;">
-        <button class="icon-btn" id="stock-show-all-btn">${showAllStock ? 'Show 50 Per Page' : 'Show All On One Page'}</button>
-      </div>
-    `;
-    document.getElementById('stock-page-prev').addEventListener('click', () => goTo(stockPage - 1));
-    document.getElementById('stock-page-next').addEventListener('click', () => goTo(stockPage + 1));
-    if (!showAllStock && prevPage >= 1) document.getElementById('stock-page-prevnum').addEventListener('click', () => goTo(prevPage));
-    if (!showAllStock && nextPage <= totalPages) document.getElementById('stock-page-nextnum').addEventListener('click', () => goTo(nextPage));
-    document.getElementById('stock-show-all-btn').addEventListener('click', () => {
-      showAllStock = !showAllStock;
-      stockPage = 1;
-      renderStockList();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Wires the quick-action buttons for any card(s) not yet wired. Safe to call
+  // repeatedly — already-wired cards are skipped via the data-wired marker, so
+  // appending new cards never double-attaches listeners on the old ones.
+  function wireStockCards(root) {
+    root.querySelectorAll('.fish-card:not([data-wired])').forEach(card => {
+      card.dataset.wired = '1';
+      const code = card.dataset.code;
+      card.querySelector('.toggle-avail-btn')?.addEventListener('click', () => quickToggleAvailable(code));
+      card.querySelector('.toggle-featured-btn')?.addEventListener('click', () => quickToggleFeatured(code));
+      card.querySelector('.edit-fish-btn')?.addEventListener('click', () => openEditor(code, 'details'));
     });
+  }
+
+  // resetScroll=true restarts from the first batch (used when search/filter/sort
+  // change, or on first load) and scrolls the list back into view. Any other call
+  // (after a toggle, edit, undo, etc.) keeps however many cards were already
+  // loaded, so scrolling position and loaded content aren't disturbed by an
+  // unrelated data refresh.
+  function renderStockList(resetScroll) {
+    const list = getFilteredSortedStockList();
+
+    // Show the "Clear all featured" shortcut only while viewing the Featured filter.
+    const clearRow = document.getElementById('clear-featured-row');
+    if (clearRow) clearRow.style.display = (document.getElementById('stock-sort').value === 'featured' && fishList.some(f => f.featured)) ? 'block' : 'none';
+
+    const listEl = document.getElementById('fish-card-list');
+    if (!list.length) {
+      listEl.innerHTML = `<div class="empty-msg">No fish match.</div>`;
+      renderStockScrollStatus(0, 0);
+      if (stockScrollObserver) stockScrollObserver.disconnect();
+      return;
+    }
+
+    if (resetScroll || stockLoadedCount === 0) stockLoadedCount = Math.min(STOCK_BATCH_SIZE, list.length);
+    else stockLoadedCount = Math.min(stockLoadedCount, list.length);
+
+    const pageList = list.slice(0, stockLoadedCount);
+    listEl.innerHTML = pageList.map(fishCardHtml).join('');
+    wireStockCards(listEl);
+
+    renderStockScrollStatus(stockLoadedCount, list.length);
+    setupStockScrollObserver();
+    if (resetScroll) listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Appends the next batch onto the end of the list (never rebuilds what's already
+  // on screen), so scroll position holds steady while more cards load in.
+  function loadMoreStock() {
+    const list = getFilteredSortedStockList();
+    if (stockLoadedCount >= list.length) { if (stockScrollObserver) stockScrollObserver.disconnect(); return; }
+    const nextBatch = list.slice(stockLoadedCount, stockLoadedCount + STOCK_BATCH_SIZE);
+    stockLoadedCount += nextBatch.length;
+
+    const listEl = document.getElementById('fish-card-list');
+    listEl.insertAdjacentHTML('beforeend', nextBatch.map(fishCardHtml).join(''));
+    wireStockCards(listEl);
+
+    renderStockScrollStatus(stockLoadedCount, list.length);
+    if (stockLoadedCount >= list.length && stockScrollObserver) stockScrollObserver.disconnect();
+  }
+
+  function setupStockScrollObserver() {
+    if (stockScrollObserver) stockScrollObserver.disconnect();
+    const sentinel = document.getElementById('stock-scroll-sentinel');
+    if (!sentinel) return;
+    stockScrollObserver = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) loadMoreStock();
+    }, { root: null, rootMargin: '600px 0px', threshold: 0 });
+    stockScrollObserver.observe(sentinel);
+  }
+
+  function renderStockScrollStatus(loadedCount, totalCount) {
+    let statusEl = document.getElementById('stock-scroll-status-wrap');
+    if (!statusEl) {
+      statusEl = document.createElement('div');
+      statusEl.id = 'stock-scroll-status-wrap';
+      const sentinel = document.createElement('div');
+      sentinel.id = 'stock-scroll-sentinel';
+      sentinel.className = 'stock-scroll-sentinel';
+      document.getElementById('fish-card-list').after(sentinel, statusEl);
+    }
+    if (totalCount === 0) { statusEl.innerHTML = ''; return; }
+    statusEl.className = 'stock-scroll-status';
+    statusEl.innerHTML = loadedCount >= totalCount
+      ? `Showing all ${totalCount} fish`
+      : `Showing ${loadedCount} of ${totalCount} fish &nbsp;·&nbsp; <button type="button" class="load-more-link" id="stock-load-more-btn">Load more</button>`;
+    if (loadedCount < totalCount) {
+      document.getElementById('stock-load-more-btn').addEventListener('click', loadMoreStock);
+    }
   }
 
   async function quickToggleAvailable(code) {
@@ -1128,9 +1165,9 @@ BET-0166"></textarea>
     showToast(f.featured ? 'Added to Featured' : 'Removed from Featured');
   }
 
-  document.getElementById('stock-search').addEventListener('input', () => { stockPage = 1; renderStockList(); });
-  document.getElementById('stock-cat-filter').addEventListener('change', () => { stockPage = 1; renderStockList(); });
-  document.getElementById('stock-sort').addEventListener('change', () => { stockPage = 1; renderStockList(); });
+  document.getElementById('stock-search').addEventListener('input', () => { renderStockList(true); });
+  document.getElementById('stock-cat-filter').addEventListener('change', () => { renderStockList(true); });
+  document.getElementById('stock-sort').addEventListener('change', () => { renderStockList(true); });
 
   // Clear all featured: un-stars every featured fish in one go (with confirmation).
   // Handy for resetting old leftover featured flags so "Featured" means only what you pick.
@@ -1156,8 +1193,7 @@ BET-0166"></textarea>
       document.querySelectorAll('.avail-filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       availFilter = btn.dataset.avail;
-      stockPage = 1;
-      renderStockList();
+      renderStockList(true);
     });
   });
 
@@ -3139,7 +3175,7 @@ BET-0166"></textarea>
     await loadFish();
     populateCatFilter();
     populateAddCategorySelect();
-    renderStockList();
+    renderStockList(true);
   }
 </script>
 
