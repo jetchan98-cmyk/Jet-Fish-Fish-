@@ -399,6 +399,7 @@
       <div style="min-width:0; overflow:hidden;"><div class="eyebrow" id="grid-eyebrow">Full catalog</div><h2 id="grid-title" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">All Fish</h2></div>
       <select class="cat-filter sort-select-small" id="grid-sort">
         <option value="default">Sort</option>
+        <option value="code-asc">Code: Low to High</option>
         <option value="name-asc">Name A–Z</option>
         <option value="name-desc">Name Z–A</option>
         <option value="price-desc">Price: High to Low</option>
@@ -906,6 +907,9 @@
     else if (sortMode === 'price-asc') list = list.slice().sort((a, b) => a.price - b.price);
     else if (sortMode === 'name-asc') list = list.slice().sort((a, b) => a.name.localeCompare(b.name));
     else if (sortMode === 'name-desc') list = list.slice().sort((a, b) => b.name.localeCompare(a.name));
+    // Numeric-aware compare: "KOI-79" and "KOI-0079" sort as the same number, and
+    // "MOO-1934" sorts before "MOO-19340" — a plain A–Z sort would get both wrong.
+    else if (sortMode === 'code-asc') list = list.slice().sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
     currentGridList = list;
