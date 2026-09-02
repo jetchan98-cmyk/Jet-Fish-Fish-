@@ -910,7 +910,10 @@
     // Numeric-aware compare: "KOI-79" and "KOI-0079" sort as the same number, and
     // "MOO-1934" sorts before "MOO-19340" — a plain A–Z sort would get both wrong.
     else if (sortMode === 'code-asc') list = list.slice().sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
-    else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
+    // Default order (no sort chosen): group by category, then by code ascending —
+    // e.g. searching "koi" shows KOI-0079, KOI-0094, KOI-0114 … KOI-0562 in that
+    // order automatically, without needing to touch the Sort dropdown.
+    else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
     currentGridList = list;
     gridBatchSize = 40;
