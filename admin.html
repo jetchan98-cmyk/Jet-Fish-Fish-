@@ -990,6 +990,20 @@ BET-0166"></textarea>
     }
   }
 
+  // Builds a readable "Code — Name (Size)" list, one fish per line, for the
+  // History log — used by the bulk ON/OFF tools so an entry like "Add On" shows
+  // exactly which fish, not just a wall of bare codes.
+  function escapeLogText(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function formatFishLogList(fishArr) {
+    return fishArr.map(f => {
+      const name = escapeLogText(f.name || '');
+      const size = f.size ? ` (${escapeLogText(f.size)})` : '';
+      return `${escapeLogText(f.code)} — ${name}${size}`;
+    }).join('<br>');
+  }
+
   let stockLoadedCount = 0;
   const STOCK_BATCH_SIZE = 40;   // cards per initial load / per scroll-triggered batch
   let stockScrollObserver = null;
@@ -2678,7 +2692,10 @@ BET-0166"></textarea>
       ];
       await applyAvailabilityChanges(updates, 'Turn On Only');
       resultEl.innerHTML = `<span class="ok">Weekly update applied — ${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF.</span>`;
-      logActivity('Weekly Update (Turn On Only)', null, `${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF`);
+      logActivity('Weekly Update (Turn On Only)', null,
+        `${r.turnOn.length} turned ON, ${r.turnOff.length} turned OFF` +
+        (r.turnOn.length ? `<br><br><b>Turned ON:</b><br>${formatFishLogList(r.turnOn)}` : '') +
+        (r.turnOff.length ? `<br><br><b>Turned OFF:</b><br>${formatFishLogList(r.turnOff)}` : ''));
       document.getElementById('codes-textarea').value = '';
       await loadFish(); populateCatFilter(); renderCodesPreview();
     } catch (err) {
@@ -2760,7 +2777,7 @@ BET-0166"></textarea>
     try {
       await applyAvailabilityChanges(r.willTurnOff.map(f => ({ code: f.code, available: false })), 'Turn Off Only');
       resultEl.innerHTML = `<span class="ok">${r.willTurnOff.length} fish turned OFF.</span>`;
-      logActivity('Turn Off Only', null, `${r.willTurnOff.length} fish turned OFF: ${r.willTurnOff.map(f => f.code).join(', ')}`);
+      logActivity('Turn Off Only', null, `${r.willTurnOff.length} fish turned OFF:<br>${formatFishLogList(r.willTurnOff)}`);
       document.getElementById('turnoff-textarea').value = '';
       await loadFish(); populateCatFilter(); renderTurnOffPreview();
     } catch (err) {
@@ -2842,7 +2859,7 @@ BET-0166"></textarea>
     try {
       await applyAvailabilityChanges(r.willTurnOn.map(f => ({ code: f.code, available: true })), 'Add On');
       resultEl.innerHTML = `<span class="ok">${r.willTurnOn.length} fish turned ON.</span>`;
-      logActivity('Add On', null, `${r.willTurnOn.length} fish turned ON: ${r.willTurnOn.map(f => f.code).join(', ')}`);
+      logActivity('Add On', null, `${r.willTurnOn.length} fish turned ON:<br>${formatFishLogList(r.willTurnOn)}`);
       document.getElementById('addon-textarea').value = '';
       document.getElementById('addon-lists-wrap').style.display = 'none';
       await loadFish(); populateCatFilter(); renderAddOnPreview();
@@ -3140,10 +3157,10 @@ BET-0166"></textarea>
     if (!list.length) { listEl.innerHTML = `<div class="empty-msg">No history yet.</div>`; return; }
 
     listEl.innerHTML = list.map(h => `
-      <div class="client-row">
+      <div class="client-row" style="align-items:flex-start;">
         <div class="client-info">
           <div class="name">${h.action}${h.code ? ` <span class="mono" style="color:var(--brand-blue); font-weight:600;">${h.code}</span>` : ''}</div>
-          ${h.details ? `<div class="username" style="color:var(--ink);">${h.details}</div>` : ''}
+          ${h.details ? `<div class="username" style="color:var(--ink); line-height:1.6;">${h.details}</div>` : ''}
         </div>
         <div style="text-align:right; color:var(--ink-soft); font-size:11.5px; flex-shrink:0;">${new Date(h.created_at).toLocaleString()}</div>
       </div>
