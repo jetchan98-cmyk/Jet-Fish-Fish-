@@ -306,6 +306,7 @@
           <button class="more-menu-item" data-panel="newimages">Add New Images</button>
           <button class="more-menu-item" data-panel="fishdata">Add New Fish Data</button>
           <button class="more-menu-item" data-panel="toggle">Turn On / Off Fish and Add On</button>
+          <button class="more-menu-item" data-panel="saleslookup">Who Bought This Fish</button>
           <button class="more-menu-item" data-panel="clients">Customers ID</button>
           <button class="more-menu-item" data-panel="history">History</button>
         </div>
@@ -714,6 +715,22 @@ BET-0166"></textarea>
       </div>
     </section>
 
+    <!-- ================= WHO BOUGHT THIS FISH (sales lookup) ================= -->
+    <section class="panel" id="panel-saleslookup">
+      <div class="editor-card">
+        <h3>Who Bought This Fish</h3>
+        <div class="sub">Search a fish code or name to see every shop you've sold it to, and how many pieces each shop took.</div>
+        <div class="toolbar" style="margin-top:10px;">
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="saleslookup-search" placeholder="Search by fish code or name...">
+            <button type="button" class="search-clear-btn" data-clear-target="saleslookup-search" aria-label="Clear search">✕</button>
+          </div>
+          <button class="icon-btn" id="refresh-saleslookup-btn" style="flex:0 0 auto;">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="saleslookup-results"><div class="empty-msg">Type a fish code or name above to see who's bought it.</div></div>
+    </section>
+
     <!-- ================= HISTORY ================= -->
     <section class="panel" id="panel-history">
       <div class="toolbar">
@@ -878,6 +895,7 @@ BET-0166"></textarea>
     if (panelName === 'orders') loadOrders();
     if (panelName === 'clients') loadClients();
     if (panelName === 'history') loadHistory();
+    if (panelName === 'saleslookup') loadSalesLookupOrders();
     if (panelName === 'stock') showListView();
   }
 
@@ -2928,6 +2946,105 @@ BET-0166"></textarea>
       listEl.innerHTML = `<div class="empty-msg">Could not load orders.</div>`;
     }
   }
+
+  // ---------- WHO BOUGHT THIS FISH (sales lookup) ----------
+  // Fetches every order once (cached), then lets the admin search a fish code or
+  // name and see, grouped by shop, how many pieces each shop has bought — pulled
+  // straight from past order line items rather than a separate table.
+  let salesLookupOrders = null;
+  async function loadSalesLookupOrders() {
+    const resultsEl = document.getElementById('saleslookup-results');
+    const searchVal = document.getElementById('saleslookup-search').value.trim();
+    if (!searchVal) resultsEl.innerHTML = `<div class="loading-msg">Loading past orders…</div>`;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=company,phone,client_username,items,created_at&order=created_at.desc`, { headers });
+      salesLookupOrders = await res.json();
+      renderSalesLookupResults();
+    } catch (err) {
+      console.error(err);
+      salesLookupOrders = [];
+      resultsEl.innerHTML = `<div class="empty-msg">Could not load past orders.</div>`;
+    }
+  }
+
+  function renderSalesLookupResults() {
+    const resultsEl = document.getElementById('saleslookup-results');
+    const query = document.getElementById('saleslookup-search').value.trim();
+    if (!query) { resultsEl.innerHTML = `<div class="empty-msg">Type a fish code or name above to see who's bought it.</div>`; return; }
+    if (salesLookupOrders === null) { resultsEl.innerHTML = `<div class="loading-msg">Loading past orders…</div>`; return; }
+
+    const qNorm = normalizeCode(query);
+    const qLower = query.toLowerCase();
+
+    // Every matching line item across every order, tagged with which shop bought it.
+    const matches = [];
+    salesLookupOrders.forEach(o => {
+      (o.items || []).forEach(it => {
+        const codeMatch = qNorm && it.code && normalizeCode(it.code).includes(qNorm);
+        const nameMatch = it.name && it.name.toLowerCase().includes(qLower);
+        const zhMatch = it.zh && it.zh.includes(query);
+        if (codeMatch || nameMatch || zhMatch) {
+          matches.push({
+            company: o.company, client_username: o.client_username,
+            code: it.code, name: it.name, zh: it.zh,
+            qty: it.qty, unit_price: it.unit_price, created_at: o.created_at
+          });
+        }
+      });
+    });
+
+    if (!matches.length) { resultsEl.innerHTML = `<div class="empty-msg">No sales found for "${query}".</div>`; return; }
+
+    // Group by fish (a name/code search can match more than one distinct fish),
+    // then within each fish, group by shop and total the pieces they've taken.
+    const byFish = {};
+    matches.forEach(m => {
+      const fishKey = m.code || m.name;
+      if (!byFish[fishKey]) byFish[fishKey] = { code: m.code, name: m.name, zh: m.zh, entries: [] };
+      byFish[fishKey].entries.push(m);
+    });
+
+    resultsEl.innerHTML = Object.values(byFish).map(fish => {
+      const byShop = {};
+      fish.entries.forEach(e => {
+        const shopKey = e.client_username || e.company;
+        if (!byShop[shopKey]) byShop[shopKey] = { company: e.company, client_username: e.client_username, totalQty: 0, orders: [] };
+        byShop[shopKey].totalQty += e.qty;
+        byShop[shopKey].orders.push(e);
+      });
+      const shops = Object.values(byShop).sort((a, b) => b.totalQty - a.totalQty);
+      const fishTotalQty = fish.entries.reduce((s, e) => s + e.qty, 0);
+
+      return `
+        <div class="editor-card">
+          <h3>${fish.code ? `<span class="mono" style="color:var(--brand-blue);">${fish.code}</span> — ` : ''}${fish.name}${fish.zh ? ` ${fish.zh}` : ''}</h3>
+          <div class="sub">Sold to ${shops.length} shop${shops.length === 1 ? '' : 's'} · ${fishTotalQty} pcs total</div>
+          <div style="margin-top:12px;">
+            ${shops.map(shop => `
+              <div style="border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+                  <div style="font-weight:700; font-size:13.5px;">${shop.company}${shop.client_username ? ` <span class="mono" style="font-size:11px; font-weight:500; color:var(--brand-blue); background:var(--accent-soft); padding:2px 8px; border-radius:10px;">${shop.client_username}</span>` : ''}</div>
+                  <div style="font-weight:700; font-size:13.5px; color:var(--accent); flex-shrink:0;">${shop.totalQty} pcs</div>
+                </div>
+                <div style="margin-top:8px; font-size:12px; color:var(--ink-soft);">
+                  ${shop.orders.map(o => `<div style="display:flex; justify-content:space-between; padding:2px 0;">
+                    <span>${new Date(o.created_at).toLocaleDateString()}</span>
+                    <span>${o.qty} pcs${o.unit_price !== undefined ? ` · RM${parseFloat(o.unit_price).toFixed(2)} each` : ''}</span>
+                  </div>`).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('saleslookup-search').addEventListener('input', () => {
+    if (salesLookupOrders === null) loadSalesLookupOrders();
+    else renderSalesLookupResults();
+  });
+  document.getElementById('refresh-saleslookup-btn').addEventListener('click', loadSalesLookupOrders);
 
   function downloadReceiptImage(order) {
     const t = orderI18n[orderLang];
