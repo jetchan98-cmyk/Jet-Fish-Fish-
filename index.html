@@ -250,6 +250,8 @@
   .cart-item .ci-icon { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #F2F3F4; }
   .cart-item .ci-icon svg { width: 55%; height: 55%; }
   .ci-info { flex: 1; min-width: 0; }
+  .ci-remove-btn { flex-shrink: 0; width: 26px; height: 26px; border: none; background: none; color: var(--ink-soft); font-size: 13px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .ci-remove-btn:hover, .ci-remove-btn:active { background: #F2F3F4; color: var(--ink); }
   .ci-name { font-size: 13.5px; font-weight: 600; }
   .ci-price { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
   .qty-control { display: flex; align-items: center; gap: 8px; }
@@ -1016,6 +1018,7 @@
     else item.qty = qty;
     renderCart();
   }
+  function removeFromCart(id) { setQty(id, 0); }
   function cartTotal() {
     return cart.reduce((sum, c) => { const p = products.find(p => p.id === c.id); return sum + (p ? getUnitPrice(p, c.qty) * c.qty : 0); }, 0);
   }
@@ -1044,10 +1047,12 @@
             <input type="number" class="qty-input ci-qty-input" data-id="${p.id}" value="${c.qty}" min="1" max="99999" step="1" maxlength="5" inputmode="numeric" pattern="[0-9]*">
             <button class="ci-qty-plus" data-id="${p.id}">+</button>
           </div>
+          <button class="ci-remove-btn" data-id="${p.id}" aria-label="Remove ${p.name}" title="Remove">✕</button>
         </div>`;
     }).join('');
     cartItemsEl.querySelectorAll('.ci-qty-minus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, -1)));
     cartItemsEl.querySelectorAll('.ci-qty-plus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, 1)));
+    cartItemsEl.querySelectorAll('.ci-remove-btn').forEach(btn => btn.addEventListener('click', () => removeFromCart(btn.dataset.id)));
     cartItemsEl.querySelectorAll('.ci-qty-input').forEach(input => {
       input.addEventListener('input', () => {
         input.value = input.value.replace(/[^0-9]/g, '').slice(0, 5);
