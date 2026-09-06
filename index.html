@@ -246,25 +246,18 @@
   .order-history-status.new { background: #FDF3E3; color: #92620A; }
   .order-history-status.done { background: var(--accent-soft); color: var(--accent); }
   .order-history-item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
-  .cart-item { display: flex; gap: 12px; align-items: center; }
+  /* Shopee-style swipe-to-remove: each cart row sits inside a wrap with a red
+     "Remove" action hidden behind it. Swiping the row left reveals the action;
+     tapping Remove deletes the fish. Tapping the row again while it's open closes
+     it instead of firing whatever's underneath (qty buttons etc.). */
+  .cart-item-wrap { position: relative; overflow: hidden; border-radius: 8px; }
+  .cart-item-remove-action { position: absolute; top: 0; right: 0; bottom: 0; width: 76px; display: flex; }
+  .cart-item-remove-btn { flex: 1; border: none; background: #E0483E; color: white; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .cart-item { display: flex; gap: 12px; align-items: center; position: relative; background: var(--panel); touch-action: pan-y; transition: transform 0.2s ease; }
+  .cart-item.dragging { transition: none; }
   .cart-item .ci-icon { width: 44px; height: 44px; border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #F2F3F4; }
   .cart-item .ci-icon svg { width: 55%; height: 55%; }
   .ci-info { flex: 1; min-width: 0; }
-  .ci-remove-btn { flex-shrink: 0; width: 26px; height: 26px; border: none; background: none; color: var(--ink-soft); font-size: 13px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .ci-remove-btn:hover, .ci-remove-btn:active { background: #F2F3F4; color: var(--ink); }
-  /* Undo banner after removing a fish from the cart — lets an accidental ✕ tap be
-     reversed in one tap, without slowing down every intentional removal with a
-     confirm dialog. Sits above the cart drawer so it's visible whether the drawer
-     is open or was just closed by the removal. */
-  .remove-toast {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
-    background: var(--ink); color: white; padding: 12px 12px 12px 18px; border-radius: 24px;
-    font-size: 13.5px; display: flex; align-items: center; gap: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-    max-width: min(92vw, 380px); opacity: 0; pointer-events: none; transition: all 0.22s ease; z-index: 110;
-  }
-  .remove-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-  .remove-toast span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .remove-toast button { flex: 0 0 auto; background: none; border: none; color: #7CC5FF; font-weight: 700; font-size: 13.5px; cursor: pointer; padding: 4px 2px; }
   .ci-name { font-size: 13.5px; font-weight: 600; }
   .ci-price { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
   .qty-control { display: flex; align-items: center; gap: 8px; }
@@ -474,11 +467,6 @@
 <div class="cart-drawer" id="order-history-drawer">
   <div class="cart-header"><h3 id="lbl-order-history-title">Order History</h3><button class="close-btn" id="order-history-close">✕</button></div>
   <div class="cart-items" id="order-history-items"></div>
-</div>
-
-<div class="remove-toast" id="remove-toast">
-  <span id="remove-toast-text"></span>
-  <button type="button" id="remove-toast-undo">Undo</button>
 </div>
 
 <section id="checkout">
@@ -1037,39 +1025,8 @@
     renderCart();
   }
   function removeFromCart(id) {
-    const item = cart.find(c => c.id === id);
-    if (!item) return;
-    lastRemovedItem = { id, qty: item.qty };
     setQty(id, 0);
-    showRemoveToast(id);
   }
-
-  // ---------- REMOVE-FROM-CART UNDO ----------
-  // Tapping ✕ removes the fish immediately (no confirm dialog slowing down every
-  // deliberate removal) but leaves a brief "Removed X · Undo" banner so an
-  // accidental tap can be reversed in one tap, restoring the same quantity.
-  let lastRemovedItem = null; // { id, qty }
-  let removeToastTimer = null;
-  function showRemoveToast(id) {
-    const p = products.find(p => p.id === id);
-    document.getElementById('remove-toast-text').textContent = `Removed ${p ? p.name : 'fish'}`;
-    document.getElementById('remove-toast').classList.add('show');
-    clearTimeout(removeToastTimer);
-    removeToastTimer = setTimeout(hideRemoveToast, 5000);
-  }
-  function hideRemoveToast() {
-    document.getElementById('remove-toast').classList.remove('show');
-    clearTimeout(removeToastTimer);
-  }
-  document.getElementById('remove-toast-undo').addEventListener('click', () => {
-    if (!lastRemovedItem) { hideRemoveToast(); return; }
-    const { id, qty } = lastRemovedItem;
-    const existing = cart.find(c => c.id === id);
-    if (existing) existing.qty += qty; else cart.push({ id, qty });
-    lastRemovedItem = null;
-    hideRemoveToast();
-    renderCart();
-  });
   function cartTotal() {
     return cart.reduce((sum, c) => { const p = products.find(p => p.id === c.id); return sum + (p ? getUnitPrice(p, c.qty) * c.qty : 0); }, 0);
   }
@@ -1088,22 +1045,24 @@
       const isBulk = unitPrice !== p.price;
       const color = colorForId(p.id);
       const icon = getIcon(p.category, color);
-      return `<div class="cart-item">
-          <div class="ci-icon" style="background:${tintBg(color)};">${p.image
-            ? `<img src="${IMAGE_BASE_URL}${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${icon}</span>`
-            : icon}</div>
-          <div class="ci-info"><div class="ci-name">${p.name}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}</div></div>
-          <div class="qty-control">
-            <button class="ci-qty-minus" data-id="${p.id}">−</button>
-            <input type="number" class="qty-input ci-qty-input" data-id="${p.id}" value="${c.qty}" min="1" max="99999" step="1" maxlength="5" inputmode="numeric" pattern="[0-9]*">
-            <button class="ci-qty-plus" data-id="${p.id}">+</button>
+      return `<div class="cart-item-wrap">
+          <div class="cart-item-remove-action"><button class="cart-item-remove-btn" data-id="${p.id}">Remove</button></div>
+          <div class="cart-item" data-id="${p.id}">
+            <div class="ci-icon" style="background:${tintBg(color)};">${p.image
+              ? `<img src="${IMAGE_BASE_URL}${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${icon}</span>`
+              : icon}</div>
+            <div class="ci-info"><div class="ci-name">${p.name}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}</div></div>
+            <div class="qty-control">
+              <button class="ci-qty-minus" data-id="${p.id}">−</button>
+              <input type="number" class="qty-input ci-qty-input" data-id="${p.id}" value="${c.qty}" min="1" max="99999" step="1" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+              <button class="ci-qty-plus" data-id="${p.id}">+</button>
+            </div>
           </div>
-          <button class="ci-remove-btn" data-id="${p.id}" aria-label="Remove ${p.name}" title="Remove">✕</button>
         </div>`;
     }).join('');
     cartItemsEl.querySelectorAll('.ci-qty-minus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, -1)));
     cartItemsEl.querySelectorAll('.ci-qty-plus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, 1)));
-    cartItemsEl.querySelectorAll('.ci-remove-btn').forEach(btn => btn.addEventListener('click', () => removeFromCart(btn.dataset.id)));
+    cartItemsEl.querySelectorAll('.cart-item-remove-btn').forEach(btn => btn.addEventListener('click', () => removeFromCart(btn.dataset.id)));
     cartItemsEl.querySelectorAll('.ci-qty-input').forEach(input => {
       input.addEventListener('input', () => {
         input.value = input.value.replace(/[^0-9]/g, '').slice(0, 5);
@@ -1115,6 +1074,73 @@
       });
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
     });
+    cartItemsEl.querySelectorAll('.cart-item').forEach(attachSwipeToRemove);
+  }
+
+  // ---------- SWIPE-TO-REMOVE (Shopee-style) ----------
+  // Swipe a cart row left to reveal a red "Remove" button underneath; tap it to
+  // delete that fish. A plain tap (no real horizontal movement) still reaches the
+  // qty +/- buttons normally. Tapping the row again while it's open just closes
+  // it, matching how Shopee's own cart behaves.
+  const SWIPE_REVEAL_WIDTH = 76;
+  function closeAllSwipedRows(except) {
+    cartItemsEl.querySelectorAll('.cart-item.swiped').forEach(el => {
+      if (el === except) return;
+      el.classList.remove('swiped');
+      el.style.transform = '';
+    });
+  }
+  function attachSwipeToRemove(rowEl) {
+    let startX = 0, startY = 0, dragX = 0, dragging = false, isHorizontal = null, pointerId = null;
+
+    rowEl.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragging = true; isHorizontal = null; dragX = 0;
+      startX = e.clientX; startY = e.clientY;
+      pointerId = e.pointerId;
+      rowEl.setPointerCapture(pointerId);
+      rowEl.classList.add('dragging');
+    });
+
+    rowEl.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (isHorizontal === null) {
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) isHorizontal = Math.abs(dx) > Math.abs(dy);
+        if (isHorizontal) closeAllSwipedRows(rowEl);
+      }
+      if (isHorizontal) {
+        const base = rowEl.classList.contains('swiped') ? -SWIPE_REVEAL_WIDTH : 0;
+        dragX = Math.min(0, Math.max(-SWIPE_REVEAL_WIDTH - 16, base + dx));
+        rowEl.style.transform = `translateX(${dragX}px)`;
+      }
+    });
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false;
+      rowEl.classList.remove('dragging');
+      if (isHorizontal) {
+        const shouldOpen = dragX < -SWIPE_REVEAL_WIDTH / 2;
+        rowEl.classList.toggle('swiped', shouldOpen);
+        rowEl.style.transform = shouldOpen ? `translateX(-${SWIPE_REVEAL_WIDTH}px)` : '';
+      }
+      isHorizontal = null;
+    }
+    rowEl.addEventListener('pointerup', endDrag);
+    rowEl.addEventListener('pointercancel', endDrag);
+
+    // While open, ANY tap on the row content closes it instead of reaching the
+    // qty buttons underneath — capture phase so this runs before their own click.
+    rowEl.addEventListener('click', (e) => {
+      if (rowEl.classList.contains('swiped')) {
+        e.preventDefault();
+        e.stopPropagation();
+        rowEl.classList.remove('swiped');
+        rowEl.style.transform = '';
+      }
+    }, true);
   }
   const overlay = document.getElementById('overlay');
   const cartDrawer = document.getElementById('cart-drawer');
