@@ -722,16 +722,16 @@ BET-0166"></textarea>
     <section class="panel" id="panel-saleslookup">
       <div class="editor-card">
         <h3>Who Bought This Fish</h3>
-        <div class="sub">Search a fish code or name to see every time you've sold it — who bought it, when, and the order it was part of. Tap an order number to jump straight to that order.</div>
+        <div class="sub">Search a fish code, fish name, or shop name to see the sales record — who bought it, when, and the order it was part of. Tap an order number to jump straight to that order.</div>
         <div class="toolbar" style="margin-top:10px;">
           <div class="search-wrap">
-            <input type="text" class="search-input" id="saleslookup-search" placeholder="Search by fish code or name...">
+            <input type="text" class="search-input" id="saleslookup-search" placeholder="Search by fish code, fish name, or shop name...">
             <button type="button" class="search-clear-btn" data-clear-target="saleslookup-search" aria-label="Clear search">✕</button>
           </div>
           <button class="icon-btn" id="refresh-saleslookup-btn" style="flex:0 0 auto;">↻ Refresh</button>
         </div>
       </div>
-      <div id="saleslookup-results"><div class="empty-msg">Type a fish code or name above to see who's bought it.</div></div>
+      <div id="saleslookup-results"><div class="empty-msg">Type a fish code, fish name, or shop name above to see the sales record.</div></div>
     </section>
 
     <!-- ================= HISTORY ================= -->
@@ -2987,21 +2987,25 @@ BET-0166"></textarea>
   function renderSalesLookupResults() {
     const resultsEl = document.getElementById('saleslookup-results');
     const query = document.getElementById('saleslookup-search').value.trim();
-    if (!query) { resultsEl.innerHTML = `<div class="empty-msg">Type a fish code or name above to see who's bought it.</div>`; return; }
+    if (!query) { resultsEl.innerHTML = `<div class="empty-msg">Type a fish code, fish name, or shop name above to see the sales record.</div>`; return; }
     if (salesLookupOrders === null) { resultsEl.innerHTML = `<div class="loading-msg">Loading past orders…</div>`; return; }
 
     const qNorm = normalizeCode(query);
     const qLower = query.toLowerCase();
 
     // Every matching line item across every order — one entry per purchase, not
-    // aggregated, so each can carry its own clickable order reference.
+    // aggregated, so each can carry its own clickable order reference. Matches on
+    // the FISH (code / English name / Chinese name) OR the SHOP (company name /
+    // login ID), so searching either a fish or a shop name works the same way.
     const matches = [];
     salesLookupOrders.forEach(o => {
+      const companyMatch = o.company && o.company.toLowerCase().includes(qLower);
+      const usernameMatch = o.client_username && o.client_username.toLowerCase().includes(qLower);
       (o.items || []).forEach(it => {
         const codeMatch = qNorm && it.code && normalizeCode(it.code).includes(qNorm);
         const nameMatch = it.name && it.name.toLowerCase().includes(qLower);
         const zhMatch = it.zh && it.zh.includes(query);
-        if (codeMatch || nameMatch || zhMatch) {
+        if (codeMatch || nameMatch || zhMatch || companyMatch || usernameMatch) {
           matches.push({
             orderId: o.id, orderRef: o.order_ref,
             company: o.company, client_username: o.client_username,
