@@ -2974,7 +2974,7 @@ BET-0166"></textarea>
     const searchVal = document.getElementById('saleslookup-search').value.trim();
     if (!searchVal) resultsEl.innerHTML = `<div class="loading-msg">Loading past orders…</div>`;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=id,order_ref,company,client_username,items,created_at&order=created_at.desc`, { headers });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=id,order_ref,company,client_username,items,created_at,total_types,total_qty,order_total,status&order=created_at.desc`, { headers });
       salesLookupOrders = await res.json();
       renderSalesLookupResults();
     } catch (err) {
@@ -2993,20 +2993,25 @@ BET-0166"></textarea>
     const qNorm = normalizeCode(query);
     const qLower = query.toLowerCase();
 
-    // Every matching line item across every order — one entry per purchase, not
-    // aggregated, so each can carry its own clickable order reference. Matches on
-    // the FISH (code / English name / Chinese name) OR the SHOP (company name /
-    // login ID), so searching either a fish or a shop name works the same way.
-    const matches = [];
+    // FISH matches: every matching line item across every order, one entry per
+    // purchase — this is "which orders included this fish". Matches on the fish's
+    // code / English name / Chinese name only (not shop fields).
+    const fishMatches = [];
+    // SHOP matches: whole orders where the company name or login ID matches — this
+    // is "show me this shop's order list", NOT broken down fish-by-fish, since
+    // that's a different question from the fish lookup above.
+    const shopOrderMatches = [];
     salesLookupOrders.forEach(o => {
       const companyMatch = o.company && o.company.toLowerCase().includes(qLower);
       const usernameMatch = o.client_username && o.client_username.toLowerCase().includes(qLower);
+      if (companyMatch || usernameMatch) shopOrderMatches.push(o);
+
       (o.items || []).forEach(it => {
         const codeMatch = qNorm && it.code && normalizeCode(it.code).includes(qNorm);
         const nameMatch = it.name && it.name.toLowerCase().includes(qLower);
         const zhMatch = it.zh && it.zh.includes(query);
-        if (codeMatch || nameMatch || zhMatch || companyMatch || usernameMatch) {
-          matches.push({
+        if (codeMatch || nameMatch || zhMatch) {
+          fishMatches.push({
             orderId: o.id, orderRef: o.order_ref,
             company: o.company, client_username: o.client_username,
             code: it.code, name: it.name, zh: it.zh,
@@ -3016,44 +3021,87 @@ BET-0166"></textarea>
       });
     });
 
-    if (!matches.length) { resultsEl.innerHTML = `<div class="empty-msg">No sales found for "${query}".</div>`; return; }
+    if (!fishMatches.length && !shopOrderMatches.length) {
+      resultsEl.innerHTML = `<div class="empty-msg">No sales found for "${query}".</div>`;
+      return;
+    }
 
-    // Group by fish only (a name search can match more than one distinct fish);
-    // within each fish, list every individual purchase, most recent first.
-    const byFish = {};
-    matches.forEach(m => {
-      const fishKey = m.code || m.name;
-      if (!byFish[fishKey]) byFish[fishKey] = { code: m.code, name: m.name, zh: m.zh, entries: [] };
-      byFish[fishKey].entries.push(m);
-    });
+    let html = '';
 
-    resultsEl.innerHTML = Object.values(byFish).map(fish => {
-      const entries = fish.entries.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      const shopCount = new Set(entries.map(e => e.client_username || e.company)).size;
-      const totalQty = entries.reduce((s, e) => s + e.qty, 0);
+    // ---- Section 1: matching FISH — grouped by fish, individual purchases ----
+    if (fishMatches.length) {
+      const byFish = {};
+      fishMatches.forEach(m => {
+        const fishKey = m.code || m.name;
+        if (!byFish[fishKey]) byFish[fishKey] = { code: m.code, name: m.name, zh: m.zh, entries: [] };
+        byFish[fishKey].entries.push(m);
+      });
 
-      return `
-        <div class="editor-card">
-          <h3>${fish.code ? `<span class="mono" style="color:var(--brand-blue);">${fish.code}</span> — ` : ''}${fish.name}${fish.zh ? ` ${fish.zh}` : ''}</h3>
-          <div class="sub">${entries.length} order${entries.length === 1 ? '' : 's'} · ${shopCount} shop${shopCount === 1 ? '' : 's'} · ${totalQty} pcs total</div>
-          <div style="margin-top:12px;">
-            ${entries.map(e => `
-              <div style="border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
-                  <div style="font-weight:700; font-size:13.5px;">${e.company}${e.client_username ? ` <span class="mono" style="font-size:11px; font-weight:500; color:var(--brand-blue); background:var(--accent-soft); padding:2px 8px; border-radius:10px;">${e.client_username}</span>` : ''}</div>
-                  <div style="font-weight:700; font-size:13.5px; color:var(--accent); flex-shrink:0;">${e.qty} pcs</div>
+      html += Object.values(byFish).map(fish => {
+        const entries = fish.entries.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        const shopCount = new Set(entries.map(e => e.client_username || e.company)).size;
+        const totalQty = entries.reduce((s, e) => s + e.qty, 0);
+
+        return `
+          <div class="editor-card">
+            <h3>${fish.code ? `<span class="mono" style="color:var(--brand-blue);">${fish.code}</span> — ` : ''}${fish.name}${fish.zh ? ` ${fish.zh}` : ''}</h3>
+            <div class="sub">${entries.length} order${entries.length === 1 ? '' : 's'} · ${shopCount} shop${shopCount === 1 ? '' : 's'} · ${totalQty} pcs total</div>
+            <div style="margin-top:12px;">
+              ${entries.map(e => `
+                <div style="border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+                  <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+                    <div style="font-weight:700; font-size:13.5px;">${e.company}${e.client_username ? ` <span class="mono" style="font-size:11px; font-weight:500; color:var(--brand-blue); background:var(--accent-soft); padding:2px 8px; border-radius:10px;">${e.client_username}</span>` : ''}</div>
+                    <div style="font-weight:700; font-size:13.5px; color:var(--accent); flex-shrink:0;">${e.qty} pcs</div>
+                  </div>
+                  <div style="margin-top:4px; font-size:12px; color:var(--ink-soft);">
+                    ${new Date(e.created_at).toLocaleString()}${e.unit_price !== undefined ? ` · RM${parseFloat(e.unit_price).toFixed(2)} each` : ''}
+                  </div>
+                  ${e.orderRef ? `<button type="button" class="icon-btn view-order-btn" data-order-id="${e.orderId}" style="margin-top:8px; padding:6px 12px; font-size:12px;">Order ${e.orderRef} →</button>` : ''}
                 </div>
-                <div style="margin-top:4px; font-size:12px; color:var(--ink-soft);">
-                  ${new Date(e.created_at).toLocaleString()}${e.unit_price !== undefined ? ` · RM${parseFloat(e.unit_price).toFixed(2)} each` : ''}
-                </div>
-                ${e.orderRef ? `<button type="button" class="icon-btn view-order-btn" data-order-id="${e.orderId}" style="margin-top:8px; padding:6px 12px; font-size:12px;">Order ${e.orderRef} →</button>` : ''}
-              </div>
-            `).join('')}
+              `).join('')}
+            </div>
           </div>
-        </div>
-      `;
-    }).join('');
+        `;
+      }).join('');
+    }
 
+    // ---- Section 2: matching SHOPS — just their order list, not fish-by-fish ----
+    if (shopOrderMatches.length) {
+      const byShop = {};
+      shopOrderMatches.forEach(o => {
+        const shopKey = o.client_username || o.company;
+        if (!byShop[shopKey]) byShop[shopKey] = { company: o.company, client_username: o.client_username, orders: [] };
+        byShop[shopKey].orders.push(o);
+      });
+
+      html += Object.values(byShop).map(shop => {
+        const orders = shop.orders.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        return `
+          <div class="editor-card">
+            <h3>${shop.company}${shop.client_username ? ` <span class="mono" style="font-size:12px; font-weight:500; color:var(--brand-blue); background:var(--accent-soft); padding:2px 8px; border-radius:10px; vertical-align:middle;">${shop.client_username}</span>` : ''}</h3>
+            <div class="sub">${orders.length} order${orders.length === 1 ? '' : 's'}</div>
+            <div style="margin-top:12px;">
+              ${orders.map(o => `
+                <button type="button" class="view-order-btn" data-order-id="${o.id}" style="display:block; width:100%; text-align:left; background:none; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; cursor:pointer;">
+                  <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
+                    <div style="font-weight:700; font-size:13.5px;">${o.order_ref ? `Order ${o.order_ref}` : 'Order'}</div>
+                    <span class="order-status-badge ${o.status === 'done' ? 'done' : 'new'}" style="flex-shrink:0;">${o.status || 'new'}</span>
+                  </div>
+                  <div style="margin-top:4px; font-size:12px; color:var(--ink-soft);">
+                    ${new Date(o.created_at).toLocaleString()}
+                    ${o.total_types !== undefined && o.total_types !== null ? ` · ${o.total_types} fish types` : ''}
+                    ${o.total_qty !== undefined && o.total_qty !== null ? `, ${o.total_qty} qty` : ''}
+                    ${o.order_total !== undefined && o.order_total !== null ? ` · RM${parseFloat(o.order_total).toFixed(2)}` : ''}
+                  </div>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    resultsEl.innerHTML = html;
     resultsEl.querySelectorAll('.view-order-btn').forEach(btn => {
       btn.addEventListener('click', () => viewOrderById(btn.dataset.orderId));
     });
