@@ -716,12 +716,26 @@
 
   async function loadCatalog() {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*`, {
-        headers: supabaseHeaders,
-        cache: 'no-store'
-      });
-      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
-      const rows = await res.json();
+      // Paginate through ALL fish — Supabase's REST API silently caps a single
+      // response at 1000 rows by default. Without this loop, once your catalog
+      // passes that size, fish past the cutoff would just be missing from the
+      // shop entirely (not shown in the grid, not searchable) even though they're
+      // really in the database and marked available.
+      const pageSize = 1000;
+      let rows = [];
+      let offset = 0;
+      while (true) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*&offset=${offset}&limit=${pageSize}`, {
+          headers: supabaseHeaders,
+          cache: 'no-store'
+        });
+        if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+        const batch = await res.json();
+        if (!Array.isArray(batch) || batch.length === 0) break;
+        rows = rows.concat(batch);
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+      }
 
       products = rows.map(r => {
         const tiers = Array.isArray(r.tiers) && r.tiers.length ? r.tiers.map(t => ({ qty: parseInt(t.qty), price: parseFloat(t.price) })).sort((a, b) => a.qty - b.qty) : [{ qty: 1, price: parseFloat(r.price) || 0 }];

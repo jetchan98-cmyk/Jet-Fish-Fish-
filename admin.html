@@ -973,9 +973,30 @@ BET-0166"></textarea>
   }
 
   // ---------- STOCK: LOAD + LIST VIEW ----------
+  // Paginates through a Supabase REST query so results are never silently capped
+  // at the API's default 1000-row limit. Pass the path + any query params you
+  // want (select, order, filters, etc.) — offset/limit are added automatically.
+  async function fetchAllRows(pathAndQuery) {
+    const pageSize = 1000;
+    let all = [];
+    let offset = 0;
+    const sep = pathAndQuery.includes('?') ? '&' : '?';
+    while (true) {
+      const res = await fetch(`${SUPABASE_URL}${pathAndQuery}${sep}offset=${offset}&limit=${pageSize}`, { headers });
+      const batch = await res.json();
+      if (!Array.isArray(batch) || batch.length === 0) break;
+      all = all.concat(batch);
+      if (batch.length < pageSize) break; // last page was short — nothing more to fetch
+      offset += pageSize;
+    }
+    return all;
+  }
+
   async function loadFish() {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?select=*&order=category,name`, { headers });
-    fishList = await res.json();
+    // Without pagination, a catalog past 1000 fish would silently lose everything
+    // beyond that cutoff — not in Stocks, not in search, not matchable when
+    // pasting codes into Turn On/Off — even though it's really in the database.
+    fishList = await fetchAllRows('/rest/v1/fish?select=*&order=category,name');
     fishList.forEach(f => {
       if (!Array.isArray(f.tiers)) f.tiers = [];
       if (!Array.isArray(f.images)) f.images = [];
@@ -2897,8 +2918,7 @@ BET-0166"></textarea>
     listEl.innerHTML = `<div class="loading-msg">Loading orders…</div>`;
     const t = orderI18n[orderLang];
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=*&order=created_at.desc`, { headers });
-      const orders = await res.json();
+      const orders = await fetchAllRows('/rest/v1/orders?select=*&order=created_at.desc');
       if (!orders.length) { listEl.innerHTML = `<div class="empty-msg">No orders yet.</div>`; return; }
 
       listEl.innerHTML = orders.map(o => `
@@ -2974,8 +2994,7 @@ BET-0166"></textarea>
     const searchVal = document.getElementById('saleslookup-search').value.trim();
     if (!searchVal) resultsEl.innerHTML = `<div class="loading-msg">Loading past orders…</div>`;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?select=id,order_ref,company,client_username,items,created_at,total_types,total_qty,order_total,status&order=created_at.desc`, { headers });
-      salesLookupOrders = await res.json();
+      salesLookupOrders = await fetchAllRows('/rest/v1/orders?select=id,order_ref,company,client_username,items,created_at,total_types,total_qty,order_total,status&order=created_at.desc');
       renderSalesLookupResults();
     } catch (err) {
       console.error(err);
@@ -3230,8 +3249,7 @@ BET-0166"></textarea>
     const listEl = document.getElementById('clients-list');
     listEl.innerHTML = `<div class="loading-msg">Loading clients…</div>`;
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=created_at.desc`, { headers });
-      allClients = await res.json();
+      allClients = await fetchAllRows('/rest/v1/clients?select=*&order=created_at.desc');
       renderClientsList();
     } catch (err) {
       console.error(err);
