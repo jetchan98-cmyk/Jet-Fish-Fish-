@@ -932,14 +932,14 @@
     // Numeric-aware compare: "KOI-79" and "KOI-0079" sort as the same number, and
     // "MOO-1934" sorts before "MOO-19340" — a plain A–Z sort would get both wrong.
     else if (sortMode === 'code-asc') list = list.slice().sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
-    // Default order (no sort chosen): pure code ascending — a fish's admin
-    // CATEGORY can differ from what its code prefix implies (e.g. "Giant Siamese
-    // Carp" filed under a different category despite a KOI- code), which broke
-    // pure numeric order when category was sorted first. Sorting on the code alone
-    // guarantees searching "koi" always shows KOI-0079, KOI-0094 … KOI-0562 in
-    // strict smallest-to-largest order, with nothing able to knock an item out of
-    // place.
-    else list = list.slice().sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+    // Default order (no sort chosen): group by category first, then by fish code
+    // ascending within each category — numeric-aware, so "KOI-79" and "KOI-0079"
+    // sort as the same number, and "MOO-1934" sorts before "MOO-19340" rather than
+    // a plain A–Z compare getting that wrong. Note: this sorts by each fish's
+    // ACTUAL assigned category, so if a fish's code prefix doesn't match its real
+    // category (e.g. a KOI- coded fish filed under a different category), it will
+    // appear under that other category, not with the rest of the KOI- codes.
+    else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
     currentGridList = list;
     gridBatchSize = 40;
