@@ -983,8 +983,16 @@ BET-0166"></textarea>
     const sep = pathAndQuery.includes('?') ? '&' : '?';
     while (true) {
       const res = await fetch(`${SUPABASE_URL}${pathAndQuery}${sep}offset=${offset}&limit=${pageSize}`, { headers });
-      const batch = await res.json();
-      if (!Array.isArray(batch) || batch.length === 0) break;
+      const batch = await res.json().catch(() => null);
+      // A failed request (bad auth, paused project, network error, etc.) must
+      // never be treated as "no data" — that's what was silently emptying out
+      // Stocks and Customers ID at the same time with no error shown anywhere.
+      // Surface it loudly instead so it's obvious something's actually wrong.
+      if (!res.ok || !Array.isArray(batch)) {
+        const detail = batch && batch.message ? batch.message : (typeof batch === 'string' ? batch : JSON.stringify(batch));
+        throw new Error(`Request failed (HTTP ${res.status}) for ${pathAndQuery}: ${detail || 'unknown error'}`);
+      }
+      if (batch.length === 0) break;
       all = all.concat(batch);
       if (batch.length < pageSize) break; // last page was short — nothing more to fetch
       offset += pageSize;
@@ -996,7 +1004,15 @@ BET-0166"></textarea>
     // Without pagination, a catalog past 1000 fish would silently lose everything
     // beyond that cutoff — not in Stocks, not in search, not matchable when
     // pasting codes into Turn On/Off — even though it's really in the database.
-    fishList = await fetchAllRows('/rest/v1/fish?select=*&order=category,name');
+    try {
+      fishList = await fetchAllRows('/rest/v1/fish?select=*&order=category,name');
+    } catch (err) {
+      console.error('Could not load fish:', err);
+      fishList = [];
+      const listEl = document.getElementById('fish-card-list');
+      if (listEl) listEl.innerHTML = `<div class="empty-msg">Could not load stock — check your connection and reload. (${err.message})</div>`;
+      throw err; // let callers (init) know this failed, rather than pretending it worked
+    }
     fishList.forEach(f => {
       if (!Array.isArray(f.tiers)) f.tiers = [];
       if (!Array.isArray(f.images)) f.images = [];
@@ -2521,8 +2537,13 @@ BET-0166"></textarea>
       logActivity('Edited', editingFish.code, body.name);
     }
 
-    await loadFish(); populateCatFilter(); showListView(); renderStockList();
-    showToast('Saved — live on site now');
+    try {
+      await loadFish(); populateCatFilter(); showListView(); renderStockList();
+      showToast('Saved — live on site now');
+    } catch (err) {
+      console.error(err);
+      showToast('Saved, but could not refresh the list — reload the page to see it');
+    }
   });
 
   document.getElementById('back-to-stock-btn').addEventListener('click', showListView);
@@ -2532,11 +2553,15 @@ BET-0166"></textarea>
     const deletedName = editingFish.name;
     await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'DELETE', headers });
     logActivity('Deleted', editingFish.code, deletedName);
-    await loadFish(); populateCatFilter(); showListView(); renderStockList();
-    showToast('Deleted');
+    try {
+      await loadFish(); populateCatFilter(); showListView(); renderStockList();
+      showToast('Deleted');
+    } catch (err) {
+      console.error(err);
+      showToast('Deleted, but could not refresh the list — reload the page');
+    }
   });
 
-  // ---------- ADD SINGLE FISH ----------
   // ---------- ADD SINGLE FISH ----------
   // Creates the record with the basics, then opens the SAME rich editor used for
   // Edit Fish — so price tiers, photo drag-and-drop, offer and status are all set
@@ -2580,10 +2605,15 @@ BET-0166"></textarea>
     document.getElementById('add-category-new').value = '';
 
     // Reload so the new fish is in fishList, jump to Stocks, and open its editor.
-    await loadFish(); populateCatFilter(); populateAddCategorySelect();
-    switchToPanel('stock');
-    openEditor(code, 'details');
-    showToast('Fish created — now set the price and add photos, then Save Product');
+    try {
+      await loadFish(); populateCatFilter(); populateAddCategorySelect();
+      switchToPanel('stock');
+      openEditor(code, 'details');
+      showToast('Fish created — now set the price and add photos, then Save Product');
+    } catch (err) {
+      console.error(err);
+      showToast('Fish created, but could not refresh the list — reload the page');
+    }
   });
 
   // ---------- BULK IMPORT ----------
@@ -3391,7 +3421,12 @@ BET-0166"></textarea>
   document.getElementById('refresh-history-btn').addEventListener('click', loadHistory);
 
   async function init() {
-    await loadFish();
+    try {
+      await loadFish();
+    } catch (err) {
+      // loadFish already shows a clear error in the Stocks list — don't let an
+      // unhandled rejection here block the rest of the app from initialising.
+    }
     populateCatFilter();
     populateAddCategorySelect();
     renderStockList(true);
