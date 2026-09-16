@@ -495,6 +495,19 @@
     <!-- ================= ADD NEW IMAGES ================= -->
     <section class="panel" id="panel-newimages">
       <div class="editor-card">
+        <h3>Optimize Existing Photos</h3>
+        <div class="sub">Photos uploaded before this update may still be large, uncompressed camera originals. This re-processes every photo already in your catalog — same look, much smaller file — so viewing your shop uses far less bandwidth. Safe to run more than once; already-small photos are skipped automatically.</div>
+        <button class="save-btn" id="optimize-photos-btn" type="button" style="margin-top:10px;">Optimize All Existing Photos</button>
+        <div id="optimize-photos-progress" style="display:none; margin-top:14px;">
+          <div style="background:var(--line); border-radius:8px; height:10px; overflow:hidden;">
+            <div id="optimize-photos-bar" style="background:var(--accent); height:100%; width:0%; transition:width 0.2s ease;"></div>
+          </div>
+          <div id="optimize-photos-status" style="margin-top:8px; font-size:12.5px; color:var(--ink-soft);"></div>
+        </div>
+        <div id="optimize-photos-result" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="editor-card">
         <h3>Select Images</h3>
         <div class="sub">Filename format: <span class="mono">{FISH_CODE}-{IMAGE_NUMBER}.{extension}</span>. Example: <span class="mono">AGL-0628-1.jpg</span>. You can also drop a single <b>.zip</b> file containing all your photos.</div>
         <div class="drop-zone" id="bulk-drop-zone">
@@ -1497,12 +1510,12 @@ BET-0166"></textarea>
         let images = [...(g.fish.images || [])];
         for (const f of g.files) {
           if (images.length >= 5) break;
-          const ext = f.name.includes('.') ? f.name.slice(f.name.lastIndexOf('.')) : '.jpg';
-          const storagePath = `${g.fish.code}-${Date.now()}-${f.number}${ext}`;
+          const compressed = await resizeImageForUpload(f.file, 1600, 0.82);
+          const storagePath = `${g.fish.code}-${Date.now()}-${f.number}.jpg`;
           const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
             method: 'POST',
-            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': f.file.type || 'application/octet-stream' },
-            body: f.file
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'image/jpeg' },
+            body: compressed
           });
           if (!uploadRes.ok) throw new Error(await uploadRes.text());
           images.push(`${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`);
@@ -2438,17 +2451,159 @@ BET-0166"></textarea>
   }
 
   // ---------- IMAGE GALLERY ----------
+  // Shrinks a photo to a sane display size before it's uploaded, so what actually
+  // lives in Supabase Storage — and gets served on every shop visit, every admin
+  // list load, forever — is a small file, not a raw multi-megabyte camera
+  // original. This is the single biggest lever on your Supabase bandwidth usage:
+  // one uncompressed photo viewed by many visitors adds up fast. 1600px is sharp
+  // on any screen this shows on (including retina phones); JPEG at 0.82 keeps
+  // product photos looking clean while cutting typical phone-camera files by
+  // 10–20×.
+  function resizeImageForUpload(file, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, w, h); // in case of a transparent PNG
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Could not compress image')),
+          'image/jpeg', quality
+        );
+      };
+      img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Could not read image file')); };
+      img.src = objectUrl;
+    });
+  }
+
   async function uploadImageFile(file, code) {
-    const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.jpg';
-    const storagePath = `${code}-${Date.now()}${ext}`;
+    // Always re-encoded to JPEG (smaller than PNG for photos, and consistent
+    // regardless of what format the phone/camera produced), so the extension is
+    // fixed to .jpg rather than following the original file's extension.
+    const compressed = await resizeImageForUpload(file, 1600, 0.82);
+    const storagePath = `${code}-${Date.now()}.jpg`;
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': file.type || 'application/octet-stream' },
-      body: file
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'image/jpeg' },
+      body: compressed
     });
     if (!res.ok) throw new Error(await res.text());
     return `${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`;
   }
+
+  // ---------- OPTIMIZE EXISTING PHOTOS ----------
+  // Re-processes every photo already sitting in storage (uploaded before photos
+  // were compressed automatically) so old, large camera originals stop costing
+  // bandwidth every time they're viewed. Skips anything already small — safe to
+  // run again later after more old photos are found, or just to double-check.
+  const OPTIMIZE_SKIP_UNDER_BYTES = 250 * 1024; // already small enough — leave it alone
+  function storagePathFromPublicUrl(url) {
+    const marker = '/storage/v1/object/public/fish-images/';
+    const i = url.indexOf(marker);
+    return i === -1 ? null : url.slice(i + marker.length);
+  }
+
+  document.getElementById('optimize-photos-btn').addEventListener('click', async () => {
+    const withPhotos = fishList.filter(f => f.images && f.images.length);
+    const totalPhotos = withPhotos.reduce((s, f) => s + f.images.length, 0);
+    if (!totalPhotos) { alert('No photos found to optimize.'); return; }
+    if (!confirm(`This will check ${totalPhotos} photo(s) across ${withPhotos.length} fish, and shrink any that are still large. This itself uses some bandwidth to do the work — worth it, but avoid running it repeatedly back-to-back. Continue?`)) return;
+
+    const btn = document.getElementById('optimize-photos-btn');
+    const progressWrap = document.getElementById('optimize-photos-progress');
+    const bar = document.getElementById('optimize-photos-bar');
+    const status = document.getElementById('optimize-photos-status');
+    const resultEl = document.getElementById('optimize-photos-result');
+    btn.disabled = true;
+    progressWrap.style.display = 'block';
+    resultEl.innerHTML = '';
+
+    let done = 0, optimizedCount = 0, skippedCount = 0, errorCount = 0;
+    let bytesBefore = 0, bytesAfter = 0;
+    const errors = [];
+
+    for (const f of withPhotos) {
+      let changed = false;
+      const newImages = [];
+      for (const url of f.images) {
+        done++;
+        status.textContent = `Checking photo ${done}/${totalPhotos} — ${f.code}…`;
+        bar.style.width = `${Math.round((done / totalPhotos) * 100)}%`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Could not fetch (HTTP ${res.status})`);
+          const blob = await res.blob();
+
+          if (blob.size < OPTIMIZE_SKIP_UNDER_BYTES) {
+            newImages.push(url); // already small — leave as-is
+            skippedCount++;
+            continue;
+          }
+
+          const compressed = await resizeImageForUpload(blob, 1600, 0.82);
+          const newPath = `${f.code}-${Date.now()}-opt.jpg`;
+          const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${newPath}`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'image/jpeg' },
+            body: compressed
+          });
+          if (!uploadRes.ok) throw new Error(await uploadRes.text());
+
+          bytesBefore += blob.size;
+          bytesAfter += compressed.size;
+          newImages.push(`${SUPABASE_URL}/storage/v1/object/public/fish-images/${newPath}`);
+          optimizedCount++;
+          changed = true;
+
+          // Best-effort cleanup of the old large file — if this fails, the new
+          // (small) photo is already live and correct, so it's safe to ignore.
+          const oldPath = storagePathFromPublicUrl(url);
+          if (oldPath) {
+            fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${oldPath}`, {
+              method: 'DELETE',
+              headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+            }).catch(() => {});
+          }
+        } catch (err) {
+          console.error(`Optimize failed for ${f.code}:`, err);
+          errors.push(`${f.code}: ${err.message}`);
+          newImages.push(url); // keep the original rather than lose the photo
+          errorCount++;
+        }
+      }
+      if (changed) {
+        f.images = newImages;
+        try {
+          await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(f.code)}`, {
+            method: 'PATCH', headers, body: JSON.stringify({ images: newImages })
+          });
+        } catch (err) {
+          console.error(`Could not save updated photos for ${f.code}:`, err);
+          errors.push(`${f.code}: saved photo but could not update the record`);
+        }
+      }
+    }
+
+    progressWrap.style.display = 'none';
+    btn.disabled = false;
+    const savedMB = ((bytesBefore - bytesAfter) / 1024 / 1024).toFixed(1);
+    resultEl.innerHTML = `
+      <div class="${errorCount ? 'err' : 'ok'}" style="font-size:13.5px; line-height:1.6;">
+        Done — ${optimizedCount} photo${optimizedCount === 1 ? '' : 's'} optimized, ${skippedCount} already small (skipped)${errorCount ? `, ${errorCount} failed` : ''}.
+        ${optimizedCount ? `<br>Roughly ${savedMB} MB saved per full view of your catalog.` : ''}
+      </div>
+      ${errors.length ? `<div style="margin-top:8px; font-size:12px; color:var(--ink-soft);">${errors.slice(0, 10).join('<br>')}${errors.length > 10 ? `<br>…and ${errors.length - 10} more` : ''}</div>` : ''}
+    `;
+    logActivity('Optimized photos', null, `${optimizedCount} photos optimized, ${skippedCount} skipped, ${errorCount} failed`);
+    if (optimizedCount) await loadFish().catch(() => {});
+  });
 
   function renderImageGallery() {
     document.getElementById('img-count-badge').textContent = `${editingFish.images.length}/5`;
