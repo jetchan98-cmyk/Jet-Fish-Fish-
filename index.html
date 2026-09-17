@@ -404,7 +404,13 @@
 
   <section class="section" id="all-fish-section">
     <div class="section-head">
-      <div style="min-width:0; overflow:hidden;"><div class="eyebrow" id="grid-eyebrow">Full catalog</div><h2 id="grid-title" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">All Fish</h2></div>
+      <div style="min-width:0; overflow:hidden;">
+        <div class="eyebrow" id="grid-eyebrow">Full catalog</div>
+        <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+          <h2 id="grid-title" style="white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">All Fish</h2>
+          <button type="button" id="clear-category-btn" style="display:none; flex-shrink:0; border:1px solid var(--line); background:var(--panel); color:var(--ink-soft); border-radius:14px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;">✕ All Fish</button>
+        </div>
+      </div>
       <select class="cat-filter sort-select-small" id="grid-sort">
         <option value="default">Sort</option>
         <option value="code-asc">Code: Low to High</option>
@@ -862,6 +868,15 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
+  // Same reset as the logo, but reachable right from the category heading itself
+  // — no scroll-to-top, since you're already looking at the grid you want cleared.
+  document.getElementById('clear-category-btn').addEventListener('click', () => {
+    activeCategory = 'All Fish';
+    searchInput.value = '';
+    renderCatRail();
+    renderGrid();
+  });
+
   function productCard(p) {
     const color = colorForId(p.id);
     const icon = getIcon(p.category, color);
@@ -941,6 +956,10 @@
     // appear under that other category, not with the rest of the KOI- codes.
     else list = list.slice().sort((a, b) => a.category.localeCompare(b.category) || a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
     gridTitle.textContent = activeCategory === 'All Fish' ? t('allFish') : activeCategory;
+    // Visible only while filtered to a category — an obvious, one-tap way back to
+    // the full catalog without having to find the small category-picker icon
+    // again (which closes itself the moment you pick a category).
+    document.getElementById('clear-category-btn').style.display = activeCategory === 'All Fish' ? 'none' : 'inline-block';
     currentGridList = list;
     gridBatchSize = 40;
     renderGridBatch();
