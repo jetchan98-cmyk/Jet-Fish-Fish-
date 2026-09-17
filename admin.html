@@ -1151,7 +1151,7 @@ BET-0166"></textarea>
   // (after a toggle, edit, undo, etc.) keeps however many cards were already
   // loaded, so scrolling position and loaded content aren't disturbed by an
   // unrelated data refresh.
-  function renderStockList(resetScroll) {
+  function renderStockList(resetPaging, scrollToTop = resetPaging) {
     const list = getFilteredSortedStockList();
 
     // Show the "Clear all featured" shortcut only while viewing the Featured filter.
@@ -1166,7 +1166,7 @@ BET-0166"></textarea>
       return;
     }
 
-    if (resetScroll || stockLoadedCount === 0) stockLoadedCount = Math.min(STOCK_BATCH_SIZE, list.length);
+    if (resetPaging || stockLoadedCount === 0) stockLoadedCount = Math.min(STOCK_BATCH_SIZE, list.length);
     else stockLoadedCount = Math.min(stockLoadedCount, list.length);
 
     const pageList = list.slice(0, stockLoadedCount);
@@ -1175,7 +1175,12 @@ BET-0166"></textarea>
 
     renderStockScrollStatus(stockLoadedCount, list.length);
     setupStockScrollObserver();
-    if (resetScroll) listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Scrolling to the top of the results makes sense after tapping a filter
+    // dropdown or the ON/OFF/All toggle (you're not looking at the search box in
+    // that moment). It must NOT fire on every keystroke in the search box — that
+    // would yank the page down mid-typing and scroll the box you're typing in out
+    // of view, which is exactly the bug this guards against.
+    if (scrollToTop) listEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // Appends the next batch onto the end of the list (never rebuilds what's already
@@ -1250,7 +1255,7 @@ BET-0166"></textarea>
     showToast(f.featured ? 'Added to Featured' : 'Removed from Featured');
   }
 
-  document.getElementById('stock-search').addEventListener('input', () => { renderStockList(true); });
+  document.getElementById('stock-search').addEventListener('input', () => { renderStockList(true, false); });
   document.getElementById('stock-cat-filter').addEventListener('change', () => { renderStockList(true); });
   document.getElementById('stock-sort').addEventListener('change', () => { renderStockList(true); });
 
