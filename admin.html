@@ -339,7 +339,7 @@
               <button class="qa-btn qa-outline" id="qa-available-codes">Get Available Codes</button>
             </div>
             <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
-              <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Price List + Photo Catalog)</button>
+              <button class="qa-btn qa-outline" id="qa-combo-pdf">2-in-1 PDF (Photo Catalog + Price List)</button>
             </div>
             <div class="quick-actions" style="grid-template-columns: 1fr; margin-top:10px;">
               <button class="qa-btn qa-outline" id="qa-stockcheck-pdf">Stock Check Codes PDF (all codes only)</button>
@@ -2058,8 +2058,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     }
   }
 
-  // ---------- 2-IN-1 PDF: PRICE LIST + PHOTO CATALOG ----------
-  // Price list first, then the photo catalog starts fresh on its own page below it,
+  // ---------- 2-IN-1 PDF: PHOTO CATALOG + PRICE LIST ----------
+  // Photo catalog first, then the price list starts fresh on its own page below it,
   // all inside one PDF file.
   document.getElementById('qa-combo-pdf').addEventListener('click', async () => {
     const btn = document.getElementById('qa-combo-pdf');
@@ -2083,16 +2083,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     doc.addFont('NotoSansSC.ttf', 'NotoSansSC', 'normal');
     pdfMissingChars = new Set();
 
-    // Price list first (starts on page 1)…
-    drawPriceListSection(doc, available);
-    // …then the photo catalog starts fresh on the next page.
-    doc.addPage();
+    // Photo catalog first (starts on page 1)…
     drawPhotoCatalogSection(doc, available, photoData);
+    // …then the price list starts fresh after all photo pages.
+    doc.addPage();
+    drawPriceListSection(doc, available);
 
     const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'numeric', year: 'numeric' });
     progressBar.style.width = '100%';
     progressText.textContent = 'Done — downloading…';
-    doc.save(`Jet-Fish-Price-And-Photos-${today.replace(/\//g, '-')}.pdf`);
+    doc.save(`Jet-Fish-Photos-And-Price-${today.replace(/\//g, '-')}.pdf`);
     reportMissingChars();
 
     setTimeout(() => {
