@@ -241,7 +241,7 @@
   .cart-header { padding: 22px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
   .cart-header h3 { font-size: 16px; }
   .close-btn { background: none; border: none; font-size: 18px; color: var(--ink-soft); }
-  .cart-items { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .cart-items { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; transform: translateZ(0); }
   .cart-empty { color: var(--ink-soft); font-size: 14px; text-align: center; margin-top: 40px; }
   .order-history-card { border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 12px; }
   .order-history-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
@@ -1097,7 +1097,11 @@
           </div>
         </div>`;
     }).join('');
-    void cartItemsEl.offsetHeight; // force sync reflow so iOS Safari repaints rows whose height changed (wrapped names)
+    // Force iOS Safari to fully discard its cached paint of this subtree and repaint clean,
+    // instead of a plain reflow (which only fixes layout, not stale/ghosted text rendering).
+    cartItemsEl.style.display = 'none';
+    void cartItemsEl.offsetHeight;
+    cartItemsEl.style.display = '';
     cartItemsEl.querySelectorAll('.ci-qty-minus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, -1)));
     cartItemsEl.querySelectorAll('.ci-qty-plus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, 1)));
     cartItemsEl.querySelectorAll('.cart-item-remove-btn').forEach(btn => btn.addEventListener('click', () => removeFromCart(btn.dataset.id)));
