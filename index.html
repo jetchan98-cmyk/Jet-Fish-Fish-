@@ -215,6 +215,10 @@
   .qty-input {
     width: 52px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 15px;
     border: 1px solid var(--line); border-radius: 6px; padding: 6px 4px; -moz-appearance: textfield;
+    -webkit-appearance: none; appearance: none; background: var(--bg); color: var(--ink);
+  }
+  .qty-control button, .detail-qty .qty-control button {
+    -webkit-appearance: none; appearance: none; color: var(--ink);
   }
   .qty-input::-webkit-outer-spin-button, .qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .cart-item .qty-input { width: 42px; font-size: 13px; padding: 5px 3px; }
@@ -1177,7 +1181,15 @@
   }
   const overlay = document.getElementById('overlay');
   const cartDrawer = document.getElementById('cart-drawer');
-  function openCart() { overlay.classList.add('open'); cartDrawer.classList.add('open'); }
+  function openCart() {
+    renderCart();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('open');
+        cartDrawer.classList.add('open');
+      });
+    });
+  }
   function closeCart() { overlay.classList.remove('open'); cartDrawer.classList.remove('open'); }
   document.getElementById('cart-toggle').addEventListener('click', openCart);
   document.getElementById('cart-close').addEventListener('click', closeCart);
