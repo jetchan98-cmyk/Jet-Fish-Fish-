@@ -240,6 +240,10 @@
   .stat-label { font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
   .stat-value { font-size: 20px; font-weight: 700; }
   .codes-list-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .codes-list-row .row-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .cancel-fish-btn { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .cancel-fish-btn:hover { background: #FDECEA; color: var(--red); border-color: var(--red); }
+  .restore-fish-btn { border: none; background: none; color: var(--brand-blue); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline; }
   .result-msg { margin-top: 12px; font-size: 13.5px; }
   .result-msg .ok { color: var(--accent); font-weight: 600; }
   .result-msg .err { color: var(--red); }
@@ -2952,12 +2956,36 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     });
 
     const matchedCodesUpper = new Set(matched.map(f => f.code.toUpperCase()));
-    const turnOn = matched.filter(f => !f.available);
+    const offMatched = matched.filter(f => !f.available);
+    const turnOn = offMatched.filter(f => !cancelledTurnOn.codes.has(normalizeCode(f.code)));
+    const cancelled = offMatched.filter(f => cancelledTurnOn.codes.has(normalizeCode(f.code)));
     const alreadyOn = matched.filter(f => f.available);
     const turnOff = fishList.filter(f => f.available && !matchedCodesUpper.has(f.code.toUpperCase()));
 
-    return { codesPasted: lines.length, duplicates: duplicateLines, unknown, matched, turnOn, alreadyOn, turnOff };
+    return { codesPasted: lines.length, duplicates: duplicateLines, unknown, matched, turnOn, cancelled, alreadyOn, turnOff };
   }
+
+  // Fish the user cancelled (X) from the "Will turn ON" preview — excluded from apply
+  const cancelledTurnOn = { codes: new Set(), addon: new Set() };
+  function turnOnRowHtml(f, mode) {
+    return `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span class="row-right"><span style="color:var(--accent); font-weight:600;">Will turn ON</span><button type="button" class="cancel-fish-btn" data-mode="${mode}" data-code="${f.code}" title="Don't turn this fish on">×</button></span></div>`;
+  }
+  function cancelledRowHtml(f, mode) {
+    return `<div class="codes-list-row" style="color:var(--ink-soft);"><span style="text-decoration:line-through;">${f.code} — ${f.name}</span><span class="row-right"><span>Cancelled</span><button type="button" class="restore-fish-btn" data-mode="${mode}" data-code="${f.code}">Undo</button></span></div>`;
+  }
+  function turnOnListHtml(list, cancelled, mode) {
+    const main = list.length ? list.map(f => turnOnRowHtml(f, mode)).join('') : `<div style="color:var(--ink-soft);">None.</div>`;
+    const canc = cancelled.length ? `<div style="margin-top:10px; font-size:12px; font-weight:600; color:var(--ink-soft);">Cancelled (${cancelled.length}) — will stay OFF</div>` + cancelled.map(f => cancelledRowHtml(f, mode)).join('') : '';
+    return main + canc;
+  }
+  document.addEventListener('click', (e) => {
+    const x = e.target.closest('.cancel-fish-btn, .restore-fish-btn');
+    if (!x) return;
+    const set = cancelledTurnOn[x.dataset.mode];
+    const key = normalizeCode(x.dataset.code);
+    if (x.classList.contains('cancel-fish-btn')) set.add(key); else set.delete(key);
+    if (x.dataset.mode === 'codes') renderCodesPreview(); else renderAddOnPreview();
+  });
 
   function renderCodesPreview() {
     const r = analyzeCodesInput();
@@ -2972,9 +3000,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
     listsWrap.style.display = 'block';
 
-    document.getElementById('codes-turnon-list').innerHTML = r.turnOn.length
-      ? r.turnOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--accent); font-weight:600;">Will turn ON</span></div>`).join('')
-      : `<div style="color:var(--ink-soft);">None.</div>`;
+    document.getElementById('codes-turnon-list').innerHTML = turnOnListHtml(r.turnOn, r.cancelled, 'codes');
 
     document.getElementById('codes-alreadyon-list').innerHTML = r.alreadyOn.length
       ? r.alreadyOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--brand-blue); font-weight:600;">Already ON</span></div>`).join('')
@@ -3017,6 +3043,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         (r.turnOn.length ? `<br><br><b>Turned ON:</b><br>${formatFishLogList(r.turnOn)}` : '') +
         (r.turnOff.length ? `<br><br><b>Turned OFF:</b><br>${formatFishLogList(r.turnOff)}` : ''));
       document.getElementById('codes-textarea').value = '';
+      cancelledTurnOn.codes.clear();
       await loadFish(); populateCatFilter(); renderCodesPreview();
     } catch (err) {
       console.error(err);
@@ -3130,10 +3157,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       if (f) matched.push(f); else unknown.push(code);
     });
 
-    const willTurnOn = matched.filter(f => !f.available);
+    const offMatched = matched.filter(f => !f.available);
+    const willTurnOn = offMatched.filter(f => !cancelledTurnOn.addon.has(normalizeCode(f.code)));
+    const cancelled = offMatched.filter(f => cancelledTurnOn.addon.has(normalizeCode(f.code)));
     const alreadyOn = matched.filter(f => f.available);
 
-    return { codesPasted: lines.length, willTurnOn, alreadyOn, unknown, duplicates };
+    return { codesPasted: lines.length, willTurnOn, cancelled, alreadyOn, unknown, duplicates };
   }
 
   function renderAddOnPreview() {
@@ -3148,9 +3177,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     if (r.codesPasted === 0) { listsWrap.style.display = 'none'; return; }
     listsWrap.style.display = 'block';
 
-    document.getElementById('addon-matched-list').innerHTML = r.willTurnOn.length
-      ? r.willTurnOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--accent); font-weight:600;">Will turn ON</span></div>`).join('')
-      : `<div style="color:var(--ink-soft);">None.</div>`;
+    document.getElementById('addon-matched-list').innerHTML = turnOnListHtml(r.willTurnOn, r.cancelled, 'addon');
 
     document.getElementById('addon-alreadyon-list').innerHTML = r.alreadyOn.length
       ? r.alreadyOn.map(f => `<div class="codes-list-row"><span>${f.code} — ${f.name}</span><span style="color:var(--brand-blue); font-weight:600;">Already ON</span></div>`).join('')
@@ -3181,6 +3208,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       resultEl.innerHTML = `<span class="ok">${r.willTurnOn.length} fish turned ON.</span>`;
       logActivity('Add On', null, `${r.willTurnOn.length} fish turned ON:<br>${formatFishLogList(r.willTurnOn)}`);
       document.getElementById('addon-textarea').value = '';
+      cancelledTurnOn.addon.clear();
       document.getElementById('addon-lists-wrap').style.display = 'none';
       await loadFish(); populateCatFilter(); renderAddOnPreview();
     } catch (err) {
