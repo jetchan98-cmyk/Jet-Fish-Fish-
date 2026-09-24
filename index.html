@@ -1097,6 +1097,7 @@
           </div>
         </div>`;
     }).join('');
+    void cartItemsEl.offsetHeight; // force sync reflow so iOS Safari repaints rows whose height changed (wrapped names)
     cartItemsEl.querySelectorAll('.ci-qty-minus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, -1)));
     cartItemsEl.querySelectorAll('.ci-qty-plus').forEach(btn => btn.addEventListener('click', () => changeQty(btn.dataset.id, 1)));
     cartItemsEl.querySelectorAll('.cart-item-remove-btn').forEach(btn => btn.addEventListener('click', () => removeFromCart(btn.dataset.id)));
