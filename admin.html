@@ -131,6 +131,8 @@
   .fc-status-pill { flex-shrink: 0; border: none; padding: 6px 14px; border-radius: 14px; font-size: 12px; font-weight: 700; }
   .fc-star-btn { border: 1px solid var(--line); background: var(--panel); width: 38px; height: 38px; border-radius: 50%; font-size: 19px; color: var(--ink-soft); line-height: 1; }
   .fc-star-btn.active { background: #FDF3E3; color: #92620A; border-color: #F5D3B8; }
+  .fc-btn.po { border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); }
+  .fc-btn.po.active { background: #B45309; color: #fff; border-color: #B45309; }
   .fc-status-pill.on { background: var(--accent-soft); color: var(--accent); }
   .fc-status-pill.off { background: #F2F3F4; color: var(--ink-soft); }
   .fc-status-sub { font-size: 11.5px; margin-top: 8px; }
@@ -391,6 +393,7 @@
             <option value="img-yes">With Image</option>
             <option value="img-no">No Image</option>
             <option value="featured">Featured Fish</option>
+            <option value="preorder">Pre-order Fish</option>
           </select>
         </div>
         <div id="clear-featured-row" style="display:none; margin:-6px 0 12px;">
@@ -449,6 +452,12 @@
             <div class="status-check-row">
               <span class="label-text">Featured</span>
               <input type="checkbox" class="big-checkbox" id="ed-featured">
+            </div>
+          </div>
+          <div class="status-row">
+            <div class="status-check-row">
+              <span class="label-text">Pre-order only</span>
+              <input type="checkbox" class="big-checkbox" id="ed-preorder">
             </div>
           </div>
         </div>
@@ -1203,6 +1212,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     else if (sortMode === 'img-no') list = list.filter(f => !f.images || !f.images.length);
     else if (sortMode === 'offer') list = list.filter(f => f.offer_price !== null && f.offer_price !== undefined);
     else if (sortMode === 'featured') list = list.filter(f => f.featured);
+    else if (sortMode === 'preorder') list = list.filter(f => f.preorder);
     return list;
   }
 
@@ -1227,6 +1237,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <div class="fc-bottom-row">
           <div class="fc-price-line">${tierSummaryCompact(f.tiers)}</div>
           <div class="fc-actions">
+            <button class="fc-btn po ${f.preorder ? 'active' : ''} toggle-preorder-btn" data-code="${f.code}" title="Pre-order only">Pre-order</button>
             <button class="fc-btn edit edit-fish-btn" data-code="${f.code}">Edit</button>
           </div>
         </div>
@@ -1242,6 +1253,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       const code = card.dataset.code;
       card.querySelector('.toggle-avail-btn')?.addEventListener('click', () => quickToggleAvailable(code));
       card.querySelector('.toggle-featured-btn')?.addEventListener('click', () => quickToggleFeatured(code));
+      card.querySelector('.toggle-preorder-btn')?.addEventListener('click', () => quickTogglePreorder(code));
       card.querySelector('.edit-fish-btn')?.addEventListener('click', () => openEditor(code, 'details'));
     });
   }
@@ -1353,6 +1365,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     logActivity(f.featured ? 'Added to Featured' : 'Removed from Featured', code, f.name);
     renderStockList();
     showToast(f.featured ? 'Added to Featured' : 'Removed from Featured');
+  }
+
+  async function quickTogglePreorder(code) {
+    const f = fishList.find(f => f.code === code);
+    if (!f) return;
+    if (!('preorder' in f)) { showToast('Run the pre-order SQL in Supabase first'); return; }
+    const next = !f.preorder;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(code)}`, {
+      method: 'PATCH', headers, body: JSON.stringify({ preorder: next })
+    });
+    if (!res.ok) { showToast('Could not update pre-order — try again'); return; }
+    f.preorder = next;
+    logActivity(f.preorder ? 'Marked Pre-order' : 'Removed Pre-order', code, f.name);
+    renderStockList();
+    showToast(f.preorder ? 'Marked as Pre-order' : 'No longer Pre-order');
   }
 
   document.getElementById('stock-search').addEventListener('input', () => { renderStockList(true, false); });
@@ -2443,6 +2470,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     populateCategorySelect(editingFish.category);
     document.getElementById('ed-available').checked = !!editingFish.available;
     document.getElementById('ed-featured').checked = !!editingFish.featured;
+    document.getElementById('ed-preorder').checked = !!editingFish.preorder;
     updateVisibilitySub();
 
     renderTierList();
@@ -2777,6 +2805,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       available: document.getElementById('ed-available').checked,
       featured: document.getElementById('ed-featured').checked
     };
+    // Only send preorder once the column exists in Supabase — otherwise the whole save would fail
+    if ('preorder' in editingFish) body.preorder = document.getElementById('ed-preorder').checked;
 
     const saveBtn = document.getElementById('save-product-btn');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';

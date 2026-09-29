@@ -224,6 +224,11 @@
   .cart-item .qty-input { width: 42px; font-size: 13px; padding: 5px 3px; }
   .detail-qty .qty-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; min-width: 20px; text-align: center; }
   .card-body { padding: 12px 12px 14px; }
+  .po-badge { position: absolute; top: 8px; left: 8px; z-index: 2; background: #B45309; color: #fff; font-size: 10.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; letter-spacing: .2px; box-shadow: 0 1px 4px rgba(0,0,0,.25); pointer-events: none; }
+  .po-tag { display: inline-block; background: #FEF3C7; color: #92400E; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-left: 4px; vertical-align: 1px; white-space: nowrap; }
+  .ci-name .po-tag { margin-left: 0; }
+  #detail-preorder { display: none; margin-bottom: 6px; }
+  #detail-preorder .po-tag { margin-left: 0; font-size: 11px; padding: 2px 8px; }
   .card-name { font-size: 13.5px; font-weight: 700; line-height: 1.3; }
   .card-zh-line { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
   .card-code { font-size: 10.5px; color: var(--ink-soft); margin-top: 3px; }
@@ -439,6 +444,7 @@
   <div class="detail-modal-scroll" id="detail-modal-scroll">
   <div class="detail-image" id="detail-image"></div>
   <div class="detail-body">
+    <div id="detail-preorder"><span class="po-tag" id="detail-preorder-tag"></span></div>
     <div class="detail-name" id="detail-name"></div>
     <div class="detail-zh" id="detail-zh"></div>
     <div class="detail-code mono" id="detail-code"></div>
@@ -529,7 +535,7 @@
     en: {
       searchPlaceholder: 'Search fish name or code', cart: 'Cart', categories: 'Categories',
       curated: 'Curated selection', featured: 'Featured', fullCatalog: 'Full catalog',
-      size: 'Size', price: 'Price', quantity: 'Quantity', from: 'From', bulkPricing: 'Bulk pricing: ',
+      preorder: 'Pre-order', size: 'Size', price: 'Price', quantity: 'Quantity', from: 'From', bulkPricing: 'Bulk pricing: ',
       yourCart: 'Your Cart', cartEmpty: 'Your cart is empty.', cartEmptySub: 'Add some fish to get started.',
       subtotal: 'Subtotal', proceedCheckout: 'Proceed to checkout', checkoutTitle: 'Confirm Order',
       companyName: 'Company Name', phoneNumber: 'Phone Number',
@@ -547,7 +553,7 @@
     zh: {
       searchPlaceholder: '搜索鱼名或编号', cart: '购物车', categories: '分类',
       curated: '精选推荐', featured: '精选鱼', fullCatalog: '全部商品',
-      size: '尺寸', price: '价格', quantity: '数量', from: '低至', bulkPricing: '批发价：',
+      preorder: '预订', size: '尺寸', price: '价格', quantity: '数量', from: '低至', bulkPricing: '批发价：',
       yourCart: '我的购物车', cartEmpty: '购物车是空的。', cartEmptySub: '快去挑选几条鱼吧。',
       subtotal: '小计', proceedCheckout: '前往结账', checkoutTitle: '确认订单',
       companyName: '公司名称', phoneNumber: '电话号码',
@@ -763,7 +769,8 @@
           offerPrice: (r.offer_price !== null && r.offer_price !== undefined) ? parseFloat(r.offer_price) : null,
           offerActive: !!r.offer_active,
           available: !!r.available,
-          feat: !!r.featured
+          feat: !!r.featured,
+          preorder: !!r.preorder
         };
         return p;
       }).filter(p => p.id && p.name);
@@ -899,7 +906,7 @@
       : `<div class="card-price-line"><span class="from-label">${t('from')} </span><span class="cur">RM</span>${p.price.toFixed(2)}</div>`;
     return `
       <div class="product-card" data-id="${p.id}" role="button" tabindex="0">
-        <div class="card-icon-wrap" style="background:${tintBg(color)};">${imgHtml}
+        <div class="card-icon-wrap" style="background:${tintBg(color)};">${p.preorder ? `<span class="po-badge">${t('preorder')}</span>` : ''}${imgHtml}
         </div>
         <div class="card-body">
           <div class="card-name">${primaryName}</div>
@@ -1088,7 +1095,7 @@
             <div class="ci-icon" style="background:${tintBg(color)};">${p.image
               ? `<img src="${IMAGE_BASE_URL}${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${icon}</span>`
               : icon}</div>
-            <div class="ci-info"><div class="ci-name">${p.name}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}</div></div>
+            <div class="ci-info"><div class="ci-name">${p.name}${p.preorder ? ` <span class="po-tag">${t('preorder')}</span>` : ''}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}</div></div>
             <div class="qty-control">
               <button class="ci-qty-minus" data-id="${p.id}">−</button>
               <input type="number" class="qty-input ci-qty-input" data-id="${p.id}" value="${c.qty}" min="1" max="99999" step="1" maxlength="5" inputmode="numeric" pattern="[0-9]*">
@@ -1278,6 +1285,8 @@
     const primaryName = lang === 'zh' && p.zh ? p.zh : p.name;
     const secondaryName = lang === 'zh' && p.zh ? p.name : p.zh;
     document.getElementById('detail-name').textContent = primaryName;
+    document.getElementById('detail-preorder').style.display = p.preorder ? 'block' : 'none';
+    document.getElementById('detail-preorder-tag').textContent = t('preorder');
     document.getElementById('detail-zh').textContent = secondaryName || '';
     document.getElementById('detail-zh').style.display = secondaryName ? 'block' : 'none';
     document.getElementById('detail-code').textContent = p.id;
