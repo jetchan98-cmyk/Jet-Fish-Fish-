@@ -197,7 +197,9 @@
   .img-required-tag { font-size: 11px; font-weight: 700; background: var(--orange-soft); color: var(--orange); padding: 4px 10px; border-radius: 10px; }
   .img-required-msg { background: var(--orange-soft); color: var(--orange); font-size: 13px; font-weight: 600; padding: 12px 14px; border-radius: 8px; margin-bottom: 12px; }
   .img-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; margin-bottom: 14px; }
-  .img-thumb-wrap { position: relative; aspect-ratio: 1; }
+  .img-thumb-wrap { position: relative; aspect-ratio: 1; cursor: grab; }
+  .img-cover-tag { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.65); color: #fff; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; pointer-events: none; }
+  .img-drag-ghost { opacity: .35; }
   .img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
   .img-remove-btn { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: white; border: 2px solid var(--panel); font-size: 12px; display: flex; align-items: center; justify-content: center; }
   .upload-img-btn { width: 100%; background: var(--brand-blue); color: white; border: none; padding: 13px; border-radius: 8px; font-weight: 700; font-size: 14px; }
@@ -291,6 +293,7 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
@@ -311,9 +314,8 @@
       <div class="more-menu-wrap">
         <button class="tab-btn" id="more-menu-btn" style="font-size:18px; line-height:1;">☰</button>
         <div class="more-menu-dropdown" id="more-menu-dropdown">
-          <button class="more-menu-item" data-panel="newfish">Add New Fish</button>
-          <button class="more-menu-item" data-panel="newimages">Add New Images</button>
           <button class="more-menu-item" data-panel="fishdata">Add New Fish Data</button>
+          <button class="more-menu-item" data-panel="newimages">Add New Images</button>
           <button class="more-menu-item" data-panel="toggle">Turn On / Off Fish and Add On</button>
           <button class="more-menu-item" data-panel="saleslookup">Who Bought This Fish</button>
           <button class="more-menu-item" data-panel="clients">Customers ID</button>
@@ -409,7 +411,8 @@
           <h3>Product Details</h3>
           <div class="sub">Basic info shown to customers.</div>
           <label>Fish Code</label>
-          <input type="text" id="ed-code" disabled>
+          <input type="text" id="ed-code" autocomplete="off" style="text-transform:uppercase;">
+          <div class="sub" style="margin-top:-8px; margin-bottom:12px;">Changing the code renames this fish. Past orders keep the old code.</div>
           <label>English Name</label>
           <input type="text" id="ed-name">
           <label>Chinese Name</label>
@@ -430,12 +433,6 @@
             <div class="label">Customer Price Ranges</div>
             <div id="price-range-preview"></div>
           </div>
-        </div>
-
-        <div class="editor-card">
-          <h3>Special Offer</h3>
-          <div class="sub">Offer Price is shown to customers only when Offer Active is ON.</div>
-          <div id="offer-editor"></div>
         </div>
 
         <div class="editor-card">
@@ -471,6 +468,7 @@
             <span class="img-count-badge" id="img-count-badge">0/5</span>
           </div>
           <div id="img-required-msg-wrap"></div>
+          <div class="sub" style="margin-top:-6px;">Drag photos to reorder — the first photo is the cover customers see. Press Save Product to keep the new order.</div>
           <div class="img-gallery" id="img-gallery"></div>
           <div class="drop-zone" id="edit-img-drop-zone">
             <div style="font-weight:600; margin-bottom:4px;">Drag a photo here, or tap to select</div>
@@ -1497,7 +1495,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     if (fish) return { code: fish.code, number: 1, ext, valid: validExt, match: fish };
 
     // Try 2: strip a trailing "-N" as an explicit image number suffix — e.g. "AGL-0628-2.jpg"
-    const m = base.match(/^(.*)-(\d+)$/);
+    // also accepts "AGL-0628_2", "AGL-0628 2" and Windows copies "AGL-0628 (2)"
+    const m = base.match(/^(.*?)\s*\((\d+)\)$/) || base.match(/^(.*)[-_ ](\d+)$/);
     if (m) {
       const remainderNorm = normalizeCode(m[1]);
       fish = fishList.find(f => normalizeCode(f.code) === remainderNorm);
@@ -1538,11 +1537,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       let status;
       if (!g.fish) status = 'unmatched';
       else if (invalidFiles.length) status = 'invalid';
-      else if (hasDuplicateNumber) status = 'duplicate';
       else if (oversizeFiles.length) status = 'oversize';
       else if (isFull) status = 'existing';
       else status = 'ready';
 
+      g.files.sort((a, b) => (a.number - b.number) || a.name.localeCompare(b.name, undefined, { numeric: true }));
       return { ...g, status, inactive, uploadState: 'waiting' };
     });
 
@@ -1595,7 +1594,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       const code = g.fish ? g.fish.code : g.files[0].code;
       const nameHtml = g.fish ? `${g.fish.name}${g.fish.zh ? `<div class="bi-zh">${g.fish.zh}</div>` : ''}` : '—';
       const size = g.fish ? (g.fish.size || '—') : '—';
-      const uploadLabel = { waiting: 'Waiting', uploading: 'Uploading…', done: 'Done', failed: 'Failed' }[g.uploadState];
+      let uploadLabel = { waiting: 'Waiting', uploading: 'Uploading…', done: 'Done', failed: 'Failed' }[g.uploadState];
+      if (g.uploadState === 'done' && g.failedFiles && g.failedFiles.length) uploadLabel = `Done — ${g.failedFiles.length} photo(s) failed: ${g.failedFiles.join(', ')}`;
       return `
         <tr data-idx="${biGroups.indexOf(g)}">
           <td><b>${code}</b></td>
@@ -1638,12 +1638,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     for (const g of readyGroups) {
       g.uploadState = 'uploading';
       renderBiTable();
+      let images = [...(g.fish.images || [])];
+      const startCount = images.length;
+      g.failedFiles = [];
       try {
-        let images = [...(g.fish.images || [])];
         for (const f of g.files) {
           if (images.length >= 5) break;
+          try {
           const compressed = await resizeImageForUpload(f.file, 1600, 0.82);
-          const storagePath = `${g.fish.code}-${Date.now()}-${f.number}.jpg`;
+          const storagePath = `${g.fish.code}-${Date.now()}-${f.number}-${Math.random().toString(36).slice(2, 7)}.jpg`;
           const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
             method: 'POST',
             headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'image/jpeg' },
@@ -1651,12 +1654,19 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           });
           if (!uploadRes.ok) throw new Error(await uploadRes.text());
           images.push(`${SUPABASE_URL}/storage/v1/object/public/fish-images/${storagePath}`);
+          } catch (fileErr) {
+            console.error(`Photo ${f.name} failed:`, fileErr);
+            g.failedFiles.push(f.name);
+          }
         }
-        await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(g.fish.code)}`, {
-          method: 'PATCH', headers, body: JSON.stringify({ images })
-        });
-        g.fish.images = images;
-        g.uploadState = 'done';
+        if (images.length > startCount) {
+          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(g.fish.code)}`, {
+            method: 'PATCH', headers, body: JSON.stringify({ images })
+          });
+          if (!patchRes.ok) throw new Error(await patchRes.text());
+          g.fish.images = images;
+        }
+        g.uploadState = images.length > startCount ? 'done' : 'failed';
       } catch (err) {
         console.error(err);
         g.uploadState = 'failed';
@@ -2542,7 +2552,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   }
 
   // ---------- SPECIAL OFFER EDITOR ----------
-  function renderOfferEditor() {
+  function renderOfferEditor() { return; // Special Offer removed
     const el = document.getElementById('offer-editor');
     const hasOffer = editingFish.offer_price !== null && editingFish.offer_price !== undefined;
     if (!hasOffer) {
@@ -2613,7 +2623,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     // regardless of what format the phone/camera produced), so the extension is
     // fixed to .jpg rather than following the original file's extension.
     const compressed = await resizeImageForUpload(file, 1600, 0.82);
-    const storagePath = `${code}-${Date.now()}.jpg`;
+    const storagePath = `${code}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/fish-images/${storagePath}`, {
       method: 'POST',
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'image/jpeg' },
@@ -2736,11 +2746,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     reqWrap.innerHTML = !editingFish.images.length ? `<div class="img-required-msg">Image Required</div>` : '';
 
     document.getElementById('img-gallery').innerHTML = editingFish.images.map((url, i) => `
-      <div class="img-thumb-wrap">
-        <img src="${url}">
+      <div class="img-thumb-wrap" data-idx="${i}">
+        <img src="${url}" draggable="false">
+        ${i === 0 ? '<span class="img-cover-tag">Cover</span>' : ''}
         <button type="button" class="img-remove-btn" data-idx="${i}">✕</button>
       </div>
     `).join('');
+    const galleryEl = document.getElementById('img-gallery');
+    if (galleryEl._sortable) { galleryEl._sortable.destroy(); galleryEl._sortable = null; }
+    if (window.Sortable && editingFish.images.length > 1) {
+      galleryEl._sortable = Sortable.create(galleryEl, {
+        animation: 150, filter: '.img-remove-btn', preventOnFilter: false,
+        delay: 120, delayOnTouchOnly: true, ghostClass: 'img-drag-ghost',
+        onEnd: (evt) => {
+          if (evt.oldIndex === evt.newIndex) return;
+          const moved = editingFish.images.splice(evt.oldIndex, 1)[0];
+          editingFish.images.splice(evt.newIndex, 0, moved);
+          renderImageGallery();
+        }
+      });
+    }
     document.querySelectorAll('.img-remove-btn').forEach(btn => btn.addEventListener('click', () => {
       editingFish.images.splice(parseInt(btn.dataset.idx), 1);
       renderImageGallery();
@@ -2800,18 +2825,42 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       price: newPrice,
       tiers: editingFish.tiers,
       images: editingFish.images,
-      offer_price: editingFish.offer_price,
-      offer_active: !!editingFish.offer_active,
+      offer_active: false, // Special Offer removed — make sure no old offer stays live
       available: document.getElementById('ed-available').checked,
       featured: document.getElementById('ed-featured').checked
     };
     // Only send preorder once the column exists in Supabase — otherwise the whole save would fail
     if ('preorder' in editingFish) body.preorder = document.getElementById('ed-preorder').checked;
 
+    // Fish code can be changed — validate before saving
+    const oldCode = editingFish.code;
+    const newCode = document.getElementById('ed-code').value.trim().toUpperCase();
+    if (!newCode) { alert('Fish code cannot be empty.'); return; }
+    const codeChanged = newCode !== oldCode;
+    if (codeChanged) {
+      const clash = fishList.find(f => f.code !== oldCode && normalizeCode(f.code) === normalizeCode(newCode));
+      if (clash) { alert(`Code ${newCode} is already used by "${clash.name}". Pick a different code.`); return; }
+      if (!confirm(`Change fish code ${oldCode} → ${newCode}?\n\nPast orders will keep showing ${oldCode}.`)) return;
+      body.code = newCode;
+    }
+
     const saveBtn = document.getElementById('save-product-btn');
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
-    await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(editingFish.code)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    let saveRes;
+    try {
+      saveRes = await fetch(`${SUPABASE_URL}/rest/v1/fish?code=eq.${encodeURIComponent(oldCode)}`, { method: 'PATCH', headers, body: JSON.stringify(body) });
+    } catch (err) { saveRes = null; }
     saveBtn.disabled = false; saveBtn.textContent = 'Save Product';
+    if (!saveRes || !saveRes.ok) {
+      const msg = saveRes ? await saveRes.text() : 'No connection';
+      console.error('Save failed:', msg);
+      alert('Could not save — nothing was changed.\n\n' + msg.slice(0, 200));
+      return;
+    }
+    if (codeChanged) {
+      logActivity('Code changed', newCode, `${oldCode} → ${newCode} (${body.name})`);
+      editingFish.code = newCode;
+    }
 
     if (oldPrice !== null && oldPrice !== newPrice) {
       logActivity('Price changed', editingFish.code, `${body.name}: RM${oldPrice.toFixed(2)} → RM${newPrice.toFixed(2)}`);

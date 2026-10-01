@@ -767,7 +767,7 @@
           images,
           image: images[0] || '',
           offerPrice: (r.offer_price !== null && r.offer_price !== undefined) ? parseFloat(r.offer_price) : null,
-          offerActive: !!r.offer_active,
+          offerActive: false, // Special Offer removed from admin
           available: !!r.available,
           feat: !!r.featured,
           preorder: !!r.preorder
