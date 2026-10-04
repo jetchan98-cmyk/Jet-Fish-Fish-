@@ -732,12 +732,14 @@ BET-0166"></textarea>
 
       <div class="editor-card">
         <h3>Existing Clients</h3>
+        <input type="text" id="clients-search" placeholder="Search client name or login ID…" autocomplete="off" style="margin-bottom:10px;">
         <select class="cat-filter" id="clients-sort" style="margin-bottom:14px;">
           <option value="recent">Last Login (Most Recent)</option>
           <option value="oldest">Last Login (Oldest)</option>
           <option value="never">Never Logged In First</option>
           <option value="name">Name A–Z</option>
         </select>
+        <div id="clients-search-count" style="font-size:12px; color:var(--ink-soft); margin:-6px 0 10px; display:none;"></div>
         <div id="clients-list"><div class="loading-msg">Loading clients…</div></div>
       </div>
     </section>
@@ -3666,6 +3668,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       return sortMode === 'oldest' ? aTime - bTime : bTime - aTime;
     });
 
+    // Search by client name or login ID — ignores capitals, spaces and dashes
+    const squash = (str) => String(str || '').toLowerCase().replace(/[\s\-_.]/g, '');
+    const query = squash(document.getElementById('clients-search').value);
+    const countEl = document.getElementById('clients-search-count');
+    if (query) {
+      const matched = clients.filter(c => squash(c.display_name).includes(query) || squash(c.username).includes(query));
+      clients.length = 0; clients.push(...matched);
+      countEl.style.display = 'block';
+      countEl.textContent = `${matched.length} of ${allClients.length} clients match`;
+      if (!matched.length) { listEl.innerHTML = `<div class="empty-msg">No client matches that name or login ID.</div>`; return; }
+    } else {
+      countEl.style.display = 'none';
+    }
+
     listEl.innerHTML = clients.map(c => `
         <div class="client-row">
           <div class="client-info">
@@ -3719,6 +3735,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       }));
   }
   document.getElementById('clients-sort').addEventListener('change', renderClientsList);
+  document.getElementById('clients-search').addEventListener('input', renderClientsList);
 
   // ---------- HISTORY ----------
   let historyEntries = [];
