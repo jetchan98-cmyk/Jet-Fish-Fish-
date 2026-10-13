@@ -894,6 +894,24 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   };
   let editingFish = null; // working copy of the fish being edited
 
+  // Builds "shop link / id / pw" and opens the phone share sheet (WhatsApp etc.), or copies it on a laptop.
+  // Uses this site's own address, so it follows automatically when the domain changes.
+  async function sendClientLogin(client) {
+    if (!client.password_plain) { alert(`No saved password for "${client.username}".\n\nTap Reset Password first, then Send Login.`); return; }
+    const shopUrl = window.location.origin + '/';
+    const msg = `${shopUrl}\nid: ${client.username}\npw: ${client.password_plain}`;
+    if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      try { await navigator.share({ text: msg }); return; }
+      catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    try {
+      await navigator.clipboard.writeText(msg);
+      showToast('Login copied — paste it in WhatsApp');
+    } catch (e) {
+      prompt('Copy this login message:', msg);
+    }
+  }
+
   function showToast(msg) {
     const toast = document.getElementById('save-toast');
     toast.textContent = msg || 'Saved';
@@ -3695,6 +3713,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           </div>
           <div class="client-actions">
             <button class="fc-status-pill ${c.active ? 'on' : 'off'} toggle-client-active-btn" data-id="${c.id}">${c.active ? 'ON' : 'OFF'}</button>
+            <button class="icon-btn send-login-btn" data-id="${c.id}" style="color:var(--accent); font-weight:700;">Send Login</button>
             <button class="icon-btn reset-client-btn" data-id="${c.id}" data-username="${c.username}">Reset Password</button>
             <button class="icon-btn delete-client-btn" data-id="${c.id}" style="color:var(--red);">Delete</button>
           </div>
@@ -3717,6 +3736,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         });
         showToast(newActive ? 'Client can now log in' : 'Client access blocked');
         loadClients();
+      }));
+
+      listEl.querySelectorAll('.send-login-btn').forEach(btn => btn.addEventListener('click', () => {
+        const client = clients.find(c => String(c.id) === btn.dataset.id);
+        if (client) sendClientLogin(client);
       }));
 
       listEl.querySelectorAll('.reset-client-btn').forEach(btn => btn.addEventListener('click', async () => {
