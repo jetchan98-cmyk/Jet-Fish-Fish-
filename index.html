@@ -194,6 +194,9 @@
     padding: 9px 14px; border-radius: 8px;
   }
   .unlock-banner.show { display: block; }
+  .moq-note { display: none; margin-top: 6px; font-size: 12px; font-weight: 600; color: #92400E; text-align: right; }
+  .moq-note.show { display: block; }
+  .qty-control button:disabled { opacity: .35; cursor: not-allowed; }
 
   .detail-qty { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
   .detail-qty .qty-control { display: flex; align-items: center; gap: 12px; }
@@ -461,6 +464,7 @@
         <button id="detail-qty-plus">+</button>
       </div>
     </div>
+    <div class="moq-note" id="moq-note"></div>
 
     <div class="subtotal-row">
       <span id="lbl-subtotal-detail">Subtotal</span>
@@ -496,6 +500,7 @@
 
   <label for="phone" id="lbl-phone">Phone Number</label>
   <input type="tel" id="phone" placeholder="012-3456789" inputmode="numeric" maxlength="12" required>
+  <div id="checkout-default-note" style="display:none; font-size:12px; color:var(--ink-soft); margin-top:6px;"></div>
 
   <div class="order-stats">
     <div class="stat-row"><span id="lbl-total-types">Total Fish Types</span><span class="stat-val" id="stat-types">0</span></div>
@@ -538,7 +543,8 @@
       preorder: 'Pre-order', size: 'Size', price: 'Price', quantity: 'Quantity', from: 'From', bulkPricing: 'Bulk pricing: ',
       yourCart: 'Your Cart', cartEmpty: 'Your cart is empty.', cartEmptySub: 'Add some fish to get started.',
       subtotal: 'Subtotal', proceedCheckout: 'Proceed to checkout', checkoutTitle: 'Confirm Order',
-      companyName: 'Company Name', phoneNumber: 'Phone Number',
+      minOrder: 'Min. order', pcs: 'pcs', removeBelowMoq: 'Minimum order for this fish is {n} pcs. Remove it from your cart?',
+      companyName: 'Company Name', phoneNumber: 'Phone Number', savedDetailsNote: 'Filled from your last order — you can change it.',
       totalFishTypes: 'Total Fish Types', totalQuantity: 'Total Quantity', orderList: 'Order List',
       back: 'Back', submitOrder: 'Submit Order', done: 'Done',
       orderReceived: 'Order received', orderReceivedSub: "We've got your order and will contact you shortly to confirm.",
@@ -556,7 +562,8 @@
       preorder: '预订', size: '尺寸', price: '价格', quantity: '数量', from: '低至', bulkPricing: '批发价：',
       yourCart: '我的购物车', cartEmpty: '购物车是空的。', cartEmptySub: '快去挑选几条鱼吧。',
       subtotal: '小计', proceedCheckout: '前往结账', checkoutTitle: '确认订单',
-      companyName: '公司名称', phoneNumber: '电话号码',
+      minOrder: '最低订购', pcs: '条', removeBelowMoq: '此鱼最低订购 {n} 条。要从购物车移除吗？',
+      companyName: '公司名称', phoneNumber: '电话号码', savedDetailsNote: '已自动填入上次订单资料，可修改。',
       totalFishTypes: '鱼类种数', totalQuantity: '总数量', orderList: '订单清单',
       back: '返回', submitOrder: '提交订单', done: '完成',
       orderReceived: '订单已收到', orderReceivedSub: '我们已收到您的订单，将尽快与您联系确认。',
@@ -786,6 +793,14 @@
   const IMAGE_BASE_URL = "";
 
   function getCategories() { return [...new Set(products.map(p => p.category))]; }
+
+  // MOQ = the lowest quantity in the fish's price tiers (e.g. a first tier of 50 means min. order 50)
+  function getMoq(p) {
+    if (!p || !p.tiers || !p.tiers.length) return 1;
+    const q = Math.min(...p.tiers.map(t => parseInt(t.qty) || 1));
+    return Math.max(1, q);
+  }
+  function moqOfId(id) { return getMoq(products.find(p => p.id === id)); }
 
   function getUnitPrice(p, qty) {
     if (p.offerActive && p.offerPrice !== null && p.offerPrice !== undefined) return p.offerPrice;
@@ -1049,7 +1064,8 @@
 
   // ---------- CART ----------
   function addToCart(id, qty) {
-    qty = qty || 1;
+    const moq = moqOfId(id);
+    qty = Math.max(qty || moq, moq);
     const existing = cart.find(c => c.id === id);
     if (existing) existing.qty += qty; else cart.push({ id, qty });
     renderCart();
@@ -1057,15 +1073,21 @@
   function changeQty(id, delta) {
     const item = cart.find(c => c.id === id);
     if (!item) return;
-    item.qty += delta;
-    if (item.qty <= 0) cart = cart.filter(c => c.id !== id);
+    const moq = moqOfId(id);
+    if (delta < 0 && item.qty + delta < moq) {
+      // Can't go below MOQ — pressing − at the minimum offers to remove the fish instead
+      if (moq > 1 && !confirm(t('removeBelowMoq').replace('{n}', moq))) return;
+      cart = cart.filter(c => c.id !== id);
+    } else {
+      item.qty += delta;
+    }
     renderCart();
   }
   function setQty(id, qty) {
     const item = cart.find(c => c.id === id);
     if (!item) return;
     if (qty <= 0) cart = cart.filter(c => c.id !== id);
-    else item.qty = qty;
+    else item.qty = Math.max(qty, moqOfId(id)); // typed below MOQ snaps up to MOQ
     renderCart();
   }
   function removeFromCart(id) {
@@ -1078,6 +1100,7 @@
   const cartCountEl = document.getElementById('cart-count');
   const checkoutBtn = document.getElementById('checkout-btn');
   function renderCart() {
+    cart.forEach(c => { const m = moqOfId(c.id); if (products.some(p => p.id === c.id) && c.qty < m) c.qty = m; });
     try { localStorage.setItem(cartStorageKey(), JSON.stringify(cart)); } catch (e) {}
     cartCountEl.textContent = cart.length;
     checkoutBtn.disabled = cart.length === 0;
@@ -1095,7 +1118,7 @@
             <div class="ci-icon" style="background:${tintBg(color)};">${p.image
               ? `<img src="${IMAGE_BASE_URL}${p.image}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:4px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">${icon}</span>`
               : icon}</div>
-            <div class="ci-info"><div class="ci-name">${p.name}${p.preorder ? ` <span class="po-tag">${t('preorder')}</span>` : ''}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}</div></div>
+            <div class="ci-info"><div class="ci-name">${p.name}${p.preorder ? ` <span class="po-tag">${t('preorder')}</span>` : ''}</div><div class="ci-price">RM${unitPrice.toFixed(2)} / fish${isBulk ? ' (bulk)' : ''}${getMoq(p) > 1 ? ` · ${t('minOrder')} ${getMoq(p)}` : ''}</div></div>
             <div class="qty-control">
               <button class="ci-qty-minus" data-id="${p.id}">−</button>
               <input type="number" class="qty-input ci-qty-input" data-id="${p.id}" value="${c.qty}" min="1" max="99999" step="1" maxlength="5" inputmode="numeric" pattern="[0-9]*">
@@ -1250,7 +1273,7 @@
     const p = products.find(p => p.id === id);
     if (!p) return;
     detailProduct = p;
-    detailQty = 1;
+    detailQty = getMoq(p);
     const color = colorForId(p.id);
     const icon = getIcon(p.category, color);
     const detailImageEl = document.getElementById('detail-image');
@@ -1380,10 +1403,16 @@
     }
 
     document.getElementById('detail-subtotal').textContent = 'RM' + (unitPrice * detailQty).toFixed(2);
+
+    const moq = getMoq(p);
+    document.getElementById('detail-qty-minus').disabled = detailQty <= moq;
+    const moqNote = document.getElementById('moq-note');
+    moqNote.textContent = `${t('minOrder')}: ${moq} ${t('pcs')}`;
+    moqNote.classList.toggle('show', moq > 1);
   }
   document.getElementById('detail-close').addEventListener('click', closeDetail);
   detailOverlay.addEventListener('click', closeDetail);
-  document.getElementById('detail-qty-minus').addEventListener('click', () => { if (detailQty > 1) { detailQty--; updateDetailQtyDisplay(); } });
+  document.getElementById('detail-qty-minus').addEventListener('click', () => { if (detailQty > getMoq(detailProduct)) { detailQty--; updateDetailQtyDisplay(); } });
   document.getElementById('detail-qty-plus').addEventListener('click', () => { if (detailQty < 99999) { detailQty++; updateDetailQtyDisplay(); } });
   const detailQtyInput = document.getElementById('detail-qty-input');
   detailQtyInput.addEventListener('input', () => {
@@ -1400,12 +1429,15 @@
   });
   detailQtyInput.addEventListener('blur', () => {
     const val = parseInt(detailQtyInput.value);
-    if (isNaN(val) || val < 1) { detailQty = 1; }
+    const moq = getMoq(detailProduct);
+    if (isNaN(val) || val < moq) { detailQty = moq; }
     else detailQty = Math.min(val, 99999);
     updateDetailQtyDisplay();
   });
   document.getElementById('detail-add-btn').addEventListener('click', () => {
     if (!detailProduct) return;
+    const typed = parseInt(detailQtyInput.value);
+    detailQty = Math.max(isNaN(typed) ? detailQty : Math.min(typed, 99999), getMoq(detailProduct));
     addToCart(detailProduct.id, detailQty);
     closeDetail();
   });
@@ -1438,6 +1470,42 @@
   function openCheckout() {
     renderOrderReview();
     checkoutSection.classList.add('open');
+    fillCheckoutDefaults();
+  }
+
+  // ---------- SAVED COMPANY + PHONE (like Shopee's default address) ----------
+  // Order of preference: this device's saved copy → the client's latest order in
+  // Supabase (works on a new phone too) → company name from their client account.
+  // Never overwrites anything the customer has already typed.
+  function checkoutDefaultsKey() { return 'jetfish_checkout_' + (getSession() || 'guest'); }
+  function saveCheckoutDefaults(company, phone) {
+    try { localStorage.setItem(checkoutDefaultsKey(), JSON.stringify({ company, phone })); } catch (e) {}
+  }
+  async function fillCheckoutDefaults() {
+    const companyEl = document.getElementById('company-name');
+    const phoneEl = document.getElementById('phone');
+    const noteEl = document.getElementById('checkout-default-note');
+    if (companyEl.value.trim() && phoneEl.value.trim()) return;
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(checkoutDefaultsKey()) || 'null'); } catch (e) {}
+    const username = getSession();
+    if ((!saved || !saved.company || !saved.phone) && username) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?client_username=eq.${encodeURIComponent(username)}&select=company,phone&order=created_at.desc&limit=1`, { headers: supabaseHeaders });
+        const rows = res.ok ? await res.json() : [];
+        if (rows[0]) saved = { company: rows[0].company || (saved && saved.company) || '', phone: rows[0].phone || (saved && saved.phone) || '' };
+        else {
+          const cres = await fetch(`${SUPABASE_URL}/rest/v1/clients?username=eq.${encodeURIComponent(username)}&select=display_name`, { headers: supabaseHeaders });
+          const crows = cres.ok ? await cres.json() : [];
+          if (crows[0] && crows[0].display_name) saved = { company: crows[0].display_name, phone: (saved && saved.phone) || '' };
+        }
+      } catch (e) { console.warn('Could not load saved checkout details:', e); }
+    }
+    if (!saved) return;
+    let filled = false;
+    if (!companyEl.value.trim() && saved.company) { companyEl.value = saved.company; filled = true; }
+    if (!phoneEl.value.trim() && saved.phone) { phoneEl.value = saved.phone; filled = true; }
+    if (filled) { noteEl.textContent = t('savedDetailsNote'); noteEl.style.display = 'block'; }
   }
   function closeCheckout() {
     checkoutSection.classList.remove('open');
@@ -1496,6 +1564,7 @@
         })
       });
       if (!res.ok) throw new Error('Insert failed: ' + res.status);
+      saveCheckoutDefaults(company, phone);
     } catch (e) {
       console.error('Could not save order to database:', e);
       alert('Something went wrong submitting your order. Please try again or contact us directly.');
