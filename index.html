@@ -257,7 +257,14 @@
   .order-history-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 10px; text-transform: uppercase; }
   .order-history-status.new { background: #FDF3E3; color: #92620A; }
   .order-history-status.done { background: var(--accent-soft); color: var(--accent); }
-  .order-history-item-row { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; }
+  .order-history-item-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+  .order-history-item-row:last-child { border-bottom: none; }
+  .ohi-name { font-weight: 600; }
+  .ohi-sub { font-size: 11.5px; color: var(--ink-soft); margin-top: 1px; }
+  .ohi-amt { text-align: right; white-space: nowrap; font-weight: 600; }
+  .order-history-ref { font-size: 12px; font-weight: 700; color: var(--ink); }
+  .order-history-total { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13.5px; font-weight: 700; }
+  .order-again-btn { margin-top: 10px; width: 100%; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; padding: 9px; border-radius: 8px; cursor: pointer; }
   /* Shopee-style swipe-to-remove: each cart row sits inside a wrap with a red
      "Remove" action hidden behind it. Swiping the row left reveals the action;
      tapping Remove deletes the fish. Tapping the row again while it's open closes
@@ -554,7 +561,9 @@
       menuCategory: '📁 Category', menuOrderHistory: '📋 Order History', menuLogout: '🚪 Log Out',
       orderHistoryTitle: 'Order History', orderHistoryEmpty: "You haven't placed any orders yet.",
       orderHistoryLoading: 'Loading…', orderHistoryFailed: 'Could not load order history.',
-      statusPending: 'Pending', statusConfirmed: 'Confirmed'
+      statusPending: 'Pending', statusConfirmed: 'Confirmed',
+      orderNo: 'Order', totalLabel: 'Total', pcsTotal: 'pcs', orderAgain: 'Order again',
+      reorderAdded: 'Added to your cart at today\'s prices.', reorderSkipped: 'Not available now, so not added:'
     },
     zh: {
       searchPlaceholder: '搜索鱼名或编号', cart: '购物车', categories: '分类',
@@ -573,7 +582,9 @@
       menuCategory: '📁 分类', menuOrderHistory: '📋 订单记录', menuLogout: '🚪 登出',
       orderHistoryTitle: '订单记录', orderHistoryEmpty: '您还没有下过任何订单。',
       orderHistoryLoading: '加载中…', orderHistoryFailed: '无法加载订单记录。',
-      statusPending: '待处理', statusConfirmed: '已确认'
+      statusPending: '待处理', statusConfirmed: '已确认',
+      orderNo: '订单', totalLabel: '总计', pcsTotal: '条', orderAgain: '再次订购',
+      reorderAdded: '已按今天的价格加入购物车。', reorderSkipped: '目前缺货，未加入：'
     }
   };
   function t(key) { return i18n[lang][key] || i18n.en[key] || key; }
@@ -1237,6 +1248,21 @@
 
   overlay.addEventListener('click', () => { closeCart(); closeOrderHistory(); });
 
+  let historyOrders = [];
+  // Re-adds a past order's fish to the cart at today's prices; skips fish no longer available.
+  function orderAgain(order) {
+    if (!order) return;
+    const skipped = [];
+    (order.items || []).forEach(it => {
+      const p = products.find(p => p.id === it.code);
+      if (!p || !p.available) { skipped.push(lang === 'zh' && it.zh ? it.zh : it.name); return; }
+      addToCart(p.id, Math.max(parseInt(it.qty) || 1, getMoq(p)));
+    });
+    closeOrderHistory();
+    if (cart.length) openCart();
+    alert(t('reorderAdded') + (skipped.length ? `\n\n${t('reorderSkipped')}\n• ${skipped.join('\n• ')}` : ''));
+  }
+
   async function loadOrderHistory() {
     const listEl = document.getElementById('order-history-items');
     listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryLoading')}</div>`;
@@ -1246,17 +1272,35 @@
       const res = await fetch(`${SUPABASE_URL}/rest/v1/orders?client_username=eq.${encodeURIComponent(username)}&select=*&order=created_at.desc`, { headers: supabaseHeaders });
       const orders = await res.json();
       if (!orders.length) { listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryEmpty')}</div>`; return; }
-      listEl.innerHTML = orders.map(o => `
+      historyOrders = orders;
+      const money = n => 'RM' + (parseFloat(n) || 0).toFixed(2);
+      const when = d => new Date(d).toLocaleString('en-MY', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+      listEl.innerHTML = orders.map((o, idx) => {
+        const items = Array.isArray(o.items) ? o.items : [];
+        const totalPcs = o.total_qty || items.reduce((s, it) => s + (parseInt(it.qty) || 0), 0);
+        const hasPrices = (o.order_total !== null && o.order_total !== undefined) || items.some(it => it.line_total !== undefined);
+        const total = (o.order_total !== null && o.order_total !== undefined) ? o.order_total : items.reduce((s, it) => s + (parseFloat(it.line_total) || 0), 0);
+        return `
         <div class="order-history-card">
           <div class="order-history-head">
-            <span class="order-history-date">${new Date(o.created_at).toLocaleDateString()}</span>
+            <div>
+              <div class="order-history-ref">${t('orderNo')} ${o.order_ref || ''}</div>
+              <div class="order-history-date">${when(o.created_at)}</div>
+            </div>
             <span class="order-history-status ${o.status}">${o.status === 'done' ? t('statusConfirmed') : t('statusPending')}</span>
           </div>
           <div class="order-history-items">
-            ${o.items.map(it => `<div class="order-history-item-row"><span>${lang === 'zh' && it.zh ? it.zh : it.name}</span><span>×${it.qty}</span></div>`).join('')}
+            ${items.map(it => `<div class="order-history-item-row">
+              <div><div class="ohi-name">${lang === 'zh' && it.zh ? it.zh : it.name}</div>
+                <div class="ohi-sub">${it.code || ''}${it.unit_price !== undefined ? ` · ${it.qty} × ${money(it.unit_price)}` : ''}</div></div>
+              <div class="ohi-amt">${it.line_total !== undefined ? money(it.line_total) : '×' + it.qty}</div>
+            </div>`).join('')}
           </div>
-        </div>
-      `).join('');
+          <div class="order-history-total"><span>${t('totalLabel')} · ${totalPcs} ${t('pcsTotal')}</span><span>${hasPrices ? money(total) : ''}</span></div>
+          <button type="button" class="order-again-btn" data-idx="${idx}">${t('orderAgain')}</button>
+        </div>`;
+      }).join('');
+      listEl.querySelectorAll('.order-again-btn').forEach(btn => btn.addEventListener('click', () => orderAgain(historyOrders[parseInt(btn.dataset.idx)])));
     } catch (e) {
       console.error(e);
       listEl.innerHTML = `<div class="cart-empty">${t('orderHistoryFailed')}</div>`;
