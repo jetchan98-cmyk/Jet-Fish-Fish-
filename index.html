@@ -1287,7 +1287,6 @@
               <div class="order-history-ref">${t('orderNo')} ${o.order_ref || ''}</div>
               <div class="order-history-date">${when(o.created_at)}</div>
             </div>
-            <span class="order-history-status ${o.status}">${o.status === 'done' ? t('statusConfirmed') : t('statusPending')}</span>
           </div>
           <div class="order-history-items">
             ${items.map(it => `<div class="order-history-item-row">
@@ -1296,7 +1295,6 @@
               <div class="ohi-amt">${it.line_total !== undefined ? money(it.line_total) : '×' + it.qty}</div>
             </div>`).join('')}
           </div>
-          <div class="order-history-total"><span>${t('totalLabel')} · ${totalPcs} ${t('pcsTotal')}</span><span>${hasPrices ? money(total) : ''}</span></div>
           <button type="button" class="order-again-btn" data-idx="${idx}">${t('orderAgain')}</button>
         </div>`;
       }).join('');
