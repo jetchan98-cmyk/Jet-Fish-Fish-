@@ -78,6 +78,14 @@
   .cart-emoji { font-size: 16px; line-height: 1; }
   .lang-btn { border: 1px solid var(--line); background: var(--panel); padding: 9px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
   .cart-count { background: var(--accent); color: white; border-radius: 50%; width: 17px; height: 17px; font-size: 10px; display: flex; align-items: center; justify-content: center; font-weight: 600; flex-shrink: 0; }
+  #history-toggle { color: var(--ink); }
+  @media (max-width: 600px) {
+    .nav-right { gap: 5px; }
+    .lang-btn { padding: 7px 8px; font-size: 11px; }
+    .cart-btn { padding: 6px 8px; font-size: 12px; gap: 4px; }
+    #history-toggle { flex-direction: column; gap: 1px; padding: 3px 8px; font-size: 9.5px; font-weight: 600; line-height: 1; }
+    #history-toggle .cart-emoji { font-size: 14px; }
+  }
   .cat-dropdown-wrap { flex-shrink: 0; }
 
   .cat-dropdown-wrap { position: relative; flex-shrink: 0; }
@@ -393,6 +401,7 @@
     <button class="logo" id="home-btn"><span class="mark"></span>Jet Fish</button>
     <div class="nav-right">
       <button class="lang-btn" id="lang-toggle-btn">中文</button>
+      <button class="cart-btn" id="history-toggle" aria-label="Order history"><span class="cart-emoji">📋</span><span id="lbl-nav-orders">Orders</span></button>
       <button class="cart-btn" id="cart-toggle">
         <span class="cart-emoji">🛒</span>
         <span class="cart-count" id="cart-count">0</span>
@@ -558,7 +567,7 @@
       noResults: 'No fish match your search.', noStock: 'No fish available here right now',
       noStockSub: 'Check back soon — stock is updated regularly.', noFeatured: 'No featured fish marked as available right now.',
       addToCart: 'Add to cart', allFish: 'All Fish', loadingMore: 'Loading more…',
-      menuCategory: '📁 Category', menuOrderHistory: '📋 Order History', menuLogout: '🚪 Log Out',
+      menuCategory: '📁 Category', menuOrderHistory: '📋 Order History', navOrders: 'Orders', menuLogout: '🚪 Log Out',
       orderHistoryTitle: 'Order History', orderHistoryEmpty: "You haven't placed any orders yet.",
       orderHistoryLoading: 'Loading…', orderHistoryFailed: 'Could not load order history.',
       statusPending: 'Pending', statusConfirmed: 'Confirmed',
@@ -579,7 +588,7 @@
       noResults: '没有符合搜索的鱼。', noStock: '暂时没有现货',
       noStockSub: '请稍后再来看看，库存会定期更新。', noFeatured: '暂无精选现货鱼。',
       addToCart: '加入购物车', allFish: '全部鱼类', loadingMore: '加载更多中…',
-      menuCategory: '📁 分类', menuOrderHistory: '📋 订单记录', menuLogout: '🚪 登出',
+      menuCategory: '📁 分类', menuOrderHistory: '📋 订单记录', navOrders: '订单', menuLogout: '🚪 登出',
       orderHistoryTitle: '订单记录', orderHistoryEmpty: '您还没有下过任何订单。',
       orderHistoryLoading: '加载中…', orderHistoryFailed: '无法加载订单记录。',
       statusPending: '待处理', statusConfirmed: '已确认',
@@ -593,6 +602,7 @@
     document.getElementById('search-input').placeholder = t('searchPlaceholder');
     document.getElementById('lbl-menu-category').textContent = t('menuCategory');
     document.getElementById('lbl-menu-order-history').textContent = t('menuOrderHistory');
+    document.getElementById('lbl-nav-orders').textContent = t('navOrders');
     document.getElementById('lbl-menu-logout').textContent = t('menuLogout');
     document.getElementById('lbl-order-history-title').textContent = t('orderHistoryTitle');
     document.getElementById('lbl-loading-more').textContent = t('loadingMore');
@@ -1233,6 +1243,7 @@
   }
   function closeCart() { overlay.classList.remove('open'); cartDrawer.classList.remove('open'); }
   document.getElementById('cart-toggle').addEventListener('click', openCart);
+  document.getElementById('history-toggle').addEventListener('click', () => { catDropdownMenu.classList.remove('open'); openOrderHistory(); });
   document.getElementById('cart-close').addEventListener('click', closeCart);
 
   function openOrderHistory() {
