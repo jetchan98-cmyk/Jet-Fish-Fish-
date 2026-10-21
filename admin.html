@@ -159,6 +159,48 @@
 
   /* ---------- PRODUCT EDITOR ---------- */
   .editor-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  /* ---------- DASHBOARD ---------- */
+  #panel-dashboard { --chart: #109A89; max-width: 1100px; margin: 0 auto; }
+  #panel-dashboard .editor-card { max-width: none; margin-left: 0; margin-right: 0; }
+  #panel-dashboard .dash-card-head .sub { margin-bottom: 0; }
+  .dash-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .dash-seg { display: inline-flex; background: #EEF0F2; border-radius: 10px; padding: 3px; }
+  .dash-seg button { border: none; background: none; padding: 7px 14px; border-radius: 8px; font: 600 13px 'Poppins', sans-serif; color: var(--ink-soft); cursor: pointer; }
+  .dash-seg button.active { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .dash-nav { display: inline-flex; align-items: center; gap: 4px; }
+  .dash-nav button { width: 32px; height: 32px; border: 1px solid var(--line); background: var(--panel); border-radius: 8px; font-size: 16px; cursor: pointer; color: var(--ink); }
+  .dash-nav button:disabled { opacity: .35; cursor: default; }
+  .dash-period { font-weight: 600; font-size: 13.5px; min-width: 150px; text-align: center; }
+  .dash-filters select { width: auto; max-width: 220px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); font: 500 13px 'Poppins', sans-serif; }
+  .dash-refresh { border: none; background: none; color: var(--brand-blue); font: 600 12.5px 'Poppins', sans-serif; cursor: pointer; text-decoration: underline; margin-left: auto; }
+  .dash-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (min-width: 700px) { .dash-kpis { grid-template-columns: repeat(4, 1fr); } }
+  .dash-kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+  .dash-kpi .k-label { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+  .dash-kpi .k-value { font-size: 22px; font-weight: 700; margin-top: 2px; color: var(--ink); }
+  .dash-kpi .k-delta { font-size: 11.5px; margin-top: 2px; color: var(--ink-soft); }
+  .dash-kpi .k-delta.up { color: #047857; } .dash-kpi .k-delta.down { color: var(--red); }
+  .dash-grid { display: grid; grid-template-columns: 1fr; gap: 0 16px; }
+  @media (min-width: 900px) { .dash-grid { grid-template-columns: 1fr 1fr; } }
+  .dash-card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+  .dash-card-head h3 { margin: 0; font-size: 15px; }
+  .dash-card-head .sub { font-size: 12px; color: var(--ink-soft); }
+  .dash-mini-seg button { font-size: 11.5px; padding: 4px 9px; }
+  .dash-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 7px 0; border-bottom: 1px solid #F1F2F4; font-size: 13px; }
+  .dash-row:last-child { border-bottom: none; }
+  .dash-row .r-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-row .r-sub { font-size: 11.5px; color: var(--ink-soft); }
+  .dash-row .r-val { text-align: right; font-weight: 600; white-space: nowrap; }
+  .dash-row .r-bar { grid-column: 1 / -1; height: 6px; background: #EEF0F2; border-radius: 3px; overflow: hidden; }
+  .dash-row .r-bar span { display: block; height: 100%; background: var(--chart); border-radius: 0 3px 3px 0; }
+  .dash-empty { color: var(--ink-soft); font-size: 13px; padding: 10px 0; }
+  .dash-chart-wrap { position: relative; }
+  .dash-chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .dash-chart-wrap .bar { fill: var(--chart); cursor: pointer; outline: none; }
+  .dash-chart-wrap .bar.hl, .dash-chart-wrap .bar:focus { fill: #0B7C6E; }
+  .dash-tip { position: absolute; pointer-events: none; background: var(--ink); color: #fff; font-size: 12px; padding: 7px 10px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -100%); margin-top: -8px; display: none; z-index: 5; }
+  .dash-tip b { display: block; font-size: 13px; }
+  .dash-loading { opacity: .5; transition: opacity .15s; }
   .editor-card h3 { font-size: 16px; margin-bottom: 4px; }
   .editor-card .sub { font-size: 12.5px; color: var(--ink-soft); margin-bottom: 16px; }
   label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.03em; }
@@ -314,6 +356,7 @@
       <div class="more-menu-wrap">
         <button class="tab-btn" id="more-menu-btn" style="font-size:18px; line-height:1;">☰</button>
         <div class="more-menu-dropdown" id="more-menu-dropdown">
+          <button class="more-menu-item" data-panel="dashboard">📊 Dashboard</button>
           <button class="more-menu-item" data-panel="fishdata">Add New Fish Data</button>
           <button class="more-menu-item" data-panel="newimages">Add New Images</button>
           <button class="more-menu-item" data-panel="toggle">Turn On / Off Fish and Add On</button>
@@ -761,6 +804,49 @@ BET-0166"></textarea>
     </section>
 
     <!-- ================= HISTORY ================= -->
+    <!-- ================= DASHBOARD ================= -->
+    <section class="panel" id="panel-dashboard">
+      <div class="dash-filters">
+        <div class="dash-seg" id="dash-unit-seg">
+          <button type="button" data-unit="week" class="active">Weekly</button>
+          <button type="button" data-unit="month">Monthly</button>
+        </div>
+        <div class="dash-nav">
+          <button type="button" id="dash-prev" aria-label="Previous period">‹</button>
+          <span class="dash-period" id="dash-period-label">—</span>
+          <button type="button" id="dash-next" aria-label="Next period">›</button>
+        </div>
+        <select id="dash-customer"><option value="">All customers</option></select>
+        <button type="button" class="dash-refresh" id="dash-refresh">Refresh</button>
+      </div>
+      <div id="dash-body">
+        <div class="dash-kpis" id="dash-kpis"></div>
+        <div class="editor-card">
+          <div class="dash-card-head"><h3 id="dash-trend-title">Sales</h3><span class="sub" id="dash-trend-sub"></span></div>
+          <div class="dash-chart-wrap" id="dash-trend"></div>
+        </div>
+        <div class="dash-grid">
+          <div class="editor-card">
+            <div class="dash-card-head"><h3 id="dash-fish-title">Top fish</h3>
+              <div class="dash-seg dash-mini-seg" id="dash-fish-sort"><button type="button" data-sort="pcs" class="active">By pcs</button><button type="button" data-sort="rm">By RM</button></div></div>
+            <div id="dash-top-fish"></div>
+          </div>
+          <div class="editor-card" id="dash-cust-card">
+            <div class="dash-card-head"><h3>Top customers</h3><span class="sub">by RM</span></div>
+            <div id="dash-top-cust"></div>
+          </div>
+          <div class="editor-card">
+            <div class="dash-card-head"><h3>By category</h3><span class="sub">by RM</span></div>
+            <div id="dash-cats"></div>
+          </div>
+          <div class="editor-card">
+            <div class="dash-card-head"><h3>Not ordered in 30+ days</h3><span class="sub">worth a follow-up</span></div>
+            <div id="dash-quiet"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="panel" id="panel-history">
       <div class="toolbar">
         <div class="search-wrap">
@@ -1036,6 +1122,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     if (moreItemBtn) { moreItemBtn.classList.add('active'); document.getElementById('more-menu-btn').classList.add('active'); }
 
     if (panelName === 'orders') loadOrders();
+    if (panelName === 'dashboard') loadDashboard();
     if (panelName === 'clients') loadClients();
     if (panelName === 'history') loadHistory();
     if (panelName === 'saleslookup') loadSalesLookupOrders();
@@ -3315,6 +3402,292 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       resultEl.innerHTML = `<span class="err">Update failed. Please try again.</span>`;
     }
     btn.disabled = false; btn.textContent = 'Add On Listed Fish';
+  });
+
+  // ---------- DASHBOARD ----------
+  // All figures come from the orders table. Weeks run Monday–Sunday, in this device's time zone (MY).
+  const dash = { orders: [], clients: [], unit: 'week', offset: 0, customer: '', fishSort: 'pcs', loaded: false };
+  const dEsc = (v) => String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const dRM = (n) => 'RM' + (n >= 10000 ? (n / 1000).toFixed(1) + 'K' : n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  const dRMfull = (n) => 'RM' + n.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const dDate = (d) => d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short' });
+  const dDateY = (d) => d.toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  function dashOrderTotal(o) {
+    if (o.order_total !== null && o.order_total !== undefined) return parseFloat(o.order_total) || 0;
+    return (o.items || []).reduce((s, it) => s + (parseFloat(it.line_total) || 0), 0);
+  }
+  function dashOrderPcs(o) {
+    if (o.total_qty) return parseInt(o.total_qty) || 0;
+    return (o.items || []).reduce((s, it) => s + (parseInt(it.qty) || 0), 0);
+  }
+  function dashCustKey(o) {
+    if (o.client_username) return o.client_username;
+    return 'co:' + String(o.company || 'Unknown').trim().toLowerCase();
+  }
+  function dashCustName(key, fallbackCompany) {
+    if (!key.startsWith('co:')) {
+      const c = dash.clients.find(c => c.username === key);
+      if (c && c.display_name) return c.display_name;
+    }
+    return fallbackCompany || key.replace(/^co:/, '');
+  }
+  function dashPeriod(unit, offset) {
+    const now = new Date();
+    let start;
+    if (unit === 'week') {
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      start.setDate(start.getDate() - ((start.getDay() + 6) % 7) + offset * 7);
+      const end = new Date(start); end.setDate(end.getDate() + 7);
+      return { start, end };
+    }
+    start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    return { start, end: new Date(start.getFullYear(), start.getMonth() + 1, 1) };
+  }
+  function dashPeriodLabel(unit, offset, short) {
+    const { start, end } = dashPeriod(unit, offset);
+    if (unit === 'month') return short ? start.toLocaleDateString('en-MY', { month: 'short' }) : start.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' });
+    if (short) return dDate(start);
+    const last = new Date(end); last.setDate(last.getDate() - 1);
+    const prefix = offset === 0 ? 'This week · ' : offset === -1 ? 'Last week · ' : '';
+    return prefix + dDate(start) + ' – ' + dDate(last);
+  }
+  function dashOrdersIn(unit, offset) {
+    const { start, end } = dashPeriod(unit, offset);
+    return dash.orders.filter(o => {
+      const t = new Date(o.created_at);
+      return t >= start && t < end && (!dash.customer || dashCustKey(o) === dash.customer);
+    });
+  }
+  function dashSums(list) {
+    return {
+      orders: list.length,
+      rm: list.reduce((s, o) => s + dashOrderTotal(o), 0),
+      pcs: list.reduce((s, o) => s + dashOrderPcs(o), 0),
+      customers: new Set(list.map(dashCustKey)).size
+    };
+  }
+
+  async function loadDashboard(force) {
+    const body = document.getElementById('dash-body');
+    if (dash.loaded && !force) { renderDashboard(); return; }
+    body.classList.add('dash-loading');
+    try {
+      const [orders, clients] = await Promise.all([
+        fetchAllRows('/rest/v1/orders?select=order_ref,company,client_username,items,created_at,total_qty,order_total&order=created_at.desc'),
+        fetchAllRows('/rest/v1/clients?select=username,display_name,active')
+      ]);
+      dash.orders = orders || [];
+      dash.clients = clients || [];
+      dash.loaded = true;
+      dashFillCustomerSelect();
+      renderDashboard();
+    } catch (err) {
+      console.error('Dashboard load failed:', err);
+      document.getElementById('dash-kpis').innerHTML = `<div class="dash-empty">Could not load orders — check your connection and tap Refresh. (${dEsc(err.message)})</div>`;
+    }
+    body.classList.remove('dash-loading');
+  }
+
+  function dashFillCustomerSelect() {
+    const sel = document.getElementById('dash-customer');
+    const seen = {};
+    dash.orders.forEach(o => { const k = dashCustKey(o); if (!seen[k]) seen[k] = dashCustName(k, o.company); });
+    const opts = Object.entries(seen).sort((a, b) => a[1].localeCompare(b[1]));
+    sel.innerHTML = `<option value="">All customers</option>` + opts.map(([k, n]) => `<option value="${dEsc(k)}">${dEsc(n)}</option>`).join('');
+    sel.value = dash.customer && seen[dash.customer] ? dash.customer : '';
+    dash.customer = sel.value;
+  }
+
+  function renderDashboard() {
+    const u = dash.unit, off = dash.offset;
+    document.getElementById('dash-period-label').textContent = dashPeriodLabel(u, off);
+    document.getElementById('dash-next').disabled = off >= 0;
+    const cur = dashOrdersIn(u, off);
+    const prev = dashOrdersIn(u, off - 1);
+    renderDashKpis(dashSums(cur), dashSums(prev), u);
+    renderDashTrend();
+    renderDashTopFish(cur);
+    document.getElementById('dash-cust-card').style.display = dash.customer ? 'none' : '';
+    if (!dash.customer) renderDashTopCust(cur);
+    renderDashCats(cur);
+    renderDashQuiet();
+    const custName = dash.customer ? document.getElementById('dash-customer').selectedOptions[0].textContent : '';
+    document.getElementById('dash-fish-title').textContent = dash.customer ? `${custName}'s favourite fish` : 'Top fish';
+  }
+
+  function renderDashKpis(c, p, unit) {
+    const vs = unit === 'week' ? 'vs previous week' : 'vs previous month';
+    const tile = (label, val, now, before) => {
+      let cls = '', txt = `— ${vs}`;
+      if (before > 0) {
+        const pct = Math.round((now - before) / before * 100);
+        cls = pct > 0 ? 'up' : pct < 0 ? 'down' : '';
+        txt = `${pct > 0 ? '▲' : pct < 0 ? '▼' : '='} ${Math.abs(pct)}% ${vs}`;
+      } else if (now > 0) { cls = 'up'; txt = `▲ new ${vs}`; }
+      return `<div class="dash-kpi"><div class="k-label">${label}</div><div class="k-value">${val}</div><div class="k-delta ${cls}">${txt}</div></div>`;
+    };
+    document.getElementById('dash-kpis').innerHTML =
+      tile('Sales', dRM(c.rm), c.rm, p.rm) +
+      tile('Orders', c.orders.toLocaleString('en-MY'), c.orders, p.orders) +
+      tile('Fish sold (pcs)', c.pcs.toLocaleString('en-MY'), c.pcs, p.pcs) +
+      tile(dash.customer ? 'Order days' : 'Customers ordering', (dash.customer ? new Set(dashOrdersIn(unit, dash.offset).map(o => new Date(o.created_at).toDateString())).size : c.customers).toLocaleString('en-MY'),
+        dash.customer ? 0 : c.customers, dash.customer ? 0 : p.customers);
+  }
+
+  function renderDashTrend() {
+    const u = dash.unit, N = 12;
+    const pts = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const off = dash.offset - i;
+      const s = dashSums(dashOrdersIn(u, off));
+      pts.push({ off, label: dashPeriodLabel(u, off, true), full: dashPeriodLabel(u, off), ...s });
+    }
+    document.getElementById('dash-trend-title').textContent = `Sales — last ${N} ${u === 'week' ? 'weeks' : 'months'}`;
+    document.getElementById('dash-trend-sub').textContent = 'RM per ' + u;
+    const wrapEl = document.getElementById('dash-trend');
+    const W = Math.max(300, Math.round(wrapEl.clientWidth || 640)), H = 220, padL = 46, padR = 8, padT = 24, padB = 26;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const maxV = Math.max(...pts.map(p => p.rm), 0);
+    // Axis top = 4 gridline steps, each a clean 1 / 2 / 5 × 10ⁿ value
+    const niceMax = (() => {
+      if (maxV <= 0) return 100;
+      const raw = maxV / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+      return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag * 4;
+    })();
+    const slot = plotW / N, bw = Math.min(24, slot * 0.6);
+    const y = v => padT + plotH - (v / niceMax) * plotH;
+    let g = '';
+    for (let k = 0; k <= 4; k++) {
+      const v = niceMax * k / 4, yy = y(v);
+      g += `<line x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}" stroke="#E5E7EB" stroke-width="1"/>`;
+      g += `<text x="${padL - 6}" y="${yy + 4}" text-anchor="end" font-size="11" fill="#6B7280">${v >= 1000 ? (v / 1000).toFixed(v % 1000 ? 1 : 0) + 'K' : Math.round(v)}</text>`;
+    }
+    pts.forEach((p, i) => {
+      const cx = padL + slot * i + slot / 2, x = cx - bw / 2, top = y(p.rm), h = padT + plotH - top;
+      if (h > 0) {
+        const r = Math.min(4, h, bw / 2);
+        g += `<path class="bar" tabindex="0" data-i="${i}" d="M${x},${padT + plotH} V${top + r} Q${x},${top} ${x + r},${top} H${x + bw - r} Q${x + bw},${top} ${x + bw},${top + r} V${padT + plotH} Z"/>`;
+      }
+      g += `<rect class="bar-hit" data-i="${i}" x="${padL + slot * i}" y="${padT}" width="${slot}" height="${plotH}" fill="transparent" style="cursor:pointer"/>`;
+      // label every Nth bar, counted back from the latest, so labels never collide on a narrow screen
+      const labelStep = Math.max(1, Math.ceil((u === 'week' ? 50 : 34) / slot));
+      if ((N - 1 - i) % labelStep === 0)
+        g += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#6B7280">${dEsc(p.label)}</text>`;
+    });
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${padT + plotH}" y2="${padT + plotH}" stroke="#D1D5DB" stroke-width="1"/>`;
+    const wrap = document.getElementById('dash-trend');
+    wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Sales per ${u}">${g}</svg><div class="dash-tip" id="dash-tip"></div>`;
+    const tip = wrap.querySelector('#dash-tip'), svg = wrap.querySelector('svg');
+    const show = (i) => {
+      const p = pts[i], cx = padL + slot * i + slot / 2, rect = svg.getBoundingClientRect(), sc = rect.width / W;
+      tip.innerHTML = '';
+      const b = document.createElement('b'); b.textContent = dRMfull(p.rm);
+      const line = document.createElement('div'); line.textContent = `${p.full} · ${p.orders} order${p.orders === 1 ? '' : 's'} · ${p.pcs.toLocaleString('en-MY')} pcs`;
+      tip.append(b, line);
+      tip.style.left = Math.min(Math.max(cx * sc, 90), rect.width - 90) + 'px';
+      tip.style.top = (y(Math.max(p.rm, 0)) * sc) + 'px';
+      tip.style.display = 'block';
+      wrap.querySelectorAll('.bar').forEach(bar => bar.classList.toggle('hl', +bar.dataset.i === i));
+    };
+    const hide = () => { tip.style.display = 'none'; wrap.querySelectorAll('.bar.hl').forEach(bar => bar.classList.remove('hl')); };
+    wrap.querySelectorAll('[data-i]').forEach(el => {
+      el.addEventListener('pointerenter', () => show(+el.dataset.i));
+      el.addEventListener('focus', () => show(+el.dataset.i));
+      el.addEventListener('click', () => show(+el.dataset.i));
+      el.addEventListener('pointerleave', hide);
+      el.addEventListener('blur', hide);
+    });
+  }
+
+  function dashRows(list, valueOf, subOf, nameOf, valText) {
+    if (!list.length) return `<div class="dash-empty">No orders in this period.</div>`;
+    const max = Math.max(...list.map(valueOf), 1);
+    return list.map(r => `<div class="dash-row">
+      <div><div class="r-name">${dEsc(nameOf(r))}</div><div class="r-sub">${dEsc(subOf(r))}</div></div>
+      <div class="r-val">${valText(r)}</div>
+      <div class="r-bar"><span style="width:${Math.max(2, valueOf(r) / max * 100)}%"></span></div>
+    </div>`).join('');
+  }
+
+  function renderDashTopFish(list) {
+    const byCode = {};
+    list.forEach(o => (o.items || []).forEach(it => {
+      const code = it.code || it.name;
+      const f = byCode[code] || (byCode[code] = { code, name: it.name, pcs: 0, rm: 0, buyers: new Set() });
+      f.pcs += parseInt(it.qty) || 0;
+      f.rm += parseFloat(it.line_total) || 0;
+      f.buyers.add(dashCustKey(o));
+    }));
+    const rows = Object.values(byCode).sort((a, b) => dash.fishSort === 'rm' ? b.rm - a.rm : b.pcs - a.pcs).slice(0, 10);
+    document.getElementById('dash-top-fish').innerHTML = dashRows(rows,
+      r => dash.fishSort === 'rm' ? r.rm : r.pcs,
+      r => `${r.code}${dash.customer ? '' : ` · ${r.buyers.size} customer${r.buyers.size === 1 ? '' : 's'}`}`,
+      r => { const f = fishList.find(f => f.code === r.code); return f ? f.name : r.name; },
+      r => dash.fishSort === 'rm' ? `${dRM(r.rm)}<div class="r-sub">${r.pcs.toLocaleString('en-MY')} pcs</div>` : `${r.pcs.toLocaleString('en-MY')} pcs<div class="r-sub">${dRM(r.rm)}</div>`);
+  }
+
+  function renderDashTopCust(list) {
+    const by = {};
+    list.forEach(o => {
+      const k = dashCustKey(o);
+      const c = by[k] || (by[k] = { k, company: o.company, rm: 0, orders: 0, pcs: 0, last: null });
+      c.rm += dashOrderTotal(o); c.orders++; c.pcs += dashOrderPcs(o);
+      const t = new Date(o.created_at); if (!c.last || t > c.last) c.last = t;
+    });
+    const rows = Object.values(by).sort((a, b) => b.rm - a.rm).slice(0, 10);
+    document.getElementById('dash-top-cust').innerHTML = dashRows(rows, r => r.rm,
+      r => `${r.orders} order${r.orders === 1 ? '' : 's'} · ${r.pcs.toLocaleString('en-MY')} pcs · last ${dDate(r.last)}`,
+      r => dashCustName(r.k, r.company), r => dRM(r.rm));
+  }
+
+  function renderDashCats(list) {
+    const by = {};
+    list.forEach(o => (o.items || []).forEach(it => {
+      const f = fishList.find(f => f.code === it.code);
+      const cat = (f && f.category) || (String(it.code || '').split('-')[0]) || 'Other';
+      const c = by[cat] || (by[cat] = { cat, rm: 0, pcs: 0 });
+      c.rm += parseFloat(it.line_total) || 0; c.pcs += parseInt(it.qty) || 0;
+    }));
+    const rows = Object.values(by).sort((a, b) => b.rm - a.rm || b.pcs - a.pcs).slice(0, 10);
+    document.getElementById('dash-cats').innerHTML = dashRows(rows, r => r.rm || r.pcs,
+      r => `${r.pcs.toLocaleString('en-MY')} pcs`, r => r.cat, r => dRM(r.rm));
+  }
+
+  // Customers whose last order is 30+ days ago (all-time, ignores the period), plus active logins who never ordered.
+  function renderDashQuiet() {
+    const last = {};
+    dash.orders.forEach(o => {
+      const k = dashCustKey(o), t = new Date(o.created_at);
+      if (!last[k] || t > last[k].t) last[k] = { k, t, company: o.company };
+    });
+    const now = Date.now(), DAY = 86400000;
+    const quiet = Object.values(last).filter(r => now - r.t.getTime() >= 30 * DAY).sort((a, b) => a.t - b.t);
+    const never = dash.clients.filter(c => c.active !== false && !last[c.username]);
+    let html = quiet.slice(0, 15).map(r => `<div class="dash-row">
+        <div><div class="r-name">${dEsc(dashCustName(r.k, r.company))}</div><div class="r-sub">Last order ${dDateY(r.t)}</div></div>
+        <div class="r-val">${Math.floor((now - r.t.getTime()) / DAY)} days</div></div>`).join('');
+    if (quiet.length > 15) html += `<div class="dash-empty">+ ${quiet.length - 15} more</div>`;
+    if (never.length) html += `<div class="dash-row"><div><div class="r-name">Never ordered (${never.length})</div><div class="r-sub">${dEsc(never.slice(0, 8).map(c => c.display_name || c.username).join(', '))}${never.length > 8 ? '…' : ''}</div></div><div class="r-val"></div></div>`;
+    document.getElementById('dash-quiet').innerHTML = html || `<div class="dash-empty">Everyone has ordered in the last 30 days.</div>`;
+  }
+
+  document.querySelectorAll('#dash-unit-seg button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#dash-unit-seg button').forEach(b => b.classList.toggle('active', b === btn));
+    dash.unit = btn.dataset.unit; dash.offset = 0; renderDashboard();
+  }));
+  document.querySelectorAll('#dash-fish-sort button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#dash-fish-sort button').forEach(b => b.classList.toggle('active', b === btn));
+    dash.fishSort = btn.dataset.sort; renderDashTopFish(dashOrdersIn(dash.unit, dash.offset));
+  }));
+  document.getElementById('dash-prev').addEventListener('click', () => { dash.offset--; renderDashboard(); });
+  document.getElementById('dash-next').addEventListener('click', () => { if (dash.offset < 0) { dash.offset++; renderDashboard(); } });
+  document.getElementById('dash-customer').addEventListener('change', (e) => { dash.customer = e.target.value; renderDashboard(); });
+  document.getElementById('dash-refresh').addEventListener('click', () => loadDashboard(true));
+  let dashResizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(dashResizeTimer);
+    dashResizeTimer = setTimeout(() => { if (dash.loaded && document.getElementById('panel-dashboard').classList.contains('active')) renderDashTrend(); }, 150);
   });
 
   // ---------- ORDERS ----------
