@@ -303,7 +303,13 @@
   .client-row:last-child { border-bottom: none; }
   .client-info .name { font-weight: 700; font-size: 14px; }
   .client-info .username { font-size: 12.5px; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; }
-  .client-actions { display: flex; gap: 8px; }
+  .client-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .client-card { display: block; }
+  .client-card .client-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .client-card .client-top .name { overflow-wrap: anywhere; }
+  .client-card .client-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; max-width: 480px; }
+  .client-card .client-actions .icon-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 4px; font-size: 11px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+  .client-card .ca-ic { font-size: 16px; line-height: 1; }
   .order-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .order-ref { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--ink-soft); }
   .order-company { font-size: 15px; font-weight: 700; margin-top: 4px; }
@@ -4074,10 +4080,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     }
 
     listEl.innerHTML = clients.map(c => `
-        <div class="client-row">
+        <div class="client-row client-card">
           <div class="client-info">
-            <div class="name">${c.display_name || c.username}</div>
-            <div class="username">${c.username}</div>
+            <div class="client-top">
+              <div style="min-width:0;">
+                <div class="name">${c.display_name || c.username}</div>
+                <div class="username">${c.username}</div>
+              </div>
+              <button class="fc-status-pill ${c.active ? 'on' : 'off'} toggle-client-active-btn" data-id="${c.id}">${c.active ? 'ON' : 'OFF'}</button>
+            </div>
             <div class="fc-status-sub ${c.active ? 'on' : 'off'}" style="margin-top:4px;">${c.active ? 'ON · Can log in' : 'OFF · Access blocked'}</div>
             <div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px;">Last login: ${c.last_login ? `${relativeTime(c.last_login)} (${new Date(c.last_login).toLocaleString()})` : 'Never'}</div>
             <div style="font-size:11.5px; color:var(--ink-soft); margin-top:4px; display:flex; align-items:center; gap:6px;">
@@ -4085,10 +4096,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             </div>
           </div>
           <div class="client-actions">
-            <button class="fc-status-pill ${c.active ? 'on' : 'off'} toggle-client-active-btn" data-id="${c.id}">${c.active ? 'ON' : 'OFF'}</button>
-            <button class="icon-btn send-login-btn" data-id="${c.id}" style="color:var(--accent); font-weight:700;">Send Login</button>
-            <button class="icon-btn reset-client-btn" data-id="${c.id}" data-username="${c.username}">Reset Password</button>
-            <button class="icon-btn delete-client-btn" data-id="${c.id}" style="color:var(--red);">Delete</button>
+            <button class="icon-btn edit-client-name-btn" data-id="${c.id}"><span class="ca-ic">✏️</span>Edit name</button>
+            <button class="icon-btn send-login-btn" data-id="${c.id}" style="color:var(--accent);"><span class="ca-ic">📤</span>Send login</button>
+            <button class="icon-btn reset-client-btn" data-id="${c.id}" data-username="${c.username}"><span class="ca-ic">🔑</span>Reset pw</button>
+            <button class="icon-btn delete-client-btn" data-id="${c.id}" style="color:var(--red);"><span class="ca-ic">🗑️</span>Delete</button>
           </div>
         </div>
       `).join('');
@@ -4109,6 +4120,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         });
         showToast(newActive ? 'Client can now log in' : 'Client access blocked');
         loadClients();
+      }));
+
+      listEl.querySelectorAll('.edit-client-name-btn').forEach(btn => btn.addEventListener('click', async () => {
+        const client = clients.find(c => String(c.id) === btn.dataset.id);
+        if (!client) return;
+        const input = prompt(`New name for login ID "${client.username}":`, client.display_name || client.username);
+        if (input === null) return;
+        const newName = input.trim();
+        if (!newName) { alert('Name cannot be empty.'); return; }
+        if (newName === client.display_name) return;
+        try {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/clients?id=eq.${btn.dataset.id}`, {
+            method: 'PATCH', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify({ display_name: newName })
+          });
+          const rows = res.ok ? await res.json() : [];
+          if (!res.ok || !rows.length) throw new Error('not saved');
+          showToast('Name updated — login ID unchanged');
+          loadClients();
+        } catch (err) {
+          alert('Could not save the new name. Please try again.');
+        }
       }));
 
       listEl.querySelectorAll('.send-login-btn').forEach(btn => btn.addEventListener('click', () => {
